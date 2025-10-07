@@ -8,11 +8,17 @@
   <nav class="sidebar-nav">
     <p class="nav-header">MENU</p>
     <ul>
-      <li>
+      <li class="<%= (currentPage === 'websites') ? 'active' : '' %>">
         <a href="/websites">
           <i class="fa-solid fa-globe icon"></i>
           <span>Manage Websites</span>
         </a>
+      </li>
+      <li>
+        <button type="button" id="settings-btn">
+          <i class="fa-solid fa-gear icon"></i>
+          <span>Manage Settings</span>
+        </button>
       </li>
     </ul>
     <% if (websites && websites.length > 0) { %>

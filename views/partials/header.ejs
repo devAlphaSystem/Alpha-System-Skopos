@@ -4,11 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= title %> - Skopos</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
     <link rel="stylesheet" href="/css/style.css">
+
+    <script>
+      (function() {
+        const DEFAULT_SETTINGS = {
+          theme: 'light',
+          refreshRate: 10000,
+          autoRefresh: true,
+          dataPeriod: 7,
+          resultsLimit: 10
+        };
+        let settings = { ...DEFAULT_SETTINGS };
+        try {
+          const stored = localStorage.getItem('skopos-settings');
+          if (stored) {
+            settings = { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
+          }
+        } catch (e) {
+          console.error('Failed to load settings:', e);
+        }
+        document.documentElement.setAttribute('data-theme', settings.theme);
+        window.__SKOPOS_SETTINGS__ = settings;
+      })();
+    </script>
   </head>
   
   <body>

@@ -1,12 +1,10 @@
 <%- include('partials/header', {title: 'Manage Websites'}) %>
 
 <div class="page-wrapper">
-  <%- include('partials/sidebar', { websites, currentWebsite }) %>
+  <%- include('partials/sidebar', { websites, currentWebsite, currentPage }) %>
   <div class="main-container">
     <header class="main-header">
-      <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle Sidebar">
-        <i class="fa-solid fa-bars"></i>
-      </button>
+      <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle Sidebar"><i class="fa-solid fa-bars"></i></button>
       <div class="header-content">
         <div class="header-title">
           <h1>Manage Websites</h1>
@@ -14,9 +12,8 @@
         </div>
       </div>
     </header>
-
     <main class="main-content">
-      <div class="website-list">
+      <div class="websites-grid">
         <div class="card">
           <h2>Add New Website</h2>
           <form class="website-form" action="/websites" method="POST">
@@ -29,44 +26,38 @@
               <input type="text" id="domain" name="domain" placeholder="example.com" required>
             </div>
             <div class="form-group">
-              <label for="dataRetentionDays">Data Retention (in days)</label>
+              <label for="dataRetentionDays">Data Retention (days)</label>
               <input type="number" id="dataRetentionDays" name="dataRetentionDays" placeholder="0" min="0" value="0">
-              <p class="form-hint">Set to 0 to keep data forever. Otherwise, data older than this many days will be deleted.</p>
+              <p class="form-hint">Set to 0 to keep data forever.</p>
             </div>
             <button type="submit" class="btn">Add Website</button>
           </form>
         </div>
-
         <div class="card">
           <h2>Your Websites</h2>
           <% if (websites.length > 0) { %>
-            <div class="website-list">
-              <% for (const website of websites) { %>
-                <div class="card website-card">
-                  <div class="card-header">
-                    <h3><%= website.name %></h3>
-                    <form action="/websites/delete/<%= website.id %>" method="POST" onsubmit="return confirm('Are you sure you want to delete this site and all its data?');">
-                      <button type="submit" class="btn btn-danger">
-                        <i class="fa-solid fa-trash"></i> Delete
-                      </button>
-                    </form>
-                  </div>
-                  <div class="website-info">
-                    <p><strong>Domain:</strong> <%= website.domain %></p>
-                    <p><strong>Retention:</strong> <%= website.dataRetentionDays > 0 ? `${website.dataRetentionDays} days` : 'Forever' %></p>
-                    <p><strong>Tracking ID:</strong></p>
-                    <div class="tracking-id-container">
-                      <code id="tracking-id-<%= website.id %>"><%= website.trackingId %></code>
-                      <button class="copy-btn" onclick="copyToClipboard('tracking-id-<%= website.id %>', this)">
-                        <i class="fa-solid fa-copy"></i>
-                      </button>
-                    </div>
-                  </div>
+          <div class="website-list">
+            <% for (const website of websites) { %>
+            <div class="card website-item-card">
+              <div class="card-header">
+                <h3><%= website.name %></h3>
+                <form action="/websites/delete/<%= website.id %>" method="POST" onsubmit="return confirm('Are you sure? This will delete the site and all its data.');">
+                  <button type="submit" class="btn btn-danger"><i class="fa-solid fa-trash"></i> Delete</button>
+                </form>
+              </div>
+              <div class="website-item-info">
+                <p><strong>Domain:</strong> <%= website.domain %></p>
+                <p><strong>Retention:</strong> <%= website.dataRetentionDays > 0 ? `${website.dataRetentionDays} days` : 'Forever' %></p>
+                <div class="tracking-id-container">
+                  <code><%= website.trackingId %></code>
+                  <button class="copy-btn" onclick="copyToClipboard('<%= website.trackingId %>', this)" title="Copy Tracking ID"><i class="fa-solid fa-copy"></i></button>
                 </div>
-              <% } %>
+              </div>
             </div>
+            <% } %>
+          </div>
           <% } else { %>
-            <p>You haven't added any websites yet.</p>
+          <p>You haven't added any websites yet. Add one using the form.</p>
           <% } %>
         </div>
       </div>
@@ -75,8 +66,7 @@
 </div>
 
 <script>
-  function copyToClipboard(elementId, button) {
-    const text = document.getElementById(elementId).innerText;
+  function copyToClipboard(text, button) {
     navigator.clipboard.writeText(text).then(() => {
       const originalIcon = button.innerHTML;
       button.innerHTML = '<i class="fa-solid fa-check"></i>';
@@ -87,4 +77,4 @@
   }
 </script>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { scripts: [] }) %>

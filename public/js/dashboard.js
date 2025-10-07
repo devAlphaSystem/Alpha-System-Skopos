@@ -1,97 +1,146 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const sidebarToggle = document.getElementById("sidebar-toggle");
-  const sidebar = document.getElementById("sidebar");
   const pageWrapper = document.querySelector(".page-wrapper");
   const WEBSITE_ID = pageWrapper ? pageWrapper.dataset.websiteId : null;
-  const UPDATE_INTERVAL = 5000;
   const progressBar = document.getElementById("update-progress-bar");
+  const detailDrawerOverlay = document.getElementById("detail-drawer-overlay");
+  const detailDrawer = document.getElementById("detail-drawer");
+  const detailDrawerClose = document.getElementById("detail-drawer-close");
+  const manualRefreshBtn = document.getElementById("manual-refresh-btn");
+  const dataPeriodLabel = document.getElementById("data-period-label");
+  const exportPdfBtn = document.getElementById("export-pdf-btn");
+  const exportCsvBtn = document.getElementById("export-csv-btn");
 
-  if (sidebarToggle) {
-    sidebarToggle.addEventListener("click", () => {
-      sidebar.classList.toggle("open");
+  let settings = window.__SKOPOS_SETTINGS__;
+  let refreshInterval = null;
+  let chart = null;
+
+  function updateDashboardSettings() {
+    settings = window.__SKOPOS_SETTINGS__;
+    try {
+      const stored = localStorage.getItem("skopos-settings");
+      if (stored) {
+        settings = { ...settings, ...JSON.parse(stored) };
+      }
+    } catch (e) {
+      console.error("Failed to parse settings:", e);
+    }
+
+    if (dataPeriodLabel) {
+      dataPeriodLabel.textContent = `Displaying data for the last ${settings.dataPeriod} days`;
+    }
+    if (exportPdfBtn && WEBSITE_ID) {
+      exportPdfBtn.href = `/dashboard/${WEBSITE_ID}/report/pdf?period=${settings.dataPeriod}`;
+    }
+    if (exportCsvBtn && WEBSITE_ID) {
+      exportCsvBtn.href = `/dashboard/${WEBSITE_ID}/report/csv?period=${settings.dataPeriod}`;
+    }
+
+    fetchDashboardData(WEBSITE_ID);
+    setupRefreshInterval();
+  }
+
+  function setupRefreshInterval() {
+    if (refreshInterval) {
+      clearInterval(refreshInterval);
+    }
+    if (!settings.autoRefresh || !WEBSITE_ID) {
+      if (progressBar) {
+        progressBar.style.transition = "none";
+        progressBar.style.width = "0%";
+      }
+      return;
+    }
+    animateProgressBar(settings.refreshRate);
+    refreshInterval = setInterval(() => {
+      fetchDashboardData(WEBSITE_ID);
+      animateProgressBar(settings.refreshRate);
+    }, settings.refreshRate);
+  }
+
+  function openDetailDrawer(reportType, reportTitle) {
+    const drawerTitle = document.getElementById("detail-drawer-title");
+    drawerTitle.textContent = reportTitle;
+    detailDrawerOverlay.classList.add("active");
+    detailDrawer.classList.add("active");
+    detailDrawer.dataset.reportType = reportType;
+    fetchDetailedData(reportType);
+  }
+
+  function closeDetailDrawer() {
+    detailDrawerOverlay.classList.remove("active");
+    detailDrawer.classList.remove("active");
+  }
+
+  if (detailDrawerClose) {
+    detailDrawerClose.addEventListener("click", closeDetailDrawer);
+  }
+
+  if (detailDrawerOverlay) {
+    detailDrawerOverlay.addEventListener("click", closeDetailDrawer);
+  }
+
+  if (manualRefreshBtn) {
+    manualRefreshBtn.addEventListener("click", () => {
+      if (WEBSITE_ID) {
+        fetchDashboardData(WEBSITE_ID);
+        if (settings.autoRefresh) {
+          setupRefreshInterval();
+        }
+      }
     });
   }
 
-  let chart = null;
+  const reportCards = document.querySelectorAll(".report-card");
+  for (const card of reportCards) {
+    card.addEventListener("click", () => {
+      const reportType = card.dataset.reportType;
+      const reportTitle = card.dataset.reportTitle;
+      if (reportType && reportTitle) {
+        openDetailDrawer(reportType, reportTitle);
+      }
+    });
+  }
+
   const chartElement = document.getElementById("analytics-chart");
+
+  function getChartColors() {
+    const computedStyle = getComputedStyle(document.documentElement);
+    return {
+      primary: computedStyle.getPropertyValue("--primary-color").trim(),
+      textSecondary: computedStyle.getPropertyValue("--text-secondary").trim(),
+      borderColor: computedStyle.getPropertyValue("--border-color").trim(),
+    };
+  }
+
+  function updateChartTheme() {
+    if (!chart) return;
+    const colors = getChartColors();
+    chart.updateOptions({
+      xaxis: { labels: { style: { colors: colors.textSecondary } } },
+      yaxis: { labels: { style: { colors: colors.textSecondary } } },
+      grid: { borderColor: colors.borderColor },
+      colors: [colors.primary],
+      noData: { style: { color: colors.textSecondary } },
+    });
+  }
 
   function initializeChart(initialData) {
     const hasData = initialData.length > 0 && initialData[0].data.some((point) => point[1] > 0);
-
+    const colors = getChartColors();
     const options = {
       series: hasData ? initialData : [],
-      chart: {
-        height: 350,
-        type: "area",
-        toolbar: {
-          show: false,
-        },
-        zoom: {
-          enabled: false,
-        },
-        animations: {
-          enabled: true,
-          easing: "easeinout",
-          speed: 800,
-        },
-      },
-      dataLabels: {
-        enabled: false,
-      },
-      stroke: {
-        curve: "smooth",
-        width: 2,
-      },
-      xaxis: {
-        type: "datetime",
-        labels: {
-          style: {
-            colors: "#64748b",
-          },
-        },
-      },
-      yaxis: {
-        labels: {
-          style: {
-            colors: "#64748b",
-          },
-        },
-      },
-      tooltip: {
-        x: {
-          format: "dd MMM yyyy",
-        },
-      },
-      grid: {
-        borderColor: "#e2e8f0",
-      },
-      fill: {
-        type: "gradient",
-        gradient: {
-          shadeIntensity: 1,
-          opacityFrom: 0.7,
-          opacityTo: 0.2,
-          stops: [0, 90, 100],
-        },
-      },
-      colors: ["#4f46e5"],
-      noData: {
-        text: "No page view data available for this period.",
-        align: "center",
-        verticalAlign: "middle",
-        offsetX: 0,
-        offsetY: 0,
-        style: {
-          color: "#475569",
-          fontSize: "14px",
-        },
-      },
+      chart: { height: 350, type: "area", toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, easing: "easeinout", speed: 800 } },
+      dataLabels: { enabled: false },
+      stroke: { curve: "smooth", width: 2 },
+      xaxis: { type: "datetime", labels: { style: { colors: colors.textSecondary } } },
+      yaxis: { labels: { style: { colors: colors.textSecondary } } },
+      tooltip: { x: { format: "dd MMM yyyy" } },
+      grid: { borderColor: colors.borderColor },
+      fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.2, stops: [0, 90, 100] } },
+      colors: [colors.primary],
+      noData: { text: "No page view data available for this period.", align: "center", verticalAlign: "middle", offsetX: 0, offsetY: 0, style: { color: colors.textSecondary, fontSize: "14px" } },
     };
-
-    if (chart) {
-      chart.destroy();
-    }
-
+    if (chart) chart.destroy();
     chart = new ApexCharts(chartElement, options);
     chart.render();
   }
@@ -103,9 +152,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateMetricCard(metricId, value, change) {
     const valueElement = document.getElementById(`${metricId}-value`);
     const changeElement = document.getElementById(`${metricId}-change`);
-    if (valueElement) {
-      valueElement.textContent = value;
-    }
+    if (valueElement) valueElement.textContent = value;
     if (changeElement) {
       changeElement.className = "metric-change";
       if (change >= 0) {
@@ -121,34 +168,14 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateReportCard(reportId, data) {
     const reportContainer = document.getElementById(reportId);
     if (!reportContainer) return;
-
     if (!data || data.length === 0) {
       reportContainer.innerHTML = '<p class="no-data">No data available for this report.</p>';
       return;
     }
-
-    let html = `
-      <div class="report-table-header">
-        <span>Item</span>
-        <span>Views</span>
-      </div>
-      <ul class="report-table-list">
-    `;
-
+    let html = '<div class="report-table-header"><span>Item</span><span>Views</span></div><ul class="report-table-list">';
     for (const item of data) {
-      html += `
-        <li>
-          <div class="list-item-info">
-            <span class="list-item-key">${item.key}</span>
-            <span class="list-item-count">${item.count}</span>
-          </div>
-          <div class="progress-bar-container">
-            <div class="progress-bar" style="width: ${item.percentage}%"></div>
-          </div>
-        </li>
-      `;
+      html += `<li><div class="list-item-info"><span class="list-item-key">${item.key}</span><span class="list-item-count">${item.count}</span></div><div class="progress-bar-container"><div class="progress-bar" style="width: ${item.percentage}%"></div></div></li>`;
     }
-
     html += "</ul>";
     reportContainer.innerHTML = html;
   }
@@ -158,14 +185,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (activeUsersCountEl && typeof data.activeUsers !== "undefined") {
       activeUsersCountEl.textContent = data.activeUsers;
     }
-
     if (data.metrics) {
       updateMetricCard("pageviews", data.metrics.pageViews, data.metrics.change.pageViews);
       updateMetricCard("visitors", data.metrics.visitors, data.metrics.change.visitors);
       updateMetricCard("bouncerate", `${data.metrics.bounceRate}%`, data.metrics.change.bounceRate);
       updateMetricCard("avgsession", data.metrics.avgSessionDuration.formatted, data.metrics.change.avgSessionDuration);
     }
-
     if (data.reports) {
       updateReportCard("report-top-pages", data.reports.topPages);
       updateReportCard("report-top-referrers", data.reports.topReferrers);
@@ -177,7 +202,6 @@ document.addEventListener("DOMContentLoaded", () => {
       updateReportCard("report-utm-medium", data.reports.utmMediumBreakdown);
       updateReportCard("report-utm-campaign", data.reports.utmCampaignBreakdown);
     }
-
     if (data.chartData && chart) {
       const hasData = data.chartData.length > 0 && data.chartData[0].data.some((point) => point[1] > 0);
       chart.updateSeries(hasData ? data.chartData : []);
@@ -186,10 +210,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function fetchDashboardData(websiteId) {
     try {
-      const response = await fetch(`/dashboard/data/${websiteId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const url = `/dashboard/data/${websiteId}?period=${settings.dataPeriod}&limit=${settings.resultsLimit}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       processUpdate(data);
     } catch (error) {
@@ -197,16 +220,120 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function animateProgressBar() {
+  async function fetchDetailedData(reportType) {
+    const tableContainer = document.getElementById("detail-table-container");
+    tableContainer.innerHTML = '<div class="spinner-container" style="opacity: 1; visibility: visible;"><div class="spinner"></div></div>';
+    try {
+      const url = `/dashboard/report/${WEBSITE_ID}/${reportType}?period=${settings.dataPeriod}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+      renderDetailTable(result.data);
+    } catch (error) {
+      console.error("[Detail Drawer ERROR] Failed to fetch detailed data:", error);
+      tableContainer.innerHTML = '<div class="no-data-message">Failed to load data.</div>';
+    }
+  }
+
+  let detailTableData = [];
+  let filteredData = [];
+  let currentPage = 1;
+  const itemsPerPage = 25;
+  let sortColumn = "count";
+  let sortDirection = "desc";
+
+  function renderDetailTable(data) {
+    detailTableData = data;
+    filteredData = [...data];
+    currentPage = 1;
+    applySort();
+    updateTable();
+  }
+
+  function applySort() {
+    filteredData.sort((a, b) => {
+      let aVal = a[sortColumn];
+      let bVal = b[sortColumn];
+      if (sortColumn === "key") {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+        return sortDirection === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
+    });
+  }
+
+  function applySearch(query) {
+    filteredData = query ? detailTableData.filter((item) => item.key.toLowerCase().includes(query.toLowerCase())) : [...detailTableData];
+    currentPage = 1;
+    applySort();
+    updateTable();
+  }
+
+  function updateTable() {
+    const tableContainer = document.getElementById("detail-table-container");
+    const paginationInfo = document.getElementById("detail-pagination-info");
+    const paginationControls = document.getElementById("detail-pagination-controls");
+    if (filteredData.length === 0) {
+      tableContainer.innerHTML = '<div class="no-data-message">No data available.</div>';
+      paginationInfo.textContent = "";
+      paginationControls.innerHTML = "";
+      return;
+    }
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
+    const pageData = filteredData.slice(startIndex, endIndex);
+    let tableHTML = `<table class="detail-table"><thead><tr><th data-column="key">Item ${sortColumn === "key" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="count">Count ${sortColumn === "count" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="percentage">Percentage ${sortColumn === "percentage" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th></tr></thead><tbody>`;
+    for (const item of pageData) {
+      tableHTML += `<tr><td>${item.key}</td><td>${item.count}</td><td>${item.percentage}%</td></tr>`;
+    }
+    tableHTML += "</tbody></table>";
+    tableContainer.innerHTML = tableHTML;
+    const headers = tableContainer.querySelectorAll("th[data-column]");
+    for (const header of headers) {
+      header.addEventListener("click", () => {
+        const column = header.dataset.column;
+        if (sortColumn === column) {
+          sortDirection = sortDirection === "asc" ? "desc" : "asc";
+        } else {
+          sortColumn = column;
+          sortDirection = "desc";
+        }
+        applySort();
+        updateTable();
+      });
+    }
+    paginationInfo.textContent = `Showing ${startIndex + 1}-${endIndex} of ${filteredData.length}`;
+    let paginationHTML = currentPage > 1 ? `<button class="detail-pagination-btn" data-page="${currentPage - 1}"><i class="fa-solid fa-chevron-left"></i></button>` : `<button class="detail-pagination-btn" disabled><i class="fa-solid fa-chevron-left"></i></button>`;
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    for (let i = startPage; i <= endPage; i++) {
+      paginationHTML += `<button class="detail-pagination-btn ${i === currentPage ? "active" : ""}" data-page="${i}">${i}</button>`;
+    }
+    paginationHTML += currentPage < totalPages ? `<button class="detail-pagination-btn" data-page="${currentPage + 1}"><i class="fa-solid fa-chevron-right"></i></button>` : `<button class="detail-pagination-btn" disabled><i class="fa-solid fa-chevron-right"></i></button>`;
+    paginationControls.innerHTML = paginationHTML;
+    const paginationButtons = paginationControls.querySelectorAll(".detail-pagination-btn[data-page]");
+    for (const button of paginationButtons) {
+      button.addEventListener("click", () => {
+        currentPage = Number.parseInt(button.dataset.page);
+        updateTable();
+      });
+    }
+  }
+
+  const detailSearch = document.getElementById("detail-drawer-search");
+  if (detailSearch) {
+    detailSearch.addEventListener("input", (e) => applySearch(e.target.value));
+  }
+
+  function animateProgressBar(duration) {
     if (!progressBar) return;
-
-    progressBar.classList.add("no-transition");
+    progressBar.style.transition = "none";
     progressBar.style.width = "100%";
-
-    setTimeout(() => {
-      progressBar.classList.remove("no-transition");
-      progressBar.style.width = "0%";
-    }, 50);
+    progressBar.offsetHeight;
+    progressBar.style.transition = `width ${duration}ms linear`;
+    progressBar.style.width = "0%";
   }
 
   window.addEventListener("load", () => {
@@ -216,11 +343,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  window.addEventListener("settingsChanged", updateDashboardSettings);
+  window.addEventListener("themeChanged", updateChartTheme);
+
   if (WEBSITE_ID) {
-    animateProgressBar();
-    setInterval(() => {
-      fetchDashboardData(WEBSITE_ID);
-      animateProgressBar();
-    }, UPDATE_INTERVAL);
+    updateDashboardSettings();
   }
 });

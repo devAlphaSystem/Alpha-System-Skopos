@@ -2,9 +2,7 @@ import PDFDocument from "pdfkit";
 import { stringify } from "csv-stringify";
 
 function generateHeader(doc, reportData) {
-  doc.fontSize(20).text(`Analytics Report for ${reportData.currentWebsite.name}`, {
-    align: "center",
-  });
+  doc.fontSize(20).text(`Analytics Report for ${reportData.currentWebsite.name}`, { align: "center" });
   doc.fontSize(12).text(reportData.period, { align: "center" });
   doc.moveDown(2);
 }
@@ -22,44 +20,45 @@ function generateMetrics(doc, reportData) {
 function generateReportSection(doc, title, data) {
   if (!data || data.length === 0) return;
 
+  if (doc.y > doc.page.height - 200) {
+    doc.addPage();
+  }
+
   doc.fontSize(16).text(title, { underline: true });
   doc.moveDown();
 
-  const table = {
-    headers: ["Item", "Count", "Percentage"],
-    rows: data.map((item) => [item.key, item.count, `${item.percentage}%`]),
-  };
-
-  const colWidths = [300, 100, 100];
+  const startX = doc.page.margins.left;
   let startY = doc.y;
-  const startX = doc.x;
+  const colWidths = [250, 100, 100];
 
-  doc.font("Helvetica-Bold");
-  for (const [i, header] of table.headers.entries()) {
-    doc.text(header, startX + i * 110, startY, { width: colWidths[i] });
-  }
-  doc.font("Helvetica");
+  doc.font("Helvetica-Bold").fontSize(10);
+  doc.text("Item", startX, startY, { width: colWidths[0], continued: false });
+  doc.text("Count", startX + colWidths[0], startY, { width: colWidths[1], continued: false });
+  doc.text("Percentage", startX + colWidths[0] + colWidths[1], startY, { width: colWidths[2], continued: false });
+
+  doc.font("Helvetica").fontSize(9);
   startY += 20;
 
-  for (const row of table.rows) {
-    for (const [i, cell] of row.entries()) {
-      doc.text(String(cell), startX + i * 110, startY, {
-        width: colWidths[i],
-      });
-    }
-    startY += 20;
-    if (startY > doc.page.height - 50) {
+  for (const row of data) {
+    if (startY > doc.page.height - 80) {
       doc.addPage();
       startY = doc.page.margins.top;
     }
+
+    const itemText = String(row.key).substring(0, 40);
+    doc.text(itemText, startX, startY, { width: colWidths[0], continued: false });
+    doc.text(String(row.count), startX + colWidths[0], startY, { width: colWidths[1], continued: false });
+    doc.text(`${row.percentage}%`, startX + colWidths[0] + colWidths[1], startY, { width: colWidths[2], continued: false });
+
+    startY += 18;
   }
 
   doc.y = startY;
-  doc.moveDown(2);
+  doc.moveDown(1);
 }
 
 export function generatePdfReport(reportData, stream) {
-  const doc = new PDFDocument({ margin: 50 });
+  const doc = new PDFDocument({ margin: 50, bufferPages: true });
   doc.pipe(stream);
 
   generateHeader(doc, reportData);

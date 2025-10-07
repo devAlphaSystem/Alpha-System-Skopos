@@ -10,10 +10,12 @@ async function fetchAnalyticsData(websiteId, startDate, endDate) {
 
   const sessions = await pb.collection("sessions").getFullList({
     filter: `website.id = "${websiteId}" && ${dateFilter}`,
+    $autoCancel: false,
   });
 
   const events = await pb.collection("events").getFullList({
     filter: `session.website.id = "${websiteId}" && ${dateFilter}`,
+    $autoCancel: false,
   });
 
   return { sessions, events };
@@ -36,8 +38,9 @@ export async function generateReport(req, res) {
       return res.status(404).send("Website not found or you do not have permission to view it.");
     }
 
+    const dataPeriod = Number.parseInt(req.query.period) || 7;
     const today = new Date();
-    const currentStartDate = subDays(today, 6);
+    const currentStartDate = subDays(today, dataPeriod - 1);
     const currentEndDate = today;
 
     const currentData = await fetchAnalyticsData(websiteId, currentStartDate, currentEndDate);
@@ -60,7 +63,7 @@ export async function generateReport(req, res) {
       metrics,
       reports,
       activeUsers,
-      period: `Data for the last 7 days (${currentStartDate.toLocaleDateString()} - ${currentEndDate.toLocaleDateString()})`,
+      period: `Data for the last ${dataPeriod} days (${currentStartDate.toLocaleDateString()} - ${currentEndDate.toLocaleDateString()})`,
     };
 
     if (format === "pdf") {

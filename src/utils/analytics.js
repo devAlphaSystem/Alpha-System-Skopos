@@ -148,11 +148,18 @@ function getUTMBreakdown(sessions, key, limit) {
 
 export async function calculateActiveUsers(websiteId) {
   const fiveMinutesAgo = formatISO(subMinutes(new Date(), 5));
-  const result = await pb.collection("sessions").getList(1, 1, {
-    filter: `website.id = "${websiteId}" && updated >= "${fiveMinutesAgo}"`,
+
+  const events = await pb.collection("events").getFullList({
+    filter: `session.website.id = "${websiteId}" && created >= "${fiveMinutesAgo}"`,
     $autoCancel: false,
   });
-  return result.totalItems;
+
+  const uniqueSessions = new Set();
+  for (const event of events) {
+    uniqueSessions.add(event.session);
+  }
+
+  return uniqueSessions.size;
 }
 
 export function calculateMetrics(sessions, events) {
@@ -176,6 +183,31 @@ export function getReports(sessions, events, limits) {
     utmCampaignBreakdown: getUTMBreakdown(sessions, "utmCampaign", limits.utmCampaignBreakdown),
     topCustomEvents: getTopCustomEvents(events, limits.topCustomEvents),
   };
+}
+
+export function getAllData(sessions, events, type) {
+  switch (type) {
+    case "topPages":
+      return getTopPages(events, 10000);
+    case "topReferrers":
+      return getTopReferrers(sessions, 10000);
+    case "deviceBreakdown":
+      return getBreakdown(sessions, "device", 10000);
+    case "browserBreakdown":
+      return getBreakdown(sessions, "browser", 10000);
+    case "languageBreakdown":
+      return getBreakdown(sessions, "language", 10000);
+    case "utmSourceBreakdown":
+      return getUTMBreakdown(sessions, "utmSource", 10000);
+    case "utmMediumBreakdown":
+      return getUTMBreakdown(sessions, "utmMedium", 10000);
+    case "utmCampaignBreakdown":
+      return getUTMBreakdown(sessions, "utmCampaign", 10000);
+    case "topCustomEvents":
+      return getTopCustomEvents(events, 10000);
+    default:
+      return [];
+  }
 }
 
 export function generateTimeseries(events, startDate, endDate) {
