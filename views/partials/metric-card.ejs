@@ -1,0 +1,18 @@
+<div class="card metric-card">
+  <div class="metric-icon">
+    <i class="fa-solid <%= icon %>"></i>
+  </div>
+  <div class="metric-content">
+    <h3><%= title %></h3>
+    <p class="metric-value"><%= value %></p>
+    <% if(change >= 0) { %>
+      <span class="metric-change positive">
+        <i class="fa-solid fa-arrow-up"></i> <%= change %>%
+      </span>
+    <% } else { %>
+      <span class="metric-change negative">
+        <i class="fa-solid fa-arrow-down"></i> <%= Math.abs(change) %>%
+      </span>
+    <% } %>
+  </div>
+</div>

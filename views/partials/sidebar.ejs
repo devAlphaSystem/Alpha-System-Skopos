@@ -1,0 +1,42 @@
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <a href="/" class="sidebar-brand">
+      <i class="fa-solid fa-chart-simple"></i>
+      <span>Skopos</span>
+    </a>
+  </div>
+  <nav class="sidebar-nav">
+    <p class="nav-header">MENU</p>
+    <ul>
+      <li>
+        <a href="/websites">
+          <i class="fa-solid fa-globe icon"></i>
+          <span>Manage Websites</span>
+        </a>
+      </li>
+    </ul>
+    <% if (websites && websites.length > 0) { %>
+      <p class="nav-header">WEBSITES</p>
+      <ul>
+        <% for (const website of websites) { %>
+          <li class="<%= (currentWebsite && currentWebsite.id === website.id) ? 'active' : '' %>">
+            <a href="/dashboard/<%= website.id %>">
+              <i class="fa-solid fa-server icon"></i>
+              <span><%= website.name %></span>
+            </a>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+  </nav>
+  <div class="sidebar-footer">
+    <% if (user) { %>
+      <div class="user-info">
+        <span><%= user.email %></span>
+        <a href="/logout" class="logout-link" title="Logout">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    <% } %>
+  </div>
+</aside>

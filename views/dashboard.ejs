@@ -1,0 +1,161 @@
+<%- include('partials/header', {title: 'Dashboard'}) %>
+
+<div class="page-wrapper" data-website-id="<%= currentWebsite.id %>">
+  <%- include('partials/sidebar', { websites, currentWebsite }) %>
+  <div class="main-container">
+    <header class="main-header">
+      <div class="header-content">
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle Sidebar"><i class="fa-solid fa-bars"></i></button>
+        <div class="header-title">
+          <h1><%= currentWebsite.name %></h1>
+          <p>Displaying data for the last 7 days</p>
+        </div>
+        <div class="header-actions">
+          <div class="active-users-widget">
+            <div class="live-indicator"></div>
+            <span id="active-users-count"><%= activeUsers %></span>
+            <span>Active Users</span>
+          </div>
+          <a href="/dashboard/<%= currentWebsite.id %>/report/pdf" class="btn btn-secondary" download><i class="fa-solid fa-file-pdf"></i> Export PDF</a>
+          <a href="/dashboard/<%= currentWebsite.id %>/report/csv" class="btn btn-secondary" download><i class="fa-solid fa-file-csv"></i> Export CSV</a>
+        </div>
+      </div>
+    </header>
+
+    <div class="update-progress-container">
+      <div id="update-progress-bar" class="progress-bar-update"></div>
+    </div>
+
+    <main class="main-content">
+      <div class="metrics-grid">
+        <div class="card metric-card">
+          <div class="metric-icon"><i class="fa-solid fa-eye"></i></div>
+          <div class="metric-content">
+            <h3>Page Views</h3>
+            <p class="metric-value" id="pageviews-value"><%= metrics.pageViews %></p>
+            <% if(metrics.change.pageViews >= 0) { %>
+              <span class="metric-change positive" id="pageviews-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.pageViews %>%</span>
+            <% } else { %>
+              <span class="metric-change negative" id="pageviews-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.pageViews) %>%</span>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="card metric-card">
+          <div class="metric-icon"><i class="fa-solid fa-users"></i></div>
+          <div class="metric-content">
+            <h3>Visitors</h3>
+            <p class="metric-value" id="visitors-value"><%= metrics.visitors %></p>
+            <% if(metrics.change.visitors >= 0) { %>
+              <span class="metric-change positive" id="visitors-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.visitors %>%</span>
+            <% } else { %>
+              <span class="metric-change negative" id="visitors-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.visitors) %>%</span>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="card metric-card">
+          <div class="metric-icon"><i class="fa-solid fa-right-left"></i></div>
+          <div class="metric-content">
+            <h3>Bounce Rate</h3>
+            <p class="metric-value" id="bouncerate-value"><%= metrics.bounceRate %>%</p>
+            <% if(metrics.change.bounceRate >= 0) { %>
+              <span class="metric-change positive" id="bouncerate-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.bounceRate %>%</span>
+            <% } else { %>
+              <span class="metric-change negative" id="bouncerate-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.bounceRate) %>%</span>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="card metric-card">
+          <div class="metric-icon"><i class="fa-solid fa-clock"></i></div>
+          <div class="metric-content">
+            <h3>Avg. Session</h3>
+            <p class="metric-value" id="avgsession-value"><%= metrics.avgSessionDuration.formatted %></p>
+            <% if(metrics.change.avgSessionDuration >= 0) { %>
+              <span class="metric-change positive" id="avgsession-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.avgSessionDuration %>%</span>
+            <% } else { %>
+              <span class="metric-change negative" id="avgsession-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.avgSessionDuration) %>%</span>
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <div class="card chart-card loading">
+        <div class="card-header"><h2>Page Views Over Time</h2></div>
+        <div class="spinner-container"><div class="spinner"></div></div>
+        <div id="analytics-chart" class="chart-container"></div>
+      </div>
+
+      <% if (metrics.visitors === 0) { %>
+        <div class="card no-data-card">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <h2>No Data Available</h2>
+          <p>No data recorded for this website in the last 7 days. Ensure your tracking script is installed correctly.</p>
+        </div>
+      <% } else { %>
+        <div class="reports-grid">
+          <div class="card report-card loading">
+            <div class="card-header"><h2>Top Pages</h2></div>
+            <div class="spinner-container"><div class="spinner"></div></div>
+            <div class="report-content" id="report-top-pages"><%- include('partials/report-table', { data: reports.topPages }) %></div>
+          </div>
+
+          <div class="card report-card loading">
+            <div class="card-header"><h2>Top Referrers</h2></div>
+            <div class="spinner-container"><div class="spinner"></div></div>
+            <div class="report-content" id="report-top-referrers"><%- include('partials/report-table', { data: reports.topReferrers }) %></div>
+          </div>
+
+          <div class="card report-card loading">
+            <div class="card-header"><h2>Custom Events</h2></div>
+            <div class="spinner-container"><div class="spinner"></div></div>
+            <div class="report-content" id="report-custom-events"><%- include('partials/report-table', { data: reports.topCustomEvents }) %></div>
+          </div>
+
+          <div class="card report-card loading">
+            <div class="card-header"><h2>Devices</h2></div>
+            <div class="spinner-container"><div class="spinner"></div></div>
+            <div class="report-content" id="report-devices"><%- include('partials/report-table', { data: reports.deviceBreakdown }) %></div>
+          </div>
+
+          <div class="card report-card loading">
+            <div class="card-header"><h2>Browsers</h2></div>
+            <div class="spinner-container"><div class="spinner"></div></div>
+            <div class="report-content" id="report-browsers"><%- include('partials/report-table', { data: reports.browserBreakdown }) %></div>
+          </div>
+
+          <div class="card report-card loading">
+            <div class="card-header"><h2>Languages</h2></div>
+            <div class="spinner-container"><div class="spinner"></div></div>
+            <div class="report-content" id="report-languages"><%- include('partials/report-table', { data: reports.languageBreakdown }) %></div>
+          </div>
+
+          <div class="card report-card loading">
+            <div class="card-header"><h2>UTM Source</h2></div>
+            <div class="spinner-container"><div class="spinner"></div></div>
+            <div class="report-content" id="report-utm-source"><%- include('partials/report-table', { data: reports.utmSourceBreakdown }) %></div>
+          </div>
+
+          <div class="card report-card loading">
+            <div class="card-header"><h2>UTM Medium</h2></div>
+            <div class="spinner-container"><div class="spinner"></div></div>
+            <div class="report-content" id="report-utm-medium"><%- include('partials/report-table', { data: reports.utmMediumBreakdown }) %></div>
+          </div>
+
+          <div class="card report-card loading">
+            <div class="card-header"><h2>UTM Campaign</h2></div>
+            <div class="spinner-container"><div class="spinner"></div></div>
+            <div class="report-content" id="report-utm-campaign"><%- include('partials/report-table', { data: reports.utmCampaignBreakdown }) %></div>
+          </div>
+        </div>
+      <% } %>
+    </main>
+  </div>
+</div>
+
+<script>
+  const chartData = <%- chartData %>;
+</script>
+
+<%- include('partials/footer') %>
