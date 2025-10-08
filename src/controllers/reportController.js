@@ -1,24 +1,17 @@
 import { formatISO, startOfDay, endOfDay, subDays } from "date-fns";
 import { pb } from "../services/pocketbase.js";
-import { calculateMetrics, getReports, calculateActiveUsers } from "../utils/analytics.js";
+import { aggregateSummaries, getReportsFromSummaries, calculateActiveUsers } from "../utils/analytics.js";
 import { generatePdfReport, generateCsvReport } from "../services/reportGenerator.js";
 
-async function fetchAnalyticsData(websiteId, startDate, endDate) {
-  const start = formatISO(startOfDay(startDate));
-  const end = formatISO(endOfDay(endDate));
-  const dateFilter = `created >= "${start}" && created <= "${end}"`;
+async function fetchSummaries(websiteId, startDate, endDate) {
+  const start = formatISO(startOfDay(startDate), { representation: "date" });
+  const end = formatISO(endOfDay(endDate), { representation: "date" });
+  const dateFilter = `date >= "${start}" && date <= "${end}"`;
 
-  const sessions = await pb.collection("sessions").getFullList({
+  const summaries = await pb.collection("dash_sum").getFullList({
     filter: `website.id = "${websiteId}" && ${dateFilter}`,
-    $autoCancel: false,
   });
-
-  const events = await pb.collection("events").getFullList({
-    filter: `session.website.id = "${websiteId}" && ${dateFilter}`,
-    $autoCancel: false,
-  });
-
-  return { sessions, events };
+  return summaries;
 }
 
 export async function generateReport(req, res) {
@@ -43,20 +36,10 @@ export async function generateReport(req, res) {
     const currentStartDate = subDays(today, dataPeriod - 1);
     const currentEndDate = today;
 
-    const currentData = await fetchAnalyticsData(websiteId, currentStartDate, currentEndDate);
+    const currentSummaries = await fetchSummaries(websiteId, currentStartDate, currentEndDate);
     const activeUsers = await calculateActiveUsers(websiteId);
-    const metrics = calculateMetrics(currentData.sessions, currentData.events);
-    const reports = getReports(currentData.sessions, currentData.events, {
-      topPages: 10,
-      topReferrers: 10,
-      deviceBreakdown: 10,
-      browserBreakdown: 10,
-      languageBreakdown: 10,
-      utmSourceBreakdown: 10,
-      utmMediumBreakdown: 10,
-      utmCampaignBreakdown: 10,
-      topCustomEvents: 10,
-    });
+    const metrics = aggregateSummaries(currentSummaries);
+    const reports = getReportsFromSummaries(currentSummaries, 10);
 
     const reportData = {
       currentWebsite,

@@ -1,7 +1,7 @@
 import { pb } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
-import { startOfDay, endOfDay, subDays, formatISO } from "date-fns";
-import { calculateMetrics, getReports, generateTimeseries, calculatePercentageChange, calculateActiveUsers, getAllData } from "../utils/analytics.js";
+import { subDays } from "date-fns";
+import { aggregateSummaries, getReportsFromSummaries, getChartDataFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData } from "../utils/analytics.js";
 
 async function getCommonData(userId) {
   const websites = await pb.collection("websites").getFullList({
@@ -11,22 +11,24 @@ async function getCommonData(userId) {
   return { websites };
 }
 
-async function fetchAnalyticsData(websiteId, startDate, endDate) {
-  const start = formatISO(startOfDay(startDate));
-  const end = formatISO(endOfDay(endDate));
-  const dateFilter = `created >= "${start}" && created <= "${end}"`;
+async function fetchSummaries(websiteId, startDate, endDate) {
+  const startYear = startDate.getUTCFullYear();
+  const startMonth = String(startDate.getUTCMonth() + 1).padStart(2, "0");
+  const startDay = String(startDate.getUTCDate()).padStart(2, "0");
+  const startDateString = `${startYear}-${startMonth}-${startDay}`;
 
-  const sessions = await pb.collection("sessions").getFullList({
+  const endYear = endDate.getUTCFullYear();
+  const endMonth = String(endDate.getUTCMonth() + 1).padStart(2, "0");
+  const endDay = String(endDate.getUTCDate()).padStart(2, "0");
+  const endDateString = `${endYear}-${endMonth}-${endDay}`;
+
+  const dateFilter = `date >= "${startDateString} 00:00:00.000Z" && date <= "${endDateString} 23:59:59.999Z"`;
+
+  const summaries = await pb.collection("dash_sum").getFullList({
     filter: `website.id = "${websiteId}" && ${dateFilter}`,
-    $autoCancel: false,
+    sort: "date",
   });
-
-  const events = await pb.collection("events").getFullList({
-    filter: `session.website.id = "${websiteId}" && ${dateFilter}`,
-    $autoCancel: false,
-  });
-
-  return { sessions, events };
+  return summaries;
 }
 
 export async function showIndex(req, res) {
@@ -50,21 +52,19 @@ export async function showDashboard(req, res) {
 
     const dataPeriod = 7;
     const resultsLimit = 10;
-
     const today = new Date();
+
     const currentStartDate = subDays(today, dataPeriod - 1);
     const currentEndDate = today;
+    const prevStartDate = subDays(currentStartDate, dataPeriod);
+    const prevEndDate = subDays(currentEndDate, dataPeriod);
 
-    const periodLength = dataPeriod;
-    const prevStartDate = subDays(currentStartDate, periodLength);
-    const prevEndDate = subDays(currentEndDate, periodLength);
-
-    const currentData = await fetchAnalyticsData(websiteId, currentStartDate, currentEndDate);
-    const prevData = await fetchAnalyticsData(websiteId, prevStartDate, prevEndDate);
+    const currentSummaries = await fetchSummaries(websiteId, currentStartDate, currentEndDate);
+    const prevSummaries = await fetchSummaries(websiteId, prevStartDate, prevEndDate);
     const activeUsers = await calculateActiveUsers(websiteId);
 
-    const currentMetrics = calculateMetrics(currentData.sessions, currentData.events);
-    const prevMetrics = calculateMetrics(prevData.sessions, prevData.events);
+    const currentMetrics = aggregateSummaries(currentSummaries);
+    const prevMetrics = aggregateSummaries(prevSummaries);
 
     const metrics = {
       ...currentMetrics,
@@ -76,20 +76,8 @@ export async function showDashboard(req, res) {
       },
     };
 
-    const reportLimits = {
-      topPages: resultsLimit,
-      topReferrers: resultsLimit,
-      deviceBreakdown: resultsLimit,
-      browserBreakdown: resultsLimit,
-      languageBreakdown: resultsLimit,
-      utmSourceBreakdown: resultsLimit,
-      utmMediumBreakdown: resultsLimit,
-      utmCampaignBreakdown: resultsLimit,
-      topCustomEvents: resultsLimit,
-    };
-
-    const reports = getReports(currentData.sessions, currentData.events, reportLimits);
-    const chartData = generateTimeseries(currentData.events, currentStartDate, currentEndDate);
+    const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
+    const chartData = getChartDataFromSummaries(currentSummaries, currentStartDate, currentEndDate);
 
     res.render("dashboard", {
       websites,
@@ -109,7 +97,11 @@ export async function showDashboard(req, res) {
 export async function showWebsites(req, res) {
   try {
     const { websites } = await getCommonData(res.locals.user.id);
-    res.render("websites", { websites, currentWebsite: null, currentPage: "websites" });
+    res.render("websites", {
+      websites,
+      currentWebsite: null,
+      currentPage: "websites",
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send("Error fetching websites.");
@@ -164,19 +156,17 @@ export async function getDashboardData(req, res) {
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
     const resultsLimit = Number.parseInt(req.query.limit) || 10;
-
     const today = new Date();
+
     const currentStartDate = subDays(today, dataPeriod - 1);
     const currentEndDate = today;
+    const prevStartDate = subDays(currentStartDate, dataPeriod);
+    const prevEndDate = subDays(currentEndDate, dataPeriod);
 
-    const periodLength = dataPeriod;
-    const prevStartDate = subDays(currentStartDate, periodLength);
-    const prevEndDate = subDays(currentEndDate, periodLength);
+    const [currentSummaries, prevSummaries, activeUsers] = await Promise.all([fetchSummaries(websiteId, currentStartDate, currentEndDate), fetchSummaries(websiteId, prevStartDate, prevEndDate), calculateActiveUsers(websiteId)]);
 
-    const [currentData, prevData, activeUsers] = await Promise.all([fetchAnalyticsData(websiteId, currentStartDate, currentEndDate), fetchAnalyticsData(websiteId, prevStartDate, prevEndDate), calculateActiveUsers(websiteId)]);
-
-    const currentMetrics = calculateMetrics(currentData.sessions, currentData.events);
-    const prevMetrics = calculateMetrics(prevData.sessions, prevData.events);
+    const currentMetrics = aggregateSummaries(currentSummaries);
+    const prevMetrics = aggregateSummaries(prevSummaries);
 
     const metrics = {
       ...currentMetrics,
@@ -188,20 +178,8 @@ export async function getDashboardData(req, res) {
       },
     };
 
-    const reportLimits = {
-      topPages: resultsLimit,
-      topReferrers: resultsLimit,
-      deviceBreakdown: resultsLimit,
-      browserBreakdown: resultsLimit,
-      languageBreakdown: resultsLimit,
-      utmSourceBreakdown: resultsLimit,
-      utmMediumBreakdown: resultsLimit,
-      utmCampaignBreakdown: resultsLimit,
-      topCustomEvents: resultsLimit,
-    };
-
-    const reports = getReports(currentData.sessions, currentData.events, reportLimits);
-    const chartData = generateTimeseries(currentData.events, currentStartDate, currentEndDate);
+    const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
+    const chartData = getChartDataFromSummaries(currentSummaries, currentStartDate, currentEndDate);
 
     const updateData = {
       activeUsers,
@@ -237,8 +215,8 @@ export async function getDetailedReport(req, res) {
     const currentStartDate = subDays(today, dataPeriod - 1);
     const currentEndDate = today;
 
-    const currentData = await fetchAnalyticsData(websiteId, currentStartDate, currentEndDate);
-    const allData = getAllData(currentData.sessions, currentData.events, reportType);
+    const summaries = await fetchSummaries(websiteId, currentStartDate, currentEndDate);
+    const allData = getAllData(summaries, reportType);
 
     res.status(200).json({ data: allData });
   } catch (error) {

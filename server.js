@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import dashboardRoutes from "./src/routes/dashboard.js";
 import { pb } from "./src/services/pocketbase.js";
+import { startCronJobs } from "./src/services/cron.js";
 
 dotenv.config();
 
@@ -42,4 +43,5 @@ app.use(express.static(path.join(__dirname, "public")));
 
 app.listen(port, () => {
   console.log(`Skopos server listening at http://localhost:${port}`);
+  startCronJobs();
 });

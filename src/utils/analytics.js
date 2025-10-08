@@ -1,149 +1,123 @@
-import { formatISO, subMinutes, eachDayOfInterval } from "date-fns";
+import { formatISO, subMinutes, eachDayOfInterval, format } from "date-fns";
 import { pb } from "../services/pocketbase.js";
-
-function getSessionEventCounts(events) {
-  const sessionEventCounts = new Map();
-  for (const event of events) {
-    const count = sessionEventCounts.get(event.session) || 0;
-    sessionEventCounts.set(event.session, count + 1);
-  }
-  return sessionEventCounts;
-}
 
 function processAndSort(map, total) {
   if (total === 0) return [];
   return Array.from(map.entries())
-    .map(([key, value]) => ({
+    .map(([key, count]) => ({
       key,
-      count: value,
-      percentage: Math.round((value / total) * 100),
+      count,
+      percentage: Math.round((count / total) * 100),
     }))
     .sort((a, b) => b.count - a.count);
 }
 
-function calculatePageViews(events) {
-  let count = 0;
-  for (const event of events) {
-    if (event.type === "pageView") {
-      count++;
+export function aggregateSummaries(summaries) {
+  let totalPageViews = 0;
+  let totalVisitors = 0;
+  let totalSessionDuration = 0;
+  let totalBouncedSessions = 0;
+  let totalSessions = 0;
+
+  for (const day of summaries) {
+    const s = day.summary;
+    totalPageViews += s.pageViews || 0;
+    totalVisitors += s.visitors || 0;
+    if (s.avgSessionDuration && s.visitors) {
+      totalSessionDuration += s.avgSessionDuration.raw * s.visitors;
+      totalSessions += s.visitors;
     }
-  }
-  return count;
-}
-
-function calculateUniqueVisitors(sessions) {
-  const uniqueVisitorIds = new Set();
-  for (const session of sessions) {
-    uniqueVisitorIds.add(session.visitor);
-  }
-  return uniqueVisitorIds.size;
-}
-
-function calculateAverageSessionDuration(sessions) {
-  if (sessions.length === 0) {
-    return { formatted: "00:00", raw: 0 };
-  }
-
-  let totalDuration = 0;
-  for (const session of sessions) {
-    const startTime = new Date(session.created);
-    const endTime = new Date(session.updated);
-    const duration = endTime - startTime;
-    if (duration > 0) {
-      totalDuration += duration;
+    if (s.bounceRate && s.visitors) {
+      totalBouncedSessions += (s.bounceRate / 100) * s.visitors;
     }
   }
 
-  const avgDurationInSeconds = totalDuration > 0 ? totalDuration / 1000 / sessions.length : 0;
-  const roundedSeconds = Math.round(avgDurationInSeconds);
-
+  const avgDurationSeconds = totalSessions > 0 ? totalSessionDuration / totalSessions : 0;
+  const roundedSeconds = Math.round(avgDurationSeconds);
   const minutes = Math.floor(roundedSeconds / 60)
     .toString()
     .padStart(2, "0");
   const seconds = (roundedSeconds % 60).toString().padStart(2, "0");
 
-  return { formatted: `${minutes}:${seconds}`, raw: roundedSeconds };
+  const bounceRate = totalSessions > 0 ? Math.round((totalBouncedSessions / totalSessions) * 100) : 0;
+
+  return {
+    pageViews: totalPageViews,
+    visitors: totalVisitors,
+    avgSessionDuration: {
+      formatted: `${minutes}:${seconds}`,
+      raw: roundedSeconds,
+    },
+    bounceRate: bounceRate,
+  };
 }
 
-function calculateBounceRate(sessions, events) {
-  if (sessions.length === 0) {
-    return 0;
-  }
-
-  const sessionEventCounts = getSessionEventCounts(events);
-  let bouncedSessions = 0;
-
-  for (const session of sessions) {
-    if (sessionEventCounts.get(session.id) === 1) {
-      bouncedSessions++;
-    }
-  }
-
-  const bounceRate = (bouncedSessions / sessions.length) * 100;
-  return Math.round(bounceRate);
-}
-
-function getTopPages(events, limit) {
-  const pageCounts = new Map();
+function mergeAndSortReports(summaries, reportKey, limit) {
+  const mergedMap = new Map();
   let total = 0;
-  for (const event of events) {
-    if (event.type === "pageView" && event.path) {
-      pageCounts.set(event.path, (pageCounts.get(event.path) || 0) + 1);
-      total++;
-    }
-  }
-  return processAndSort(pageCounts, total).slice(0, limit);
-}
 
-function getTopReferrers(sessions, limit) {
-  const referrerCounts = new Map();
-  let total = 0;
-  for (const session of sessions) {
-    let referrerHost = "Direct";
-    if (session.referrer) {
-      try {
-        referrerHost = new URL(session.referrer).hostname.replace("www.", "");
-      } catch (e) {
-        referrerHost = session.referrer;
+  for (const day of summaries) {
+    const reportList = day.summary?.[reportKey];
+    if (reportList) {
+      for (const item of reportList) {
+        mergedMap.set(item.key, (mergedMap.get(item.key) || 0) + item.count);
       }
     }
-    referrerCounts.set(referrerHost, (referrerCounts.get(referrerHost) || 0) + 1);
-    total++;
   }
-  return processAndSort(referrerCounts, total).slice(0, limit);
+
+  for (const count of mergedMap.values()) {
+    total += count;
+  }
+
+  return processAndSort(mergedMap, total).slice(0, limit);
 }
 
-function getTopCustomEvents(events, limit) {
-  const eventCounts = new Map();
-  let total = 0;
-  for (const event of events) {
-    if (event.type === "custom" && event.eventName) {
-      eventCounts.set(event.eventName, (eventCounts.get(event.eventName) || 0) + 1);
-      total++;
+export function getReportsFromSummaries(summaries, limit) {
+  return {
+    topPages: mergeAndSortReports(summaries, "topPages", limit),
+    topReferrers: mergeAndSortReports(summaries, "topReferrers", limit),
+    deviceBreakdown: mergeAndSortReports(summaries, "deviceBreakdown", limit),
+    browserBreakdown: mergeAndSortReports(summaries, "browserBreakdown", limit),
+    languageBreakdown: mergeAndSortReports(summaries, "languageBreakdown", limit),
+    utmSourceBreakdown: mergeAndSortReports(summaries, "utmSourceBreakdown", limit),
+    utmMediumBreakdown: mergeAndSortReports(summaries, "utmMediumBreakdown", limit),
+    utmCampaignBreakdown: mergeAndSortReports(summaries, "utmCampaignBreakdown", limit),
+    topCustomEvents: mergeAndSortReports(summaries, "topCustomEvents", limit),
+  };
+}
+
+export function getAllData(summaries, reportType) {
+  const keyMap = {
+    topPages: "topPages",
+    topReferrers: "topReferrers",
+    deviceBreakdown: "deviceBreakdown",
+    browserBreakdown: "browserBreakdown",
+    languageBreakdown: "languageBreakdown",
+    utmSourceBreakdown: "utmSourceBreakdown",
+    utmMediumBreakdown: "utmMediumBreakdown",
+    utmCampaignBreakdown: "utmCampaignBreakdown",
+    topCustomEvents: "topCustomEvents",
+  };
+  const reportKey = keyMap[reportType];
+  return reportKey ? mergeAndSortReports(summaries, reportKey, 10000) : [];
+}
+
+export function getChartDataFromSummaries(summaries, startDate, endDate) {
+  const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
+  const pageViewCounts = new Map(dateRange.map((d) => [format(d, "yyyy-MM-dd"), 0]));
+
+  for (const summary of summaries) {
+    const summaryDateString = summary.date.substring(0, 10);
+    if (pageViewCounts.has(summaryDateString)) {
+      pageViewCounts.set(summaryDateString, pageViewCounts.get(summaryDateString) + (summary.summary?.pageViews || 0));
     }
   }
-  return processAndSort(eventCounts, total).slice(0, limit);
-}
 
-function getBreakdown(sessions, key, limit) {
-  const counts = new Map();
-  for (const session of sessions) {
-    const value = session[key] || "Unknown";
-    counts.set(value, (counts.get(value) || 0) + 1);
-  }
-  return processAndSort(counts, sessions.length).slice(0, limit);
-}
+  const data = Array.from(pageViewCounts.entries())
+    .map(([dateString, count]) => [new Date(dateString).getTime(), count])
+    .sort((a, b) => a[0] - b[0]);
 
-function getUTMBreakdown(sessions, key, limit) {
-  const utmCounts = new Map();
-  let total = 0;
-  for (const session of sessions) {
-    if (session[key]) {
-      utmCounts.set(session[key], (utmCounts.get(session[key]) || 0) + 1);
-      total++;
-    }
-  }
-  return processAndSort(utmCounts, total).slice(0, limit);
+  return [{ name: "Page Views", data }];
 }
 
 export async function calculateActiveUsers(websiteId) {
@@ -152,6 +126,7 @@ export async function calculateActiveUsers(websiteId) {
   const events = await pb.collection("events").getFullList({
     filter: `session.website.id = "${websiteId}" && created >= "${fiveMinutesAgo}"`,
     $autoCancel: false,
+    fields: "session",
   });
 
   const uniqueSessions = new Set();
@@ -162,77 +137,56 @@ export async function calculateActiveUsers(websiteId) {
   return uniqueSessions.size;
 }
 
-export function calculateMetrics(sessions, events) {
-  return {
-    pageViews: calculatePageViews(events),
-    visitors: calculateUniqueVisitors(sessions),
-    avgSessionDuration: calculateAverageSessionDuration(sessions),
-    bounceRate: calculateBounceRate(sessions, events),
-  };
-}
-
-export function getReports(sessions, events, limits) {
-  return {
-    topPages: getTopPages(events, limits.topPages),
-    topReferrers: getTopReferrers(sessions, limits.topReferrers),
-    deviceBreakdown: getBreakdown(sessions, "device", limits.deviceBreakdown),
-    browserBreakdown: getBreakdown(sessions, "browser", limits.browserBreakdown),
-    languageBreakdown: getBreakdown(sessions, "language", limits.languageBreakdown),
-    utmSourceBreakdown: getUTMBreakdown(sessions, "utmSource", limits.utmSourceBreakdown),
-    utmMediumBreakdown: getUTMBreakdown(sessions, "utmMedium", limits.utmMediumBreakdown),
-    utmCampaignBreakdown: getUTMBreakdown(sessions, "utmCampaign", limits.utmCampaignBreakdown),
-    topCustomEvents: getTopCustomEvents(events, limits.topCustomEvents),
-  };
-}
-
-export function getAllData(sessions, events, type) {
-  switch (type) {
-    case "topPages":
-      return getTopPages(events, 10000);
-    case "topReferrers":
-      return getTopReferrers(sessions, 10000);
-    case "deviceBreakdown":
-      return getBreakdown(sessions, "device", 10000);
-    case "browserBreakdown":
-      return getBreakdown(sessions, "browser", 10000);
-    case "languageBreakdown":
-      return getBreakdown(sessions, "language", 10000);
-    case "utmSourceBreakdown":
-      return getUTMBreakdown(sessions, "utmSource", 10000);
-    case "utmMediumBreakdown":
-      return getUTMBreakdown(sessions, "utmMedium", 10000);
-    case "utmCampaignBreakdown":
-      return getUTMBreakdown(sessions, "utmCampaign", 10000);
-    case "topCustomEvents":
-      return getTopCustomEvents(events, 10000);
-    default:
-      return [];
-  }
-}
-
-export function generateTimeseries(events, startDate, endDate) {
-  const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
-  const pageViewCounts = new Map(dateRange.map((d) => [d.getTime(), 0]));
-
-  for (const event of events) {
-    if (event.type === "pageView") {
-      const eventDay = new Date(event.created);
-      eventDay.setHours(0, 0, 0, 0);
-      const eventTimestamp = eventDay.getTime();
-      if (pageViewCounts.has(eventTimestamp)) {
-        pageViewCounts.set(eventTimestamp, pageViewCounts.get(eventTimestamp) + 1);
-      }
-    }
-  }
-
-  const data = Array.from(pageViewCounts.entries()).sort((a, b) => a[0] - b[0]);
-  return [{ name: "Page Views", data }];
-}
-
 export function calculatePercentageChange(current, previous, invert = false) {
   if (previous === 0) {
     return current > 0 ? 100 : 0;
   }
   const change = ((current - previous) / previous) * 100;
   return Math.round(invert ? change * -1 : change);
+}
+
+export function calculateMetrics(sessions, events) {
+  const getSessionEventCounts = (ev) => {
+    const sessionEventCounts = new Map();
+    for (const event of ev) {
+      const count = sessionEventCounts.get(event.session) || 0;
+      sessionEventCounts.set(event.session, count + 1);
+    }
+    return sessionEventCounts;
+  };
+
+  const calculateBounceRate = (sess, ev) => {
+    if (sess.length === 0) return 0;
+    const sessionEventCounts = getSessionEventCounts(ev);
+    let bouncedSessions = 0;
+    for (const session of sess) {
+      if (sessionEventCounts.get(session.id) === 1) {
+        bouncedSessions++;
+      }
+    }
+    return Math.round((bouncedSessions / sess.length) * 100);
+  };
+
+  const calculateAverageSessionDuration = (sess) => {
+    if (sess.length === 0) return { formatted: "00:00", raw: 0 };
+    let totalDuration = 0;
+    for (const session of sess) {
+      const startTime = new Date(session.created);
+      const endTime = new Date(session.updated);
+      const duration = endTime - startTime;
+      if (duration > 0) totalDuration += duration;
+    }
+    const avgDurationInSeconds = totalDuration > 0 ? totalDuration / 1000 / sess.length : 0;
+    const roundedSeconds = Math.round(avgDurationInSeconds);
+    const minutes = Math.floor(roundedSeconds / 60)
+      .toString()
+      .padStart(2, "0");
+    const seconds = (roundedSeconds % 60).toString().padStart(2, "0");
+    return { formatted: `${minutes}:${seconds}`, raw: roundedSeconds };
+  };
+
+  return {
+    avgSessionDuration: calculateAverageSessionDuration(sessions),
+    bounceRate: calculateBounceRate(sessions, events),
+  };
 }
