@@ -7,8 +7,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const detailDrawerClose = document.getElementById("detail-drawer-close");
   const manualRefreshBtn = document.getElementById("manual-refresh-btn");
   const dataPeriodLabel = document.getElementById("data-period-label");
-  const exportPdfBtn = document.getElementById("export-pdf-btn");
-  const exportCsvBtn = document.getElementById("export-csv-btn");
 
   let settings = window.__SKOPOS_SETTINGS__;
   let refreshInterval = null;
@@ -27,12 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (dataPeriodLabel) {
       dataPeriodLabel.textContent = `Displaying data for the last ${settings.dataPeriod} days`;
-    }
-    if (exportPdfBtn && WEBSITE_ID) {
-      exportPdfBtn.href = `/dashboard/${WEBSITE_ID}/report/pdf?period=${settings.dataPeriod}`;
-    }
-    if (exportCsvBtn && WEBSITE_ID) {
-      exportCsvBtn.href = `/dashboard/${WEBSITE_ID}/report/csv?period=${settings.dataPeriod}`;
     }
 
     fetchDashboardData(WEBSITE_ID);
@@ -129,16 +121,37 @@ document.addEventListener("DOMContentLoaded", () => {
     const colors = getChartColors();
     const options = {
       series: hasData ? initialData : [],
-      chart: { height: 350, type: "area", toolbar: { show: false }, zoom: { enabled: false }, animations: { enabled: true, easing: "easeinout", speed: 800 } },
+      chart: {
+        height: 350,
+        type: "area",
+        toolbar: { show: false },
+        zoom: { enabled: false },
+        animations: { enabled: true, easing: "easeinout", speed: 800 },
+      },
       dataLabels: { enabled: false },
       stroke: { curve: "smooth", width: 2 },
       xaxis: { type: "datetime", labels: { style: { colors: colors.textSecondary } } },
       yaxis: { labels: { style: { colors: colors.textSecondary } } },
       tooltip: { x: { format: "dd MMM yyyy" } },
       grid: { borderColor: colors.borderColor },
-      fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.7, opacityTo: 0.2, stops: [0, 90, 100] } },
+      fill: {
+        type: "gradient",
+        gradient: {
+          shadeIntensity: 1,
+          opacityFrom: 0.7,
+          opacityTo: 0.2,
+          stops: [0, 90, 100],
+        },
+      },
       colors: [colors.primary],
-      noData: { text: "No page view data available for this period.", align: "center", verticalAlign: "middle", offsetX: 0, offsetY: 0, style: { color: colors.textSecondary, fontSize: "14px" } },
+      noData: {
+        text: "No page view data available for this period.",
+        align: "center",
+        verticalAlign: "middle",
+        offsetX: 0,
+        offsetY: 0,
+        style: { color: colors.textSecondary, fontSize: "14px" },
+      },
     };
     if (chart) chart.destroy();
     chart = new ApexCharts(chartElement, options);
@@ -238,7 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let detailTableData = [];
   let filteredData = [];
   let currentPage = 1;
-  const itemsPerPage = 25;
+  const itemsPerPage = 20;
   let sortColumn = "count";
   let sortDirection = "desc";
 

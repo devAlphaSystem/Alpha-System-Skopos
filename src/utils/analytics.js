@@ -1,4 +1,4 @@
-import { formatISO, subMinutes, eachDayOfInterval, format } from "date-fns";
+import { eachDayOfInterval, format } from "date-fns";
 import { pb } from "../services/pocketbase.js";
 
 function processAndSort(map, total) {
@@ -15,31 +15,32 @@ function processAndSort(map, total) {
 export function aggregateSummaries(summaries) {
   let totalPageViews = 0;
   let totalVisitors = 0;
-  let totalSessionDuration = 0;
-  let totalBouncedSessions = 0;
-  let totalSessions = 0;
+  let totalDurationSeconds = 0;
+  let totalBouncedVisitors = 0;
+  let finalizedVisitorsCount = 0;
 
   for (const day of summaries) {
     const s = day.summary;
+    const dailyVisitors = s.visitors || 0;
+
     totalPageViews += s.pageViews || 0;
-    totalVisitors += s.visitors || 0;
-    if (s.avgSessionDuration && s.visitors) {
-      totalSessionDuration += s.avgSessionDuration.raw * s.visitors;
-      totalSessions += s.visitors;
-    }
-    if (s.bounceRate && s.visitors) {
-      totalBouncedSessions += (s.bounceRate / 100) * s.visitors;
+    totalVisitors += dailyVisitors;
+
+    if (day.isFinalized && dailyVisitors > 0) {
+      finalizedVisitorsCount += dailyVisitors;
+      totalDurationSeconds += (s.avgSessionDuration?.raw || 0) * dailyVisitors;
+      totalBouncedVisitors += ((s.bounceRate || 0) / 100) * dailyVisitors;
     }
   }
 
-  const avgDurationSeconds = totalSessions > 0 ? totalSessionDuration / totalSessions : 0;
+  const avgDurationSeconds = finalizedVisitorsCount > 0 ? totalDurationSeconds / finalizedVisitorsCount : 0;
   const roundedSeconds = Math.round(avgDurationSeconds);
   const minutes = Math.floor(roundedSeconds / 60)
     .toString()
     .padStart(2, "0");
   const seconds = (roundedSeconds % 60).toString().padStart(2, "0");
 
-  const bounceRate = totalSessions > 0 ? Math.round((totalBouncedSessions / totalSessions) * 100) : 0;
+  const bounceRate = finalizedVisitorsCount > 0 ? Math.round((totalBouncedVisitors / finalizedVisitorsCount) * 100) : 0;
 
   return {
     pageViews: totalPageViews,
@@ -121,20 +122,16 @@ export function getChartDataFromSummaries(summaries, startDate, endDate) {
 }
 
 export async function calculateActiveUsers(websiteId) {
-  const fiveMinutesAgo = formatISO(subMinutes(new Date(), 5));
+  const date = new Date();
+  date.setMinutes(date.getMinutes() - 5);
+  const fiveMinutesAgoUTC = date.toISOString().slice(0, 19).replace("T", " ");
 
-  const events = await pb.collection("events").getFullList({
-    filter: `session.website.id = "${websiteId}" && created >= "${fiveMinutesAgo}"`,
+  const result = await pb.collection("sessions").getList(1, 1, {
+    filter: `website.id = "${websiteId}" && updated >= "${fiveMinutesAgoUTC}"`,
     $autoCancel: false,
-    fields: "session",
   });
 
-  const uniqueSessions = new Set();
-  for (const event of events) {
-    uniqueSessions.add(event.session);
-  }
-
-  return uniqueSessions.size;
+  return result.totalItems;
 }
 
 export function calculatePercentageChange(current, previous, invert = false) {

@@ -27,6 +27,7 @@ async function fetchSummaries(websiteId, startDate, endDate) {
   const summaries = await pb.collection("dash_sum").getFullList({
     filter: `website.id = "${websiteId}" && ${dateFilter}`,
     sort: "date",
+    $autoCancel: false,
   });
   return summaries;
 }
@@ -57,10 +58,12 @@ export async function showDashboard(req, res) {
     const currentStartDate = subDays(today, dataPeriod - 1);
     const currentEndDate = today;
     const prevStartDate = subDays(currentStartDate, dataPeriod);
-    const prevEndDate = subDays(currentEndDate, dataPeriod);
 
-    const currentSummaries = await fetchSummaries(websiteId, currentStartDate, currentEndDate);
-    const prevSummaries = await fetchSummaries(websiteId, prevStartDate, prevEndDate);
+    const allSummaries = await fetchSummaries(websiteId, prevStartDate, currentEndDate);
+
+    const currentSummaries = allSummaries.filter((s) => new Date(s.date) >= currentStartDate);
+    const prevSummaries = allSummaries.filter((s) => new Date(s.date) < currentStartDate);
+
     const activeUsers = await calculateActiveUsers(websiteId);
 
     const currentMetrics = aggregateSummaries(currentSummaries);
@@ -161,9 +164,12 @@ export async function getDashboardData(req, res) {
     const currentStartDate = subDays(today, dataPeriod - 1);
     const currentEndDate = today;
     const prevStartDate = subDays(currentStartDate, dataPeriod);
-    const prevEndDate = subDays(currentEndDate, dataPeriod);
 
-    const [currentSummaries, prevSummaries, activeUsers] = await Promise.all([fetchSummaries(websiteId, currentStartDate, currentEndDate), fetchSummaries(websiteId, prevStartDate, prevEndDate), calculateActiveUsers(websiteId)]);
+    const allSummaries = await fetchSummaries(websiteId, prevStartDate, currentEndDate);
+
+    const currentSummaries = allSummaries.filter((s) => new Date(s.date) >= currentStartDate);
+    const prevSummaries = allSummaries.filter((s) => new Date(s.date) < currentStartDate);
+    const activeUsers = await calculateActiveUsers(websiteId);
 
     const currentMetrics = aggregateSummaries(currentSummaries);
     const prevMetrics = aggregateSummaries(prevSummaries);

@@ -34,7 +34,7 @@ async function enforceDataRetention() {
     for (const website of websites) {
       const retentionDays = website.dataRetentionDays;
       const cutoffDate = subDays(new Date(), retentionDays);
-      const cutoffISO = formatISO(cutoffDate);
+      const cutoffISO = cutoffDate.toISOString();
       const filter = `session.website.id = "${website.id}" && created < "${cutoffISO}"`;
 
       const eventsToDelete = await pb.collection("events").getFullList({
@@ -65,15 +65,16 @@ async function finalizeDailySummaries() {
   console.log("Running cron job: Finalizing yesterday's summaries...");
   try {
     const yesterday = startOfYesterday();
-    const yesterdayISO = yesterday.toISOString().split("T")[0];
+    const yesterdayStart = yesterday.toISOString();
+    const yesterdayEnd = new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString();
 
     const summariesToFinalize = await pb.collection("dash_sum").getFullList({
-      filter: `date = "${yesterdayISO}" && isFinalized = false`,
+      filter: `date >= "${yesterdayStart}" && date <= "${yesterdayEnd}" && isFinalized = false`,
     });
 
     for (const summary of summariesToFinalize) {
       const websiteId = summary.website;
-      const dateFilter = `created >= "${yesterdayISO} 00:00:00" && created <= "${yesterdayISO} 23:59:59"`;
+      const dateFilter = `created >= "${yesterdayStart}" && created <= "${yesterdayEnd}"`;
 
       const sessions = await pb.collection("sessions").getFullList({
         filter: `website.id = "${websiteId}" && ${dateFilter}`,
@@ -103,6 +104,27 @@ async function finalizeDailySummaries() {
   }
 }
 
+async function pruneOldSessions() {
+  console.log("Running cron job: Pruning old sessions...");
+  try {
+    const sevenDaysAgo = subDays(new Date(), 7);
+    const cutoffISO = sevenDaysAgo.toISOString();
+
+    const recordsToDelete = await pb.collection("sessions").getFullList({
+      filter: `created < "${cutoffISO}"`,
+      fields: "id",
+    });
+
+    for (const record of recordsToDelete) {
+      await pb.collection("sessions").delete(record.id);
+    }
+
+    console.log(`Pruned ${recordsToDelete.length} old session records.`);
+  } catch (error) {
+    console.error("Error during session pruning cron job:", error);
+  }
+}
+
 export function startCronJobs() {
   cron.schedule("0 0 * * *", pruneOldSummaries, {
     timezone: "UTC",
@@ -113,6 +135,10 @@ export function startCronJobs() {
   });
 
   cron.schedule("5 0 * * *", finalizeDailySummaries, {
+    timezone: "UTC",
+  });
+
+  cron.schedule("0 2 * * *", pruneOldSessions, {
     timezone: "UTC",
   });
 
