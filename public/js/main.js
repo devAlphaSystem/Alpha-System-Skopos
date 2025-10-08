@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const DEFAULT_SETTINGS = {
     theme: "light",
-    refreshRate: 10000,
+    refreshRate: 60000,
     autoRefresh: true,
     dataPeriod: 7,
     resultsLimit: 10,

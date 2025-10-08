@@ -33,7 +33,15 @@ app.use(async (req, res, next) => {
   } catch (error) {
     pb.authStore.clear();
   }
-  res.locals.user = pb.authStore.isValid ? pb.authStore.model : null;
+  res.locals.user = pb.authStore.isValid ? pb.authStore.record : null;
+  res.locals.userAvatarUrl = null;
+  try {
+    if (res.locals.user?.avatar) {
+      res.locals.userAvatarUrl = pb.files.getURL(res.locals.user, res.locals.user.avatar, { thumb: "80x80" });
+    }
+  } catch (e) {
+    res.locals.userAvatarUrl = null;
+  }
   next();
 });
 

@@ -10,7 +10,255 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let settings = window.__SKOPOS_SETTINGS__;
   let refreshInterval = null;
-  let chart = null;
+  let lineChart = null;
+  let worldMap = null;
+
+  const countryNames = {
+    AF: "Afghanistan",
+    AX: "Aland Islands",
+    AL: "Albania",
+    DZ: "Algeria",
+    AS: "American Samoa",
+    AD: "Andorra",
+    AO: "Angola",
+    AI: "Anguilla",
+    AQ: "Antarctica",
+    AG: "Antigua and Barbuda",
+    AR: "Argentina",
+    AM: "Armenia",
+    AW: "Aruba",
+    AU: "Australia",
+    AT: "Austria",
+    AZ: "Azerbaijan",
+    BS: "Bahamas",
+    BH: "Bahrain",
+    BD: "Bangladesh",
+    BB: "Barbados",
+    BY: "Belarus",
+    BE: "Belgium",
+    BZ: "Belize",
+    BJ: "Benin",
+    BM: "Bermuda",
+    BT: "Bhutan",
+    BO: "Bolivia",
+    BA: "Bosnia and Herzegovina",
+    BW: "Botswana",
+    BV: "Bouvet Island",
+    BR: "Brazil",
+    IO: "British Indian Ocean Territory",
+    BN: "Brunei Darussalam",
+    BG: "Bulgaria",
+    BF: "Burkina Faso",
+    BI: "Burundi",
+    KH: "Cambodia",
+    CM: "Cameroon",
+    CA: "Canada",
+    CV: "Cape Verde",
+    KY: "Cayman Islands",
+    CF: "Central African Republic",
+    TD: "Chad",
+    CL: "Chile",
+    CN: "China",
+    CX: "Christmas Island",
+    CC: "Cocos (Keeling) Islands",
+    CO: "Colombia",
+    KM: "Comoros",
+    CG: "Congo",
+    CD: "Congo, The Democratic Republic of the",
+    CK: "Cook Islands",
+    CR: "Costa Rica",
+    CI: "Cote D'Ivoire",
+    HR: "Croatia",
+    CU: "Cuba",
+    CY: "Cyprus",
+    CZ: "Czech Republic",
+    DK: "Denmark",
+    DJ: "Djibouti",
+    DM: "Dominica",
+    DO: "Dominican Republic",
+    EC: "Ecuador",
+    EG: "Egypt",
+    SV: "El Salvador",
+    GQ: "Equatorial Guinea",
+    ER: "Eritrea",
+    EE: "Estonia",
+    ET: "Ethiopia",
+    FK: "Falkland Islands (Malvinas)",
+    FO: "Faroe Islands",
+    FJ: "Fiji",
+    FI: "Finland",
+    FR: "France",
+    GF: "French Guiana",
+    PF: "French Polynesia",
+    TF: "French Southern Territories",
+    GA: "Gabon",
+    GM: "Gambia",
+    GE: "Georgia",
+    DE: "Germany",
+    GH: "Ghana",
+    GI: "Gibraltar",
+    GR: "Greece",
+    GL: "Greenland",
+    GD: "Grenada",
+    GP: "Guadeloupe",
+    GU: "Guam",
+    GT: "Guatemala",
+    GG: "Guernsey",
+    GN: "Guinea",
+    GW: "Guinea-Bissau",
+    GY: "Guyana",
+    HT: "Haiti",
+    HM: "Heard Island and Mcdonald Islands",
+    VA: "Holy See (Vatican City State)",
+    HN: "Honduras",
+    HK: "Hong Kong",
+    HU: "Hungary",
+    IS: "Iceland",
+    IN: "India",
+    ID: "Indonesia",
+    IR: "Iran, Islamic Republic Of",
+    IQ: "Iraq",
+    IE: "Ireland",
+    IM: "Isle of Man",
+    IL: "Israel",
+    IT: "Italy",
+    JM: "Jamaica",
+    JP: "Japan",
+    JE: "Jersey",
+    JO: "Jordan",
+    KZ: "Kazakhstan",
+    KE: "Kenya",
+    KI: "Kiribati",
+    KP: "Korea, Democratic People'S Republic of",
+    KR: "Korea, Republic of",
+    KW: "Kuwait",
+    KG: "Kyrgyzstan",
+    LA: "Lao People'S Democratic Republic",
+    LV: "Latvia",
+    LB: "Lebanon",
+    LS: "Lesotho",
+    LR: "Liberia",
+    LY: "Libyan Arab Jamahiriya",
+    LI: "Liechtenstein",
+    LT: "Lithuania",
+    LU: "Luxembourg",
+    MO: "Macao",
+    MK: "Macedonia, The Former Yugoslav Republic of",
+    MG: "Madagascar",
+    MW: "Malawi",
+    MY: "Malaysia",
+    MV: "Maldives",
+    ML: "Mali",
+    MT: "Malta",
+    MH: "Marshall Islands",
+    MQ: "Martinique",
+    MR: "Mauritania",
+    MU: "Mauritius",
+    YT: "Mayotte",
+    MX: "Mexico",
+    FM: "Micronesia, Federated States of",
+    MD: "Moldova, Republic of",
+    MC: "Monaco",
+    MN: "Mongolia",
+    MS: "Montserrat",
+    MA: "Morocco",
+    MZ: "Mozambique",
+    MM: "Myanmar",
+    NA: "Namibia",
+    NR: "Nauru",
+    NP: "Nepal",
+    NL: "Netherlands",
+    AN: "Netherlands Antilles",
+    NC: "New Caledonia",
+    NZ: "New Zealand",
+    NI: "Nicaragua",
+    NE: "Niger",
+    NG: "Nigeria",
+    NU: "Niue",
+    NF: "Norfolk Island",
+    MP: "Northern Mariana Islands",
+    NO: "Norway",
+    OM: "Oman",
+    PK: "Pakistan",
+    PW: "Palau",
+    PS: "Palestinian Territory, Occupied",
+    PA: "Panama",
+    PG: "Papua New Guinea",
+    PY: "Paraguay",
+    PE: "Peru",
+    PH: "Philippines",
+    PN: "Pitcairn",
+    PL: "Poland",
+    PT: "Portugal",
+    PR: "Puerto Rico",
+    QA: "Qatar",
+    RE: "Reunion",
+    RO: "Romania",
+    RU: "Russian Federation",
+    RW: "Rwanda",
+    SH: "Saint Helena",
+    KN: "Saint Kitts and Nevis",
+    LC: "Saint Lucia",
+    PM: "Saint Pierre and Miquelon",
+    VC: "Saint Vincent and the Grenadines",
+    WS: "Samoa",
+    SM: "San Marino",
+    ST: "Sao Tome and Principe",
+    SA: "Saudi Arabia",
+    SN: "Senegal",
+    CS: "Serbia and Montenegro",
+    SC: "Seychelles",
+    SL: "Sierra Leone",
+    SG: "Singapore",
+    SK: "Slovakia",
+    SI: "Slovenia",
+    SB: "Solomon Islands",
+    SO: "Somalia",
+    ZA: "South Africa",
+    GS: "South Georgia and the South Sandwich Islands",
+    ES: "Spain",
+    LK: "Sri Lanka",
+    SD: "Sudan",
+    SR: "Suriname",
+    SJ: "Svalbard and Jan Mayen",
+    SZ: "Swaziland",
+    SE: "Sweden",
+    CH: "Switzerland",
+    SY: "Syrian Arab Republic",
+    TW: "Taiwan, Province of China",
+    TJ: "Tajikistan",
+    TZ: "Tanzania, United Republic of",
+    TH: "Thailand",
+    TL: "Timor-Leste",
+    TG: "Togo",
+    TK: "Tokelau",
+    TO: "Tonga",
+    TT: "Trinidad and Tobago",
+    TN: "Tunisia",
+    TR: "Turkey",
+    TM: "Turkmenistan",
+    TC: "Turks and Caicos Islands",
+    TV: "Tuvalu",
+    UG: "Uganda",
+    UA: "Ukraine",
+    AE: "United Arab Emirates",
+    GB: "United Kingdom",
+    US: "United States",
+    UM: "United States Minor Outlying Islands",
+    UY: "Uruguay",
+    UZ: "Uzbekistan",
+    VU: "Vanuatu",
+    VE: "Venezuela",
+    VN: "Viet Nam",
+    VG: "Virgin Islands, British",
+    VI: "Virgin Islands, U.S.",
+    WF: "Wallis and Futuna",
+    EH: "Western Sahara",
+    YE: "Yemen",
+    ZM: "Zambia",
+    ZW: "Zimbabwe",
+    Unknown: "Unknown",
+  };
 
   function updateDashboardSettings() {
     settings = window.__SKOPOS_SETTINGS__;
@@ -93,21 +341,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  const chartElement = document.getElementById("analytics-chart");
-
-  function getChartColors() {
+  function getThemeColors() {
     const computedStyle = getComputedStyle(document.documentElement);
     return {
       primary: computedStyle.getPropertyValue("--primary-color").trim(),
       textSecondary: computedStyle.getPropertyValue("--text-secondary").trim(),
       borderColor: computedStyle.getPropertyValue("--border-color").trim(),
+      surface: computedStyle.getPropertyValue("--surface-color").trim(),
+      background: computedStyle.getPropertyValue("--background-color").trim(),
+      mapScaleMin: computedStyle.getPropertyValue("--map-scale-min").trim(),
+      mapScaleMax: computedStyle.getPropertyValue("--map-scale-max").trim(),
     };
   }
 
   function updateChartTheme() {
-    if (!chart) return;
-    const colors = getChartColors();
-    chart.updateOptions({
+    if (!lineChart) return;
+    const colors = getThemeColors();
+    lineChart.updateOptions({
       xaxis: { labels: { style: { colors: colors.textSecondary } } },
       yaxis: { labels: { style: { colors: colors.textSecondary } } },
       grid: { borderColor: colors.borderColor },
@@ -116,9 +366,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function initializeChart(initialData) {
+  function initializeLineChart(initialData) {
+    const chartElement = document.getElementById("analytics-chart");
+    if (!chartElement) return;
+
     const hasData = initialData.length > 0 && initialData[0].data.some((point) => point[1] > 0);
-    const colors = getChartColors();
+    const colors = getThemeColors();
     const options = {
       series: hasData ? initialData : [],
       chart: {
@@ -153,13 +406,57 @@ document.addEventListener("DOMContentLoaded", () => {
         style: { color: colors.textSecondary, fontSize: "14px" },
       },
     };
-    if (chart) chart.destroy();
-    chart = new ApexCharts(chartElement, options);
-    chart.render();
+    if (lineChart) lineChart.destroy();
+    lineChart = new ApexCharts(chartElement, options);
+    lineChart.render();
   }
 
-  if (chartElement && typeof chartData !== "undefined") {
-    initializeChart(chartData);
+  function initializeWorldMap(countryData) {
+    const mapElement = document.getElementById("world-map");
+    if (!mapElement) return;
+
+    const colors = getThemeColors();
+    const mapValues = countryData.reduce((acc, item) => {
+      acc[item.key] = item.count;
+      return acc;
+    }, {});
+
+    if (worldMap) {
+      worldMap.destroy();
+    }
+
+    worldMap = new jsVectorMap({
+      selector: "#world-map",
+      map: "world",
+      backgroundColor: "transparent",
+      zoomButtons: false,
+      regionStyle: {
+        initial: { fill: colors.borderColor },
+        hover: { fill: colors.primary },
+      },
+      series: {
+        regions: [
+          {
+            values: mapValues,
+            scale: [colors.mapScaleMin, colors.mapScaleMax],
+            normalizeFunction: "polynomial",
+          },
+        ],
+      },
+      onRegionTooltipShow(event, tooltip, code) {
+        const countryName = countryNames[code] || code;
+        const visitorCount = mapValues[code] || 0;
+        tooltip.text(`${countryName}: ${visitorCount} visitors`);
+      },
+    });
+  }
+
+  if (typeof initialChartData !== "undefined") {
+    initializeLineChart(initialChartData);
+  }
+
+  if (typeof initialReportData !== "undefined" && initialReportData.countryBreakdown) {
+    initializeWorldMap(initialReportData.countryBreakdown);
   }
 
   function updateMetricCard(metricId, value, change) {
@@ -187,7 +484,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     let html = '<div class="report-table-header"><span>Item</span><span>Views</span></div><ul class="report-table-list">';
     for (const item of data) {
-      html += `<li><div class="list-item-info"><span class="list-item-key">${item.key}</span><span class="list-item-count">${item.count}</span></div><div class="progress-bar-container"><div class="progress-bar" style="width: ${item.percentage}%"></div></div></li>`;
+      html += `<li><div class="list-item-info"><span class="list-item-key">${countryNames[item.key] || item.key}</span><span class="list-item-count">${item.count}</span></div><div class="progress-bar-container"><div class="progress-bar" style="width: ${item.percentage}%"></div></div></li>`;
     }
     html += "</ul>";
     reportContainer.innerHTML = html;
@@ -211,13 +508,21 @@ document.addEventListener("DOMContentLoaded", () => {
       updateReportCard("report-devices", data.reports.deviceBreakdown);
       updateReportCard("report-browsers", data.reports.browserBreakdown);
       updateReportCard("report-languages", data.reports.languageBreakdown);
+      updateReportCard("report-countries", data.reports.countryBreakdown);
       updateReportCard("report-utm-source", data.reports.utmSourceBreakdown);
       updateReportCard("report-utm-medium", data.reports.utmMediumBreakdown);
       updateReportCard("report-utm-campaign", data.reports.utmCampaignBreakdown);
+      if (worldMap && data.reports.countryBreakdown) {
+        const mapValues = data.reports.countryBreakdown.reduce((acc, item) => {
+          acc[item.key] = item.count;
+          return acc;
+        }, {});
+        worldMap.series.regions[0].setValues(mapValues);
+      }
     }
-    if (data.chartData && chart) {
+    if (data.chartData && lineChart) {
       const hasData = data.chartData.length > 0 && data.chartData[0].data.some((point) => point[1] > 0);
-      chart.updateSeries(hasData ? data.chartData : []);
+      lineChart.updateSeries(hasData ? data.chartData : []);
     }
   }
 
@@ -251,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let detailTableData = [];
   let filteredData = [];
   let currentPage = 1;
-  const itemsPerPage = 20;
+  const itemsPerPage = 25;
   let sortColumn = "count";
   let sortDirection = "desc";
 
@@ -268,8 +573,8 @@ document.addEventListener("DOMContentLoaded", () => {
       let aVal = a[sortColumn];
       let bVal = b[sortColumn];
       if (sortColumn === "key") {
-        aVal = aVal.toLowerCase();
-        bVal = bVal.toLowerCase();
+        aVal = (countryNames[aVal] || aVal).toLowerCase();
+        bVal = (countryNames[bVal] || bVal).toLowerCase();
         return sortDirection === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
       }
       return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
@@ -277,7 +582,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function applySearch(query) {
-    filteredData = query ? detailTableData.filter((item) => item.key.toLowerCase().includes(query.toLowerCase())) : [...detailTableData];
+    filteredData = query ? detailTableData.filter((item) => (countryNames[item.key] || item.key).toLowerCase().includes(query.toLowerCase())) : [...detailTableData];
     currentPage = 1;
     applySort();
     updateTable();
@@ -299,7 +604,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const pageData = filteredData.slice(startIndex, endIndex);
     let tableHTML = `<table class="detail-table"><thead><tr><th data-column="key">Item ${sortColumn === "key" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="count">Count ${sortColumn === "count" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="percentage">Percentage ${sortColumn === "percentage" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th></tr></thead><tbody>`;
     for (const item of pageData) {
-      tableHTML += `<tr><td>${item.key}</td><td>${item.count}</td><td>${item.percentage}%</td></tr>`;
+      tableHTML += `<tr><td>${countryNames[item.key] || item.key}</td><td>${item.count}</td><td>${item.percentage}%</td></tr>`;
     }
     tableHTML += "</tbody></table>";
     tableContainer.innerHTML = tableHTML;
@@ -357,7 +662,12 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   window.addEventListener("settingsChanged", updateDashboardSettings);
-  window.addEventListener("themeChanged", updateChartTheme);
+  window.addEventListener("themeChanged", () => {
+    updateChartTheme();
+    if (worldMap && initialReportData.countryBreakdown) {
+      initializeWorldMap(initialReportData.countryBreakdown);
+    }
+  });
 
   if (WEBSITE_ID) {
     updateDashboardSettings();
