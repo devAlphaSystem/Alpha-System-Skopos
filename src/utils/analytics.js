@@ -20,6 +20,7 @@ export function aggregateSummaries(summaries) {
   let totalEngagedSessions = 0;
   let totalDurationSeconds = 0;
   let finalizedVisitorsCount = 0;
+  let totalJsErrors = 0;
 
   for (const day of summaries) {
     const s = day.summary;
@@ -30,6 +31,7 @@ export function aggregateSummaries(summaries) {
     totalNewVisitors += s.newVisitors || 0;
     totalReturningVisitors += s.returningVisitors || 0;
     totalEngagedSessions += s.engagedSessions || 0;
+    totalJsErrors += s.jsErrors || 0;
 
     if (day.isFinalized && dailyVisitors > 0) {
       finalizedVisitorsCount += dailyVisitors;
@@ -56,6 +58,7 @@ export function aggregateSummaries(summaries) {
       formatted: `${minutes}:${seconds}`,
       raw: roundedSeconds,
     },
+    jsErrors: totalJsErrors,
   };
 }
 
@@ -93,6 +96,7 @@ export function getReportsFromSummaries(summaries, limit) {
     utmMediumBreakdown: mergeAndSortReports(summaries, "utmMediumBreakdown", limit),
     utmCampaignBreakdown: mergeAndSortReports(summaries, "utmCampaignBreakdown", limit),
     topCustomEvents: mergeAndSortReports(summaries, "topCustomEvents", limit),
+    topJsErrors: mergeAndSortReports(summaries, "topJsErrors", limit),
   };
 }
 
@@ -110,6 +114,7 @@ export function getAllData(summaries, reportType) {
     utmMediumBreakdown: "utmMediumBreakdown",
     utmCampaignBreakdown: "utmCampaignBreakdown",
     topCustomEvents: "topCustomEvents",
+    topJsErrors: "topJsErrors",
   };
   const reportKey = keyMap[reportType];
   return reportKey ? mergeAndSortReports(summaries, reportKey, 10000) : [];

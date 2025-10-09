@@ -5,6 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const detailDrawerOverlay = document.getElementById("detail-drawer-overlay");
   const detailDrawer = document.getElementById("detail-drawer");
   const detailDrawerClose = document.getElementById("detail-drawer-close");
+  const itemDetailDrawer = document.getElementById("item-detail-drawer");
+  const itemDetailDrawerClose = document.getElementById("item-detail-drawer-close");
   const manualRefreshBtn = document.getElementById("manual-refresh-btn");
   const dataPeriodLabel = document.getElementById("data-period-label");
 
@@ -306,17 +308,47 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchDetailedData(reportType);
   }
 
-  function closeDetailDrawer() {
-    detailDrawerOverlay.classList.remove("active");
+  function closeDetailListDrawer() {
     detailDrawer.classList.remove("active");
+    if (!itemDetailDrawer.classList.contains("active")) {
+      detailDrawerOverlay.classList.remove("active");
+    }
+  }
+
+  function closeItemDetailDrawer() {
+    itemDetailDrawer.classList.remove("active");
+    if (!detailDrawer.classList.contains("active")) {
+      detailDrawerOverlay.classList.remove("active");
+    }
+  }
+
+  function openItemDetailDrawer(title, content) {
+    const drawerTitle = document.getElementById("item-detail-drawer-title");
+    const drawerContent = document.getElementById("item-detail-content");
+
+    drawerTitle.textContent = title;
+    drawerContent.innerHTML = content;
+
+    detailDrawerOverlay.classList.add("active");
+    itemDetailDrawer.classList.add("active");
   }
 
   if (detailDrawerClose) {
-    detailDrawerClose.addEventListener("click", closeDetailDrawer);
+    detailDrawerClose.addEventListener("click", closeDetailListDrawer);
+  }
+
+  if (itemDetailDrawerClose) {
+    itemDetailDrawerClose.addEventListener("click", closeItemDetailDrawer);
   }
 
   if (detailDrawerOverlay) {
-    detailDrawerOverlay.addEventListener("click", closeDetailDrawer);
+    detailDrawerOverlay.addEventListener("click", () => {
+      if (itemDetailDrawer.classList.contains("active")) {
+        closeItemDetailDrawer();
+      } else if (detailDrawer.classList.contains("active")) {
+        closeDetailListDrawer();
+      }
+    });
   }
 
   if (manualRefreshBtn) {
@@ -351,6 +383,9 @@ document.addEventListener("DOMContentLoaded", () => {
       background: computedStyle.getPropertyValue("--background-color").trim(),
       mapScaleMin: computedStyle.getPropertyValue("--map-scale-min").trim(),
       mapScaleMax: computedStyle.getPropertyValue("--map-scale-max").trim(),
+      chartTooltipBg: computedStyle.getPropertyValue("--surface-color").trim(),
+      chartTooltipColor: computedStyle.getPropertyValue("--text-primary").trim(),
+      chartTooltipBorder: computedStyle.getPropertyValue("--border-color").trim(),
     };
   }
 
@@ -362,8 +397,20 @@ document.addEventListener("DOMContentLoaded", () => {
       yaxis: { labels: { style: { colors: colors.textSecondary } } },
       grid: { borderColor: colors.borderColor },
       colors: [colors.primary],
+      tooltip: {
+        theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
+        style: {
+          fontSize: "14px",
+          fontFamily: "inherit",
+        },
+        custom: (params) => params,
+      },
       noData: { style: { color: colors.textSecondary } },
     });
+
+    if (worldMap) {
+      initializeWorldMap(getCurrentMapData());
+    }
   }
 
   function initializeLineChart(initialData) {
@@ -372,6 +419,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const hasData = initialData.length > 0 && initialData[0].data.some((point) => point[1] > 0);
     const colors = getThemeColors();
+    const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
     const options = {
       series: hasData ? initialData : [],
       chart: {
@@ -383,9 +431,16 @@ document.addEventListener("DOMContentLoaded", () => {
       },
       dataLabels: { enabled: false },
       stroke: { curve: "smooth", width: 2 },
-      xaxis: { type: "datetime", labels: { style: { colors: colors.textSecondary } } },
+      xaxis: {
+        type: "datetime",
+        labels: { style: { colors: colors.textSecondary } },
+      },
       yaxis: { labels: { style: { colors: colors.textSecondary } } },
-      tooltip: { x: { format: "dd MMM yyyy" } },
+      tooltip: {
+        theme: theme,
+        style: { fontSize: "14px", fontFamily: "inherit" },
+        custom: (params) => params,
+      },
       grid: { borderColor: colors.borderColor },
       fill: {
         type: "gradient",
@@ -411,11 +466,23 @@ document.addEventListener("DOMContentLoaded", () => {
     lineChart.render();
   }
 
+  function getCurrentMapData() {
+    const mapElement = document.getElementById("report-countries");
+    if (!mapElement || !window.initialReportData || !window.initialReportData.countryBreakdown) return [];
+    return window.initialReportData.countryBreakdown;
+  }
+
   function initializeWorldMap(countryData) {
     const mapElement = document.getElementById("world-map");
     if (!mapElement) return;
 
     const colors = getThemeColors();
+    const backgroundColor = colors.background || "#f3f4f6";
+    const regionInitialFill = colors.borderColor;
+    const regionHoverFill = colors.primary;
+    const minScale = colors.mapScaleMin;
+    const maxScale = colors.mapScaleMax;
+
     const mapValues = countryData.reduce((acc, item) => {
       acc[item.key] = item.count;
       return acc;
@@ -431,14 +498,14 @@ document.addEventListener("DOMContentLoaded", () => {
       backgroundColor: "transparent",
       zoomButtons: false,
       regionStyle: {
-        initial: { fill: colors.borderColor },
-        hover: { fill: colors.primary },
+        initial: { fill: regionInitialFill },
+        hover: { fill: regionHoverFill },
       },
       series: {
         regions: [
           {
             values: mapValues,
-            scale: [colors.mapScaleMin, colors.mapScaleMax],
+            scale: [minScale, maxScale],
             normalizeFunction: "polynomial",
           },
         ],
@@ -482,7 +549,7 @@ document.addEventListener("DOMContentLoaded", () => {
       reportContainer.innerHTML = '<p class="no-data">No data available for this report.</p>';
       return;
     }
-    let html = '<div class="report-table-header"><span>Item</span><span>Views</span></div><ul class="report-table-list">';
+    let html = '<div class="report-table-header"><span>Item</span><span>Count</span></div><ul class="report-table-list">';
     for (const item of data) {
       html += `<li><div class="list-item-info"><span class="list-item-key">${countryNames[item.key] || item.key}</span><span class="list-item-count">${item.count}</span></div><div class="progress-bar-container"><div class="progress-bar" style="width: ${item.percentage}%"></div></div></li>`;
     }
@@ -500,6 +567,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updateMetricCard("visitors", data.metrics.visitors, data.metrics.change.visitors);
       updateMetricCard("engagementrate", `${data.metrics.engagementRate}%`, data.metrics.change.engagementRate);
       updateMetricCard("avgsession", data.metrics.avgSessionDuration.formatted, data.metrics.change.avgSessionDuration);
+      updateMetricCard("jserrors", data.metrics.jsErrors, data.metrics.change.jsErrors);
     }
     if (data.reports) {
       updateReportCard("report-top-pages", data.reports.topPages);
@@ -514,6 +582,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updateReportCard("report-utm-source", data.reports.utmSourceBreakdown);
       updateReportCard("report-utm-medium", data.reports.utmMediumBreakdown);
       updateReportCard("report-utm-campaign", data.reports.utmCampaignBreakdown);
+      updateReportCard("report-js-errors", data.reports.topJsErrors);
       if (worldMap && data.reports.countryBreakdown) {
         const mapValues = data.reports.countryBreakdown.reduce((acc, item) => {
           acc[item.key] = item.count;
@@ -555,6 +624,61 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  function formatObjectToHtml(obj) {
+    if (obj === null) return "<span>null</span>";
+    if (typeof obj !== "object") {
+      return `<span>${typeof obj === "string" ? `"${obj}"` : obj}</span>`;
+    }
+
+    let html = "<ul>";
+    if (Array.isArray(obj)) {
+      for (const item of obj) {
+        html += `<li>${formatObjectToHtml(item)}</li>`;
+      }
+    } else {
+      for (const key of Object.keys(obj)) {
+        html += `<li><strong>${key}:</strong> ${formatObjectToHtml(obj[key])}</li>`;
+      }
+    }
+    html += "</ul>";
+    return html;
+  }
+
+  function formatJsonForDisplay(jsonString) {
+    try {
+      const data = JSON.parse(jsonString);
+      return formatObjectToHtml(data);
+    } catch (e) {
+      return `<pre>${jsonString}</pre>`;
+    }
+  }
+
+  async function fetchCustomEventDetails(eventName) {
+    const loadingHTML = '<div class="spinner-container" style="opacity: 1; visibility: visible; position: relative;"><div class="spinner"></div></div>';
+    openItemDetailDrawer(`Details for: ${eventName}`, loadingHTML);
+
+    try {
+      const url = `/dashboard/report/${WEBSITE_ID}/custom-event-details?name=${encodeURIComponent(eventName)}&period=${settings.dataPeriod}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+
+      let content = "";
+      if (result.data && result.data.length > 0) {
+        content = result.data.map((d) => `<div class="detail-item-content">${formatJsonForDisplay(d)}</div>`).join("");
+      } else {
+        content = "<p>No additional data for this event.</p>";
+      }
+
+      const drawerContent = document.getElementById("item-detail-content");
+      drawerContent.innerHTML = content;
+    } catch (error) {
+      console.error("[Detail Drawer ERROR] Failed to fetch custom event details:", error);
+      const drawerContent = document.getElementById("item-detail-content");
+      drawerContent.innerHTML = '<div class="no-data-message">Failed to load event data.</div>';
+    }
+  }
+
   let detailTableData = [];
   let filteredData = [];
   let currentPage = 1;
@@ -591,6 +715,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateTable() {
+    const reportType = detailDrawer.dataset.reportType;
+    const isErrorLog = reportType === "topJsErrors";
+    const isCustomEvents = reportType === "topCustomEvents";
+
     const tableContainer = document.getElementById("detail-table-container");
     const paginationInfo = document.getElementById("detail-pagination-info");
     const paginationControls = document.getElementById("detail-pagination-controls");
@@ -606,10 +734,33 @@ document.addEventListener("DOMContentLoaded", () => {
     const pageData = filteredData.slice(startIndex, endIndex);
     let tableHTML = `<table class="detail-table"><thead><tr><th data-column="key">Item ${sortColumn === "key" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="count">Count ${sortColumn === "count" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="percentage">Percentage ${sortColumn === "percentage" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th></tr></thead><tbody>`;
     for (const item of pageData) {
-      tableHTML += `<tr><td>${countryNames[item.key] || item.key}</td><td>${item.count}</td><td>${item.percentage}%</td></tr>`;
+      const isClickable = isErrorLog || (isCustomEvents && item.hasData);
+      const rowClass = isClickable ? "clickable" : "";
+      const dataAttr = isErrorLog ? `data-stacktrace="${item.stackTrace.replace(/"/g, "&quot;")}"` : "";
+      const eventNameAttr = isCustomEvents ? `data-event-name="${item.key}"` : "";
+      const keyDisplay = countryNames[item.key] || item.key;
+      const icon = isCustomEvents && item.hasData ? ' <i class="fa-solid fa-circle-info"></i>' : "";
+      tableHTML += `<tr class="${rowClass}" ${dataAttr} ${eventNameAttr}><td>${keyDisplay}${icon}</td><td>${item.count}</td><td>${item.percentage}%</td></tr>`;
     }
     tableHTML += "</tbody></table>";
     tableContainer.innerHTML = tableHTML;
+
+    const rows = tableContainer.querySelectorAll("tbody tr.clickable");
+    for (const row of rows) {
+      row.addEventListener("click", () => {
+        if (isErrorLog) {
+          const stackTrace = row.dataset.stacktrace;
+          const errorMessage = row.cells[0].textContent;
+          const content = `<pre class="detail-item-content pre-formatted">${stackTrace || "No stack trace available."}</pre>`;
+          openItemDetailDrawer(errorMessage, content);
+        }
+        if (isCustomEvents) {
+          const eventName = row.dataset.eventName;
+          fetchCustomEventDetails(eventName);
+        }
+      });
+    }
+
     const headers = tableContainer.querySelectorAll("th[data-column]");
     for (const header of headers) {
       header.addEventListener("click", () => {
@@ -664,11 +815,21 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   window.addEventListener("settingsChanged", updateDashboardSettings);
+
   window.addEventListener("themeChanged", () => {
     updateChartTheme();
-    if (worldMap && initialReportData.countryBreakdown) {
-      initializeWorldMap(initialReportData.countryBreakdown);
-    }
+    setTimeout(() => {
+      if (worldMap && initialReportData && initialReportData.countryBreakdown) {
+        initializeWorldMap(initialReportData.countryBreakdown);
+      }
+      if (lineChart) {
+        lineChart.updateOptions({
+          tooltip: {
+            theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
+          },
+        });
+      }
+    }, 10);
   });
 
   if (WEBSITE_ID) {

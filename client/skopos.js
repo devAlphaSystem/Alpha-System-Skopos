@@ -1,5 +1,5 @@
 /**
- * Skopos Analytics Script v0.1.1
+ * Skopos Analytics Script v0.2.0
  *
  * A lightweight client-side analytics utility for tracking pageviews and custom events
  * using the `navigator.sendBeacon` API (when available) or `fetch` as a fallback.
@@ -92,6 +92,32 @@
     sendData(payload);
   }
 
+  /**
+   * Tracks a JavaScript error and sends it to the analytics server.
+   *
+   * @param {string} errorMessage - The error message.
+   * @param {string} stackTrace - The stack trace of the error.
+   * @returns {void}
+   */
+  function trackError(errorMessage, stackTrace) {
+    const url = new URL(window.location.href);
+    const utm = getUtmParams(url.searchParams);
+
+    const payload = {
+      type: "jsError",
+      name: "jsError",
+      url: url.href,
+      referrer: document.referrer,
+      screenWidth: window.screen.width,
+      screenHeight: window.screen.height,
+      language: navigator.language,
+      ...utm,
+      errorMessage,
+      stackTrace,
+    };
+    sendData(payload);
+  }
+
   let lastPath = "";
 
   /**
@@ -124,7 +150,6 @@
       element.addEventListener(eventType, () => {
         let customData = {};
 
-        // Parse static JSON data if provided
         const eventDataJSON = element.getAttribute("skopos-data");
         if (eventDataJSON) {
           try {
@@ -134,14 +159,12 @@
           }
         }
 
-        // Extract dynamic data from DOM using selectors
         const eventDataFromAttr = element.getAttribute("skopos-data-from");
         if (eventDataFromAttr) {
           const definitions = eventDataFromAttr.split(",");
           for (const def of definitions) {
             const parts = def.split(":");
             if (parts.length !== 2) {
-              console.warn(`Skopos: Malformed 'skopos-data-from' part: "${def}"`);
               continue;
             }
             const key = parts[0].trim();
@@ -151,8 +174,6 @@
             if (targetElement) {
               const value = "value" in targetElement ? targetElement.value : targetElement.textContent;
               customData[key] = value.trim();
-            } else {
-              console.warn(`Skopos: Element not found for selector in 'skopos-data-from': "${selector}"`);
             }
           }
         }
@@ -193,17 +214,14 @@
     }
   }
 
-  // Replace the placeholder with actual implementation
   window.skopos = processCommand;
 
-  // Process queued commands
   if (window.skopos.q) {
     for (const args of window.skopos.q) {
       processCommand(...args);
     }
   }
 
-  // Enable automatic pageview tracking and SPA route detection
   if (autoTrackPageviews) {
     const originalPushState = history.pushState;
     history.pushState = function (...args) {
@@ -220,7 +238,6 @@
     }
   }
 
-  // Bind event listeners on DOM ready and on dynamically added elements
   document.addEventListener("DOMContentLoaded", () => {
     scanAndBindEvents(document.body);
     if (observeDom) {
@@ -235,5 +252,35 @@
       });
       observer.observe(document.body, { childList: true, subtree: true });
     }
+  });
+
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    originalConsoleError.apply(console, args);
+    try {
+      const message = args.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : arg)).join(" ");
+      const stack = new Error().stack || "";
+      trackError(message, stack);
+    } catch (e) {}
+  };
+
+  const originalConsoleWarn = console.warn;
+  console.warn = (...args) => {
+    originalConsoleWarn.apply(console, args);
+    try {
+      const message = args.map((arg) => (typeof arg === "object" ? JSON.stringify(arg) : arg)).join(" ");
+      const stack = new Error().stack || "";
+      trackError(message, stack);
+    } catch (e) {}
+  };
+
+  window.addEventListener("error", (event) => {
+    trackError(event.message, event.error ? event.error.stack : "");
+  });
+
+  window.addEventListener("unhandledrejection", (event) => {
+    const msg = event.reason?.message ? event.reason.message : event.reason ? event.reason.toString() : "Unhandled promise rejection";
+    const st = event.reason?.stack ? event.reason.stack : "";
+    trackError(msg, st);
   });
 })(window, document);

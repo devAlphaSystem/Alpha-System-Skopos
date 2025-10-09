@@ -16,7 +16,9 @@
     <main class="main-content" style="padding-top: 1rem;">
       <div class="websites-grid">
         <div class="card">
-          <h2>Add New Website</h2>
+          <div class="card-header">
+            <h2>Add New Website</h2>
+          </div>
           <form class="website-form" action="/websites" method="POST">
             <div class="form-group">
               <label for="name">Website Name</label>
@@ -34,31 +36,36 @@
             <button type="submit" class="btn">Add Website</button>
           </form>
         </div>
+        
         <div class="card">
-          <h2>Your Websites</h2>
-          <% if (websites.length > 0) { %>
-          <div class="website-list">
-            <% for (const website of websites) { %>
-            <div class="card website-item-card">
-              <div class="card-header">
-                <h3><%= website.name %></h3>
-                <form action="/websites/delete/<%= website.id %>" method="POST" onsubmit="return confirm('Are you sure? This will delete the site and all its data.');">
-                  <button type="submit" class="btn btn-danger"><i class="fa-solid fa-trash"></i> Delete</button>
-                </form>
-              </div>
-              <div class="website-item-info">
-                <p><strong>Domain:</strong> <%= website.domain %></p>
-                <p><strong>Retention:</strong> <%= website.dataRetentionDays > 0 ? `${website.dataRetentionDays} days` : 'Forever' %></p>
-                <div class="tracking-id-container">
-                  <code><%= website.trackingId %></code>
-                  <button class="copy-btn" onclick="copyToClipboard('<%= website.trackingId %>', this)" title="Copy Tracking ID"><i class="fa-solid fa-copy"></i></button>
-                </div>
-              </div>
-            </div>
-            <% } %>
+          <div class="card-header">
+            <h2>Your Websites</h2>
           </div>
+          <% if (websites.length > 0) { %>
+            <div class="website-list">
+              <% for (const website of websites) { %>
+                <div class="card website-item-card">
+                  <div class="website-card-header">
+                    <h3><%= website.name %></h3>
+                    <form action="/websites/delete/<%= website.id %>" method="POST" onsubmit="return confirm('Are you sure? This will delete the site and all its data.');">
+                      <button type="submit" class="btn btn-danger"><i class="fa-solid fa-trash"></i> Delete</button>
+                    </form>
+                  </div>
+                  <div class="website-card-body">
+                    <p><strong>Domain:</strong> <%= website.domain %></p>
+                    <p><strong>Retention:</strong> <%= website.dataRetentionDays > 0 ? `${website.dataRetentionDays} days` : 'Forever' %></p>
+                  </div>
+                  <div class="website-card-footer">
+                    <div class="tracking-id-container">
+                      <code><%= website.trackingId %></code>
+                      <button class="copy-btn" onclick="copyToClipboard('<%= website.trackingId %>', this)" title="Copy Tracking ID"><i class="fa-solid fa-copy"></i></button>
+                    </div>
+                  </div>
+                </div>
+              <% } %>
+            </div>
           <% } else { %>
-          <p>You haven't added any websites yet. Add one using the form.</p>
+            <p>You haven't added any websites yet. Add one using the form.</p>
           <% } %>
         </div>
       </div>

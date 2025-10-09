@@ -76,6 +76,7 @@ export async function showDashboard(req, res) {
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
         engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
         avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
+        jsErrors: calculatePercentageChange(currentMetrics.jsErrors, prevMetrics.jsErrors),
       },
     };
 
@@ -181,6 +182,7 @@ export async function getDashboardData(req, res) {
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
         engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
         avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
+        jsErrors: calculatePercentageChange(currentMetrics.jsErrors, prevMetrics.jsErrors),
       },
     };
 
@@ -216,6 +218,71 @@ export async function getDetailedReport(req, res) {
       return res.status(403).json({ error: "Forbidden: You do not have access to this website." });
     }
 
+    if (reportType === "topJsErrors") {
+      const allErrors = await pb.collection("js_errors").getFullList({
+        filter: `website.id = "${websiteId}"`,
+        sort: "-count",
+      });
+      const totalErrors = allErrors.reduce((sum, item) => sum + item.count, 0);
+      const reportData = allErrors.map((item) => ({
+        key: item.errorMessage,
+        count: item.count,
+        percentage: totalErrors > 0 ? Math.round((item.count / totalErrors) * 100) : 0,
+        stackTrace: item.stackTrace,
+      }));
+      return res.status(200).json({ data: reportData });
+    }
+
+    if (reportType === "topCustomEvents") {
+      const dataPeriod = Number.parseInt(req.query.period) || 7;
+      const today = new Date();
+      const startDate = subDays(today, dataPeriod - 1);
+      const endDate = today;
+
+      const startYear = startDate.getUTCFullYear();
+      const startMonth = String(startDate.getUTCMonth() + 1).padStart(2, "0");
+      const startDay = String(startDate.getUTCDate()).padStart(2, "0");
+      const startDateString = `${startYear}-${startMonth}-${startDay}`;
+
+      const endYear = endDate.getUTCFullYear();
+      const endMonth = String(endDate.getUTCMonth() + 1).padStart(2, "0");
+      const endDay = String(endDate.getUTCDate()).padStart(2, "0");
+      const endDateString = `${endYear}-${endMonth}-${endDay}`;
+
+      const dateFilter = `created >= "${startDateString} 00:00:00.000Z" && created <= "${endDateString} 23:59:59.999Z"`;
+
+      const allEvents = await pb.collection("events").getFullList({
+        filter: `session.website.id = "${websiteId}" && type = "custom" && ${dateFilter}`,
+        fields: "eventName, eventData",
+        $autoCancel: false,
+      });
+
+      const eventMap = new Map();
+      for (const event of allEvents) {
+        if (!event.eventName) continue;
+        if (!eventMap.has(event.eventName)) {
+          eventMap.set(event.eventName, { count: 0, hasData: false });
+        }
+        const existing = eventMap.get(event.eventName);
+        existing.count += 1;
+        if (event.eventData && Object.keys(event.eventData).length > 0) {
+          existing.hasData = true;
+        }
+      }
+
+      const totalEvents = allEvents.filter((e) => e.eventName).length;
+      const reportData = Array.from(eventMap.entries())
+        .map(([key, value]) => ({
+          key,
+          count: value.count,
+          percentage: totalEvents > 0 ? Math.round((value.count / totalEvents) * 100) : 0,
+          hasData: value.hasData,
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      return res.status(200).json({ data: reportData });
+    }
+
     const dataPeriod = Number.parseInt(req.query.period) || 7;
     const today = new Date();
     const currentStartDate = subDays(today, dataPeriod - 1);
@@ -228,5 +295,53 @@ export async function getDetailedReport(req, res) {
   } catch (error) {
     console.error("[API ERROR] Failed to fetch detailed report:", error);
     res.status(500).json({ error: "Failed to fetch detailed report." });
+  }
+}
+
+export async function getCustomEventDetails(req, res) {
+  try {
+    const { websiteId } = req.params;
+    const { name, period } = req.query;
+    const userId = res.locals.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+      await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+    } catch (error) {
+      return res.status(403).json({ error: "Forbidden: You do not have access to this website." });
+    }
+
+    const dataPeriod = Number.parseInt(period) || 7;
+    const today = new Date();
+    const startDate = subDays(today, dataPeriod - 1);
+    const endDate = today;
+
+    const startYear = startDate.getUTCFullYear();
+    const startMonth = String(startDate.getUTCMonth() + 1).padStart(2, "0");
+    const startDay = String(startDate.getUTCDate()).padStart(2, "0");
+    const startDateString = `${startYear}-${startMonth}-${startDay}`;
+
+    const endYear = endDate.getUTCFullYear();
+    const endMonth = String(endDate.getUTCMonth() + 1).padStart(2, "0");
+    const endDay = String(endDate.getUTCDate()).padStart(2, "0");
+    const endDateString = `${endYear}-${endMonth}-${endDay}`;
+
+    const dateFilter = `created >= "${startDateString} 00:00:00.000Z" && created <= "${endDateString} 23:59:59.999Z"`;
+
+    const events = await pb.collection("events").getFullList({
+      filter: `session.website.id = "${websiteId}" && type = "custom" && eventName = "${name}" && eventData != null && ${dateFilter}`,
+      fields: "eventData",
+      $autoCancel: false,
+    });
+
+    const uniqueEventData = [...new Set(events.map((e) => (e.eventData ? JSON.stringify(e.eventData, null, 2) : null)).filter(Boolean))];
+
+    res.status(200).json({ data: uniqueEventData });
+  } catch (error) {
+    console.error("[API ERROR] Failed to fetch custom event details:", error);
+    res.status(500).json({ error: "Failed to fetch custom event details." });
   }
 }
