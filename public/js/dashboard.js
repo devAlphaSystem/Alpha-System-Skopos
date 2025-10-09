@@ -498,11 +498,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (data.metrics) {
       updateMetricCard("pageviews", data.metrics.pageViews, data.metrics.change.pageViews);
       updateMetricCard("visitors", data.metrics.visitors, data.metrics.change.visitors);
-      updateMetricCard("bouncerate", `${data.metrics.bounceRate}%`, data.metrics.change.bounceRate);
+      updateMetricCard("engagementrate", `${data.metrics.engagementRate}%`, data.metrics.change.engagementRate);
       updateMetricCard("avgsession", data.metrics.avgSessionDuration.formatted, data.metrics.change.avgSessionDuration);
     }
     if (data.reports) {
       updateReportCard("report-top-pages", data.reports.topPages);
+      updateReportCard("report-entry-pages", data.reports.entryPages);
+      updateReportCard("report-exit-pages", data.reports.exitPages);
       updateReportCard("report-top-referrers", data.reports.topReferrers);
       updateReportCard("report-custom-events", data.reports.topCustomEvents);
       updateReportCard("report-devices", data.reports.deviceBreakdown);
@@ -556,7 +558,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let detailTableData = [];
   let filteredData = [];
   let currentPage = 1;
-  const itemsPerPage = 25;
+  const itemsPerPage = 20;
   let sortColumn = "count";
   let sortDirection = "desc";
 

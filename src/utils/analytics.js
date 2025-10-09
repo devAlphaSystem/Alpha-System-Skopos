@@ -15,8 +15,10 @@ function processAndSort(map, total) {
 export function aggregateSummaries(summaries) {
   let totalPageViews = 0;
   let totalVisitors = 0;
+  let totalNewVisitors = 0;
+  let totalReturningVisitors = 0;
+  let totalEngagedSessions = 0;
   let totalDurationSeconds = 0;
-  let totalBouncedVisitors = 0;
   let finalizedVisitorsCount = 0;
 
   for (const day of summaries) {
@@ -25,11 +27,13 @@ export function aggregateSummaries(summaries) {
 
     totalPageViews += s.pageViews || 0;
     totalVisitors += dailyVisitors;
+    totalNewVisitors += s.newVisitors || 0;
+    totalReturningVisitors += s.returningVisitors || 0;
+    totalEngagedSessions += s.engagedSessions || 0;
 
     if (day.isFinalized && dailyVisitors > 0) {
       finalizedVisitorsCount += dailyVisitors;
       totalDurationSeconds += (s.avgSessionDuration?.raw || 0) * dailyVisitors;
-      totalBouncedVisitors += ((s.bounceRate || 0) / 100) * dailyVisitors;
     }
   }
 
@@ -40,16 +44,18 @@ export function aggregateSummaries(summaries) {
     .padStart(2, "0");
   const seconds = (roundedSeconds % 60).toString().padStart(2, "0");
 
-  const bounceRate = finalizedVisitorsCount > 0 ? Math.round((totalBouncedVisitors / finalizedVisitorsCount) * 100) : 0;
+  const engagementRate = totalVisitors > 0 ? Math.round((totalEngagedSessions / totalVisitors) * 100) : 0;
 
   return {
     pageViews: totalPageViews,
     visitors: totalVisitors,
+    newVisitors: totalNewVisitors,
+    returningVisitors: totalReturningVisitors,
+    engagementRate: engagementRate,
     avgSessionDuration: {
       formatted: `${minutes}:${seconds}`,
       raw: roundedSeconds,
     },
-    bounceRate: bounceRate,
   };
 }
 
@@ -76,6 +82,8 @@ function mergeAndSortReports(summaries, reportKey, limit) {
 export function getReportsFromSummaries(summaries, limit) {
   return {
     topPages: mergeAndSortReports(summaries, "topPages", limit),
+    entryPages: mergeAndSortReports(summaries, "entryPages", limit),
+    exitPages: mergeAndSortReports(summaries, "exitPages", limit),
     topReferrers: mergeAndSortReports(summaries, "topReferrers", limit),
     deviceBreakdown: mergeAndSortReports(summaries, "deviceBreakdown", limit),
     browserBreakdown: mergeAndSortReports(summaries, "browserBreakdown", limit),
@@ -91,6 +99,8 @@ export function getReportsFromSummaries(summaries, limit) {
 export function getAllData(summaries, reportType) {
   const keyMap = {
     topPages: "topPages",
+    entryPages: "entryPages",
+    exitPages: "exitPages",
     topReferrers: "topReferrers",
     deviceBreakdown: "deviceBreakdown",
     browserBreakdown: "browserBreakdown",

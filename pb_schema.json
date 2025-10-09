@@ -241,14 +241,12 @@
       },
       {
         "hidden": false,
-        "id": "date2862495610",
-        "max": "",
-        "min": "",
-        "name": "date",
+        "id": "bool917698672",
+        "name": "isFinalized",
         "presentable": false,
         "required": false,
         "system": false,
-        "type": "date"
+        "type": "bool"
       },
       {
         "hidden": false,
@@ -262,12 +260,14 @@
       },
       {
         "hidden": false,
-        "id": "bool917698672",
-        "name": "isFinalized",
+        "id": "date2862495610",
+        "max": "",
+        "min": "",
+        "name": "date",
         "presentable": false,
         "required": false,
         "system": false,
-        "type": "bool"
+        "type": "date"
       },
       {
         "hidden": false,
@@ -740,6 +740,15 @@
         "required": false,
         "system": false,
         "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "bool29935624",
+        "name": "isNewVisitor",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
       },
       {
         "hidden": false,

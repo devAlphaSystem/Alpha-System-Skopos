@@ -1,5 +1,5 @@
 /**
- * Skopos Analytics Script v0.1.0
+ * Skopos Analytics Script v0.1.1
  *
  * A lightweight client-side analytics utility for tracking pageviews and custom events
  * using the `navigator.sendBeacon` API (when available) or `fetch` as a fallback.
@@ -22,6 +22,7 @@
 
   const endpoint = scriptElement.getAttribute("data-endpoint") || "/api/event";
   const autoTrackPageviews = scriptElement.getAttribute("data-auto-track-pageviews") !== "false";
+  const observeDom = scriptElement.getAttribute("data-observe-dom") !== "false";
 
   /**
    * Extracts UTM parameters from the current URL.
@@ -222,17 +223,17 @@
   // Bind event listeners on DOM ready and on dynamically added elements
   document.addEventListener("DOMContentLoaded", () => {
     scanAndBindEvents(document.body);
-
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            scanAndBindEvents(node);
+    if (observeDom) {
+      const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              scanAndBindEvents(node);
+            }
           }
         }
-      }
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    }
   });
 })(window, document);

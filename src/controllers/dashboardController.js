@@ -74,7 +74,7 @@ export async function showDashboard(req, res) {
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
-        bounceRate: calculatePercentageChange(currentMetrics.bounceRate, prevMetrics.bounceRate, true),
+        engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
         avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
       },
     };
@@ -179,7 +179,7 @@ export async function getDashboardData(req, res) {
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
-        bounceRate: calculatePercentageChange(currentMetrics.bounceRate, prevMetrics.bounceRate, true),
+        engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
         avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
       },
     };

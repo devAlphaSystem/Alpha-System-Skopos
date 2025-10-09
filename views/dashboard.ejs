@@ -49,14 +49,14 @@
           </div>
         </div>
         <div class="card metric-card">
-          <div class="metric-icon"><i class="fa-solid fa-right-left"></i></div>
+          <div class="metric-icon"><i class="fa-solid fa-hand-pointer"></i></div>
           <div class="metric-content">
-            <h3>Bounce Rate</h3>
-            <p class="metric-value" id="bouncerate-value"><%= metrics.bounceRate %>%</p>
-            <% if(metrics.change.bounceRate >= 0) { %>
-              <span class="metric-change positive" id="bouncerate-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.bounceRate %>%</span>
+            <h3>Engagement</h3>
+            <p class="metric-value" id="engagementrate-value"><%= metrics.engagementRate %>%</p>
+            <% if(metrics.change.engagementRate >= 0) { %>
+              <span class="metric-change positive" id="engagementrate-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.engagementRate %>%</span>
             <% } else { %>
-              <span class="metric-change negative" id="bouncerate-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.bounceRate) %>%</span>
+              <span class="metric-change negative" id="engagementrate-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.engagementRate) %>%</span>
             <% } %>
           </div>
         </div>
@@ -120,6 +120,26 @@
               <div class="spinner"></div>
             </div>
             <div class="report-content" id="report-top-pages"><%- include('partials/report-table', { data: reports.topPages }) %></div>
+          </div>
+
+          <div class="card report-card loading" data-report-type="entryPages" data-report-title="Entry Pages">
+            <div class="card-header">
+              <h2>Entry Pages</h2>
+            </div>
+            <div class="spinner-container">
+              <div class="spinner"></div>
+            </div>
+            <div class="report-content" id="report-entry-pages"><%- include('partials/report-table', { data: reports.entryPages }) %></div>
+          </div>
+
+          <div class="card report-card loading" data-report-type="exitPages" data-report-title="Exit Pages">
+            <div class="card-header">
+              <h2>Exit Pages</h2>
+            </div>
+            <div class="spinner-container">
+              <div class="spinner"></div>
+            </div>
+            <div class="report-content" id="report-exit-pages"><%- include('partials/report-table', { data: reports.exitPages }) %></div>
           </div>
 
           <div class="card report-card loading" data-report-type="topReferrers" data-report-title="Top Referrers">
