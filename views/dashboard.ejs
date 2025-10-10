@@ -17,6 +17,7 @@
             <span>Active Users</span>
           </div>
           <button id="manual-refresh-btn" class="btn-icon" title="Refresh Dashboard"><i class="fa-solid fa-rotate"></i></button>
+          <button id="website-settings-btn" class="btn-icon" title="Website Settings"><i class="fa-solid fa-sliders"></i></button>
         </div>
       </div>
       <div class="update-progress-container"><div id="update-progress-bar" class="progress-bar-update"></div></div>
@@ -279,6 +280,62 @@
   </div>
   <div class="drawer-content">
     <div id="item-detail-content"></div>
+  </div>
+</div>
+
+<div class="drawer" id="website-settings-drawer">
+  <div class="drawer-header">
+    <h2>Website Settings</h2>
+    <button class="drawer-close" id="website-settings-close"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="drawer-content">
+    <div class="settings-group">
+      <h3>Tracking</h3>
+      <div class="settings-item">
+        <div>
+          <div class="settings-label">Disable tracking on localhost</div>
+          <div class="settings-description">Prevent tracking on localhost/127.0.0.1</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="disable-localhost-toggle" <%= currentWebsite.disableLocalhostTracking ? 'checked' : '' %>>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-item">
+        <div>
+          <div class="settings-label">IP Blacklist</div>
+          <div class="settings-description">Block tracking from specific IP addresses</div>
+        </div>
+        <button class="btn btn-secondary" id="manage-ip-blacklist-btn">Manage</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="drawer" id="ip-blacklist-drawer">
+  <div class="drawer-header">
+    <h2>IP Blacklist</h2>
+    <button class="drawer-close" id="ip-blacklist-close"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="drawer-content">
+    <form id="add-ip-form" class="detail-drawer-controls">
+      <div class="detail-drawer-search">
+        <input type="text" id="ip-address-input" placeholder="Enter IP address" required>
+      </div>
+      <button type="submit" class="btn">Add IP</button>
+    </form>
+    <div class="detail-table-container" style="margin-top: 1rem;">
+      <table class="detail-table">
+        <thead>
+          <tr>
+            <th>IP Address</th>
+            <th style="width: 50px; text-align: right;"></th>
+          </tr>
+        </thead>
+        <tbody id="ip-blacklist-table-body">
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 

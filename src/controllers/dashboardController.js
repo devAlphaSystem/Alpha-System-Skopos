@@ -121,6 +121,8 @@ export async function addWebsite(req, res) {
       dataRetentionDays: Number(dataRetentionDays) || 0,
       trackingId: randomUUID(),
       user: res.locals.user.id,
+      disableLocalhostTracking: false,
+      ipBlacklist: [],
     });
     res.redirect(`/dashboard/${newSite.id}`);
   } catch (error) {
@@ -343,5 +345,76 @@ export async function getCustomEventDetails(req, res) {
   } catch (error) {
     console.error("[API ERROR] Failed to fetch custom event details:", error);
     res.status(500).json({ error: "Failed to fetch custom event details." });
+  }
+}
+
+export async function getWebsiteSettings(req, res) {
+  try {
+    const { websiteId } = req.params;
+    const userId = res.locals.user?.id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const website = await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+    res.status(200).json({ ipBlacklist: website.ipBlacklist || [] });
+  } catch (error) {
+    res.status(404).json({ error: "Website not found." });
+  }
+}
+
+export async function updateWebsiteSettings(req, res) {
+  try {
+    const { websiteId } = req.params;
+    const userId = res.locals.user?.id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const website = await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+
+    await pb.collection("websites").update(website.id, { ...req.body });
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update settings." });
+  }
+}
+
+export async function addIpToBlacklist(req, res) {
+  try {
+    const { websiteId } = req.params;
+    const { ip } = req.body;
+    const userId = res.locals.user?.id;
+    if (!userId || !ip) return res.status(400).json({ error: "Bad Request" });
+
+    const website = await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+    const currentBlacklist = website.ipBlacklist || [];
+
+    if (currentBlacklist.includes(ip)) {
+      return res.status(409).json({ error: "IP already exists in blacklist." });
+    }
+
+    const newBlacklist = [...currentBlacklist, ip];
+    await pb.collection("websites").update(website.id, { ipBlacklist: newBlacklist });
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to add IP to blacklist." });
+  }
+}
+
+export async function removeIpFromBlacklist(req, res) {
+  try {
+    const { websiteId } = req.params;
+    const { ip } = req.body;
+    const userId = res.locals.user?.id;
+    if (!userId || !ip) return res.status(400).json({ error: "Bad Request" });
+
+    const website = await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+    const currentBlacklist = website.ipBlacklist || [];
+
+    const newBlacklist = currentBlacklist.filter((i) => i !== ip);
+    await pb.collection("websites").update(website.id, { ipBlacklist: newBlacklist });
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to remove IP from blacklist." });
   }
 }

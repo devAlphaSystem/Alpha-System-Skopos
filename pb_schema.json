@@ -1095,6 +1095,25 @@
       },
       {
         "hidden": false,
+        "id": "bool226310708",
+        "name": "disableLocalhostTracking",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "json3921172801",
+        "maxSize": 0,
+        "name": "ipBlacklist",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "json"
+      },
+      {
+        "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
         "onCreate": true,

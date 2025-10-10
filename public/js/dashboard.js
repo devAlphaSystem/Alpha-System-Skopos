@@ -10,6 +10,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const manualRefreshBtn = document.getElementById("manual-refresh-btn");
   const dataPeriodLabel = document.getElementById("data-period-label");
 
+  const websiteSettingsBtn = document.getElementById("website-settings-btn");
+  const websiteSettingsDrawer = document.getElementById("website-settings-drawer");
+  const websiteSettingsClose = document.getElementById("website-settings-close");
+  const ipBlacklistBtn = document.getElementById("manage-ip-blacklist-btn");
+  const ipBlacklistDrawer = document.getElementById("ip-blacklist-drawer");
+  const ipBlacklistClose = document.getElementById("ip-blacklist-close");
+  const disableLocalhostToggle = document.getElementById("disable-localhost-toggle");
+  const addIpForm = document.getElementById("add-ip-form");
+  const ipAddressInput = document.getElementById("ip-address-input");
+  const ipBlacklistTableBody = document.getElementById("ip-blacklist-table-body");
+
   let settings = window.__SKOPOS_SETTINGS__;
   let refreshInterval = null;
   let lineChart = null;
@@ -308,16 +319,24 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchDetailedData(reportType);
   }
 
+  function closeAllDrawers() {
+    detailDrawer.classList.remove("active");
+    itemDetailDrawer.classList.remove("active");
+    websiteSettingsDrawer.classList.remove("active");
+    ipBlacklistDrawer.classList.remove("active");
+    detailDrawerOverlay.classList.remove("active");
+  }
+
   function closeDetailListDrawer() {
     detailDrawer.classList.remove("active");
-    if (!itemDetailDrawer.classList.contains("active")) {
+    if (!itemDetailDrawer.classList.contains("active") && !websiteSettingsDrawer.classList.contains("active")) {
       detailDrawerOverlay.classList.remove("active");
     }
   }
 
   function closeItemDetailDrawer() {
     itemDetailDrawer.classList.remove("active");
-    if (!detailDrawer.classList.contains("active")) {
+    if (!detailDrawer.classList.contains("active") && !websiteSettingsDrawer.classList.contains("active")) {
       detailDrawerOverlay.classList.remove("active");
     }
   }
@@ -342,13 +361,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (detailDrawerOverlay) {
-    detailDrawerOverlay.addEventListener("click", () => {
-      if (itemDetailDrawer.classList.contains("active")) {
-        closeItemDetailDrawer();
-      } else if (detailDrawer.classList.contains("active")) {
-        closeDetailListDrawer();
-      }
-    });
+    detailDrawerOverlay.addEventListener("click", closeAllDrawers);
   }
 
   if (manualRefreshBtn) {
@@ -805,6 +818,131 @@ document.addEventListener("DOMContentLoaded", () => {
     progressBar.offsetHeight;
     progressBar.style.transition = `width ${duration}ms linear`;
     progressBar.style.width = "0%";
+  }
+
+  async function updateWebsiteSetting(payload) {
+    try {
+      const response = await fetch(`/dashboard/settings/${WEBSITE_ID}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update setting");
+      }
+    } catch (error) {
+      console.error("Error updating website setting:", error);
+    }
+  }
+
+  if (websiteSettingsBtn) {
+    websiteSettingsBtn.addEventListener("click", () => {
+      detailDrawerOverlay.classList.add("active");
+      websiteSettingsDrawer.classList.add("active");
+    });
+  }
+
+  if (websiteSettingsClose) {
+    websiteSettingsClose.addEventListener("click", () => {
+      websiteSettingsDrawer.classList.remove("active");
+      if (!ipBlacklistDrawer.classList.contains("active")) {
+        detailDrawerOverlay.classList.remove("active");
+      }
+    });
+  }
+
+  if (ipBlacklistBtn) {
+    ipBlacklistBtn.addEventListener("click", () => {
+      ipBlacklistDrawer.classList.add("active");
+      fetchAndRenderIpBlacklist();
+    });
+  }
+
+  if (ipBlacklistClose) {
+    ipBlacklistClose.addEventListener("click", () => {
+      ipBlacklistDrawer.classList.remove("active");
+    });
+  }
+
+  if (disableLocalhostToggle) {
+    disableLocalhostToggle.addEventListener("change", (e) => {
+      updateWebsiteSetting({
+        disableLocalhostTracking: e.target.checked,
+      });
+    });
+  }
+
+  async function fetchAndRenderIpBlacklist() {
+    try {
+      const response = await fetch(`/dashboard/settings/${WEBSITE_ID}`);
+      const data = await response.json();
+      const ipList = data.ipBlacklist || [];
+      ipBlacklistTableBody.innerHTML = ipList
+        .map(
+          (ip) => `
+        <tr>
+          <td>${ip}</td>
+          <td>
+            <button class="btn-icon btn-danger remove-ip-btn" data-ip="${ip}">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      `,
+        )
+        .join("");
+    } catch (error) {
+      console.error("Failed to fetch IP blacklist:", error);
+      ipBlacklistTableBody.innerHTML = '<tr><td colspan="2">Failed to load IPs.</td></tr>';
+    }
+  }
+
+  if (addIpForm) {
+    addIpForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const ip = ipAddressInput.value.trim();
+      if (!ip) return;
+
+      try {
+        const response = await fetch(`/dashboard/blacklist/${WEBSITE_ID}/add`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ip }),
+        });
+        if (response.ok) {
+          ipAddressInput.value = "";
+          fetchAndRenderIpBlacklist();
+        } else {
+          const errorData = await response.json();
+          alert(`Error: ${errorData.error}`);
+        }
+      } catch (error) {
+        alert("Failed to add IP address.");
+      }
+    });
+  }
+
+  if (ipBlacklistTableBody) {
+    ipBlacklistTableBody.addEventListener("click", async (e) => {
+      const removeBtn = e.target.closest(".remove-ip-btn");
+      if (removeBtn) {
+        const ip = removeBtn.dataset.ip;
+        try {
+          const response = await fetch(`/dashboard/blacklist/${WEBSITE_ID}/remove`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ip }),
+          });
+          if (response.ok) {
+            fetchAndRenderIpBlacklist();
+          } else {
+            alert("Failed to remove IP address.");
+          }
+        } catch (error) {
+          alert("Failed to remove IP address.");
+        }
+      }
+    });
   }
 
   window.addEventListener("load", () => {
