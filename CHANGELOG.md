@@ -1,3 +1,14 @@
+# 0.10.0
+
+#### Removed
+
+- Removed client-side collection and transmission of UTM parameters (utm_source, utm_medium, utm_campaign, utm_term, utm_content) from all tracked events.
+- Discontinued storing UTM parameter fields (utmSource, utmMedium, utmCampaign) in the database schema.
+- Eliminated dashboard reports and backend analytics processing for UTM Source, Medium, and Campaign breakdowns.
+- Removed the "Top Pages" and "Top Referrers" report cards from the overview dashboard.
+
+---
+
 # 0.9.0
 
 #### Added

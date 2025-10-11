@@ -622,9 +622,6 @@ document.addEventListener("DOMContentLoaded", () => {
       updateReportCard("report-browsers", data.reports.browserBreakdown);
       updateReportCard("report-languages", data.reports.languageBreakdown);
       updateReportCard("report-countries", data.reports.countryBreakdown);
-      updateReportCard("report-utm-source", data.reports.utmSourceBreakdown);
-      updateReportCard("report-utm-medium", data.reports.utmMediumBreakdown);
-      updateReportCard("report-utm-campaign", data.reports.utmCampaignBreakdown);
       updateReportCard("report-js-errors", data.reports.topJsErrors);
       if (worldMap && data.reports.countryBreakdown) {
         const mapValues = data.reports.countryBreakdown.reduce((acc, item) => {

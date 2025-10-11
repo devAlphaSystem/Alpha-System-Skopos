@@ -214,36 +214,6 @@
             </div>
             <div class="report-content" id="report-languages"><%- include('partials/report-table', { data: reports.languageBreakdown }) %></div>
           </div>
-
-          <div class="card report-card loading" data-report-type="utmSourceBreakdown" data-report-title="UTM Source">
-            <div class="card-header">
-              <h2>UTM Source</h2>
-            </div>
-            <div class="spinner-container">
-              <div class="spinner"></div>
-            </div>
-            <div class="report-content" id="report-utm-source"><%- include('partials/report-table', { data: reports.utmSourceBreakdown }) %></div>
-          </div>
-
-          <div class="card report-card loading" data-report-type="utmMediumBreakdown" data-report-title="UTM Medium">
-            <div class="card-header">
-              <h2>UTM Medium</h2>
-            </div>
-            <div class="spinner-container">
-              <div class="spinner"></div>
-            </div>
-            <div class="report-content" id="report-utm-medium"><%- include('partials/report-table', { data: reports.utmMediumBreakdown }) %></div>
-          </div>
-
-          <div class="card report-card loading" data-report-type="utmCampaignBreakdown" data-report-title="UTM Campaign">
-            <div class="card-header">
-              <h2>UTM Campaign</h2>
-            </div>
-            <div class="spinner-container">
-              <div class="spinner"></div>
-            </div>
-            <div class="report-content" id="report-utm-campaign"><%- include('partials/report-table', { data: reports.utmCampaignBreakdown }) %></div>
-          </div>
         </div>
       <% } %>
     </main>

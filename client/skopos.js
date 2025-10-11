@@ -25,23 +25,6 @@
   const observeDom = scriptElement.getAttribute("data-observe-dom") !== "false";
 
   /**
-   * Extracts UTM parameters from the current URL.
-   *
-   * @param {URLSearchParams} params - The URL search parameters.
-   * @returns {Record<string, string>} - An object mapping UTM parameter names to their values.
-   */
-  function getUtmParams(params) {
-    const utmKeys = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
-    const utm = {};
-    for (const key of utmKeys) {
-      if (params.has(key)) {
-        utm[key] = params.get(key);
-      }
-    }
-    return utm;
-  }
-
-  /**
    * Sends data to the analytics endpoint using sendBeacon (preferred) or fetch.
    *
    * @param {Record<string, any>} payload - The analytics data to send.
@@ -75,7 +58,6 @@
    */
   function track(eventName, eventType = "custom", customData = {}) {
     const url = new URL(window.location.href);
-    const utm = getUtmParams(url.searchParams);
 
     const payload = {
       type: eventType,
@@ -85,7 +67,6 @@
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
       language: navigator.language,
-      ...utm,
       customData: customData,
     };
 
@@ -101,7 +82,6 @@
    */
   function trackError(errorMessage, stackTrace) {
     const url = new URL(window.location.href);
-    const utm = getUtmParams(url.searchParams);
 
     const payload = {
       type: "jsError",
@@ -111,7 +91,6 @@
       screenWidth: window.screen.width,
       screenHeight: window.screen.height,
       language: navigator.language,
-      ...utm,
       errorMessage,
       stackTrace,
     };

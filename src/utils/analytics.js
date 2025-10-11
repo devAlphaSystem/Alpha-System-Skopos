@@ -92,9 +92,6 @@ export function getReportsFromSummaries(summaries, limit) {
     browserBreakdown: mergeAndSortReports(summaries, "browserBreakdown", limit),
     languageBreakdown: mergeAndSortReports(summaries, "languageBreakdown", limit),
     countryBreakdown: mergeAndSortReports(summaries, "countryBreakdown", 100),
-    utmSourceBreakdown: mergeAndSortReports(summaries, "utmSourceBreakdown", limit),
-    utmMediumBreakdown: mergeAndSortReports(summaries, "utmMediumBreakdown", limit),
-    utmCampaignBreakdown: mergeAndSortReports(summaries, "utmCampaignBreakdown", limit),
     topCustomEvents: mergeAndSortReports(summaries, "topCustomEvents", limit),
     topJsErrors: mergeAndSortReports(summaries, "topJsErrors", limit),
   };
@@ -110,9 +107,6 @@ export function getAllData(summaries, reportType) {
     browserBreakdown: "browserBreakdown",
     languageBreakdown: "languageBreakdown",
     countryBreakdown: "countryBreakdown",
-    utmSourceBreakdown: "utmSourceBreakdown",
-    utmMediumBreakdown: "utmMediumBreakdown",
-    utmCampaignBreakdown: "utmCampaignBreakdown",
     topCustomEvents: "topCustomEvents",
     topJsErrors: "topJsErrors",
   };
