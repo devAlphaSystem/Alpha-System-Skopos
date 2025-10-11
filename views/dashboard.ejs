@@ -273,7 +273,7 @@
   </div>
 </div>
 
-<div class="drawer" id="item-detail-drawer">
+<div class="drawer nested" id="item-detail-drawer">
   <div class="drawer-header">
     <h2 id="item-detail-drawer-title">Details</h2>
     <button class="drawer-close" id="item-detail-drawer-close"><i class="fa-solid fa-xmark"></i></button>
@@ -309,10 +309,20 @@
         <button class="btn btn-secondary" id="manage-ip-blacklist-btn">Manage</button>
       </div>
     </div>
+    <div class="settings-group">
+      <h3>Data</h3>
+      <div class="settings-item">
+        <div>
+          <div class="settings-label">Data Retention</div>
+          <div class="settings-description">Days to keep data (0 for forever)</div>
+        </div>
+        <input type="number" id="data-retention-input" class="settings-select" value="<%= currentWebsite.dataRetentionDays %>" min="0">
+      </div>
+    </div>
   </div>
 </div>
 
-<div class="drawer" id="ip-blacklist-drawer">
+<div class="drawer nested" id="ip-blacklist-drawer">
   <div class="drawer-header">
     <h2>IP Blacklist</h2>
     <button class="drawer-close" id="ip-blacklist-close"><i class="fa-solid fa-xmark"></i></button>

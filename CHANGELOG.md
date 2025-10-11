@@ -1,0 +1,212 @@
+# 0.9.0
+
+#### Added
+
+- Introduced a new **Global Overview Dashboard** displaying aggregated analytics across all tracked websites, accessible at the root route (`/`).
+- Added a dedicated API endpoint `/overview/data` for fetching global overview analytics data.
+- Implemented a new utility function, `getMultiWebsiteChartData`, to aggregate and format chart data for multiple websites on the overview page.
+- Added a **Data Retention setting** for individual websites, allowing users to configure how long their analytics data is stored.
+
+#### Changed
+
+- Adjusted the width of nested drawers (e.g., item detail, IP blacklist) from `50%` to `40%` for improved layout.
+- Revised the client-side dashboard data fetching logic (`fetchDashboardData`) to dynamically select between single-website and global overview endpoints based on context.
+- Modified chart rendering logic to support multiple data series, enabling the display of page views for individual websites on the Global Overview chart.
+- Simplified the `calculatePercentageChange` utility function by removing the redundant `invert` parameter.
+- The application's root route (`/`) now redirects to the new Global Overview Dashboard.
+- Updated sidebar navigation to correctly highlight the 'Overview' page when active.
+
+#### Removed
+
+- Eliminated separate client-side functions (`closeDetailListDrawer`, `closeItemDetailDrawer`) by integrating their logic directly into respective event listeners for better code maintainability.
+
+#### Fixed
+
+- Addressed potential client-side issues by ensuring website-specific functions (e.g., `fetchDetailedData`, `updateWebsiteSetting`, IP blacklist management) only execute when a `WEBSITE_ID` is present, preventing errors on the Global Overview page.
+- Improved the `detailDrawerOverlay` click handler to correctly dismiss only the topmost active drawer, resolving previous interaction inconsistencies.
+
+---
+
+# 0.8.0
+
+#### Added
+
+- New "Website Settings" feature, accessible from the dashboard, allowing per-website configuration.
+- IP Blacklist management, enabling users to block specific IP addresses from being tracked.
+- Option to disable tracking for localhost (127.0.0.1) explicitly in website settings.
+- Dedicated UI components and API endpoints for managing website settings and the IP blacklist.
+- Extended website data schema to support `disableLocalhostTracking` (boolean) and `ipBlacklist` (JSON array) settings.
+- Initialized new websites with default values for `disableLocalhostTracking` and `ipBlacklist`.
+
+#### Changed
+
+- Improved dashboard drawer management logic to seamlessly integrate new website settings and IP blacklist drawers.
+- Enhanced dark theme styling for secondary button and icon button hover states.
+- Adjusted styling for search input fields within detail drawers, including dark theme support.
+- Minor adjustment to trash icon alignment in detail tables.
+
+---
+
+# 0.7.1
+
+#### Added
+
+- Introduced a custom 404 Not Found page.
+- Implemented a custom 500 Internal Server Error page.
+- Added a favicon to improve branding and user experience across all pages.
+
+#### Changed
+
+- Improved user avatar URL handling to support distinct internal and public PocketBase URLs.
+- Enhanced authentication reliability by clearing the PocketBase auth store at the start of each request.
+
+---
+
+# 0.7.0
+
+#### Added
+
+- Introduced comprehensive JavaScript error tracking, including automatic capture of console errors, console warnings, unhandled promise rejections, and uncaught exceptions.
+- Added a new `js_errors` database collection to store detailed JavaScript error information, including error messages, stack traces, and associated session/website data.
+- Implemented a new "JS Errors" metric card on the dashboard, providing an overview of error occurrences.
+- Added a "Top JS Errors" report to the dashboard, allowing users to view and sort the most frequent JavaScript errors.
+- Developed a dedicated "Item Detail Drawer" to display verbose details for individual report entries, such as full stack traces for JS errors or custom event data.
+- Enabled the ability to inspect detailed `eventData` for custom events directly from the "Custom Events" report.
+- Added a new API endpoint (`/dashboard/report/:websiteId/custom-event-details`) to fetch specific data for custom events.
+
+#### Changed
+
+- Refined the dashboard's metric grid layout to accommodate the new "JS Errors" metric, expanding from 4 to 5 columns.
+- Standardized report table headers from "Views" to "Count" for consistency across various data types.
+- Increased the default dashboard refresh rate from 10 seconds to 60 seconds for improved performance and reduced server load.
+- Enhanced chart and map elements to dynamically adapt their themes and styling in response to dashboard theme changes.
+- Restructured the "Your Websites" listing UI for a cleaner and more organized presentation.
+
+#### Removed
+
+- Removed console warnings previously logged by the client-side script for malformed `skopos-data-from` attributes or unfound elements, reducing console noise.
+
+#### Fixed
+
+- Addressed an issue where chart tooltips and the world map did not consistently update their visual themes when the dashboard theme was switched.
+
+---
+
+# 0.6.0
+
+#### Added
+
+- Introduced a new client-side option, `data-observe-dom`, allowing control over DOM mutation observation for dynamic event binding.
+- Added new dashboard reports to display Entry Pages and Exit Pages.
+- Implemented tracking for new visitors with the addition of an `isNewVisitor` field in the analytics schema.
+
+#### Changed
+
+- Replaced the 'Bounce Rate' metric with a new 'Engagement' metric across the dashboard, affecting UI, calculations, and data aggregation.
+- Improved the layout of the websites page by adjusting main content padding.
+
+---
+
+# 0.5.0
+
+#### Added
+
+- Introduced a client-side tracking script (`skopos-min.js`).
+- Implemented a new database schema (`pb_schema.json`) defining collections for users, websites, sessions, events, reports, and dashboard summaries.
+- Added an interactive World Map visualization to the dashboard, displaying visitor origin by country.
+- Included a new "Countries" breakdown report in the dashboard analytics.
+- Enabled user avatar display in the sidebar.
+
+#### Changed
+
+- Overhauled the user interface with a new color palette, enhanced shadows, rounded corners, and refined component styles.
+- Revised dashboard layout for improved metrics and reports presentation, including dedicated sections for map and country reports.
+- Expanded sidebar width and updated navigation link styling and brand presentation.
+- Relocated the dashboard update progress bar to the bottom of the main header.
+- Converted the manual refresh button to a more compact icon-only style.
+- Adjusted the default dashboard auto-refresh interval from 10 seconds to 60 seconds.
+- Updated user authentication object access from `pb.authStore.model` to `pb.authStore.record`.
+- Enhanced country data display in reports and detail tables to show full country names instead of ISO codes.
+
+---
+
+# 0.4.0
+
+#### Added
+
+- Implemented a new cron job to prune old session data, removing records older than 7 days to manage database size.
+- Introduced new refresh rate options for the dashboard: 5 minutes, 15 minutes, and 30 minutes.
+
+#### Changed
+
+- Refreshed the dark theme's color palette and styling for improved consistency and a modern visual appeal across the UI.
+- Optimized dashboard data fetching by consolidating summary data queries, reducing database load and improving performance.
+- Enhanced the active user calculation method by directly querying session records, leading to more accurate and efficient real-time user metrics.
+- Improved the accuracy of aggregate metrics (average session duration and bounce rate) by ensuring calculations only include finalized daily summaries.
+- Adjusted the number of items displayed per page in the dashboard's detailed reports from 25 to 20.
+- Refined the date filtering logic in daily summary finalization cron jobs for more precise and robust data processing.
+- Modified available dashboard refresh rate options, removing the 5-second interval to promote more sustainable usage.
+
+#### Removed
+
+- Eliminated PDF and CSV report generation functionality, including associated routes, controller, service, and UI export buttons from the dashboard.
+- Discontinued the 5-second refresh rate option from dashboard settings.
+
+---
+
+# 0.3.0
+
+#### Added
+
+- Implemented daily cron jobs for automated data management and summary finalization.
+- Introduced a cron job to prune dashboard summaries older than 30 days, optimizing database size.
+- Introduced a cron job to enforce website-specific data retention policies by automatically removing old sessions and events.
+- Introduced a cron job to finalize daily dashboard summaries, calculating and updating metrics such as bounce rate and average session duration for the previous day.
+
+#### Changed
+
+- Refactored dashboard and report generation to utilize pre-calculated daily summary data (`dash_sum` collection), significantly improving performance and scalability by reducing direct queries on raw session and event data.
+- Updated analytics utility functions to process and aggregate data efficiently from the new daily summary structure.
+- Disabled PocketBase auto-cancellation during user login to enhance stability and prevent potential issues during authentication.
+
+#### Removed
+
+- Direct, real-time aggregation of all analytics metrics (page views, visitors, session duration, bounce rate) and detailed reports from raw session and event data within the dashboard and report controllers, as this is now handled by daily summaries.
+
+---
+
+# 0.2.0
+
+#### Added
+
+- Dark Mode: Introduced a new dark theme for the user interface, improving visual comfort and personalization.
+- Customizable Dashboard Settings: Users can now configure dashboard refresh rate, data display period, and report result limits via a new global settings drawer.
+- Detailed Report Views: Implemented interactive detail drawers for all dashboard report cards, offering paginated, sortable, and searchable tables for in-depth data analysis.
+- Manual Dashboard Refresh: Added a button to manually trigger an immediate dashboard data refresh.
+
+#### Changed
+
+- Dashboard Metrics Calculation: Enhanced the "Active Users" metric calculation for improved real-time accuracy, now based on recent events.
+- Dynamic Data Loading: Dashboard and report data fetching now dynamically adjust based on user-selected data periods and result limits.
+- PDF Report Generation: Improved the layout and pagination for generated PDF reports to better handle extensive data, ensuring readability.
+- User Interface Theming: Analytics charts and other UI elements now dynamically adapt their appearance based on the selected dark or light theme.
+- Website Management Page: Redesigned the "Manage Websites" page layout for improved organization and refined the tracking ID copy functionality.
+- Codebase Structure: Refactored JavaScript into separate global (main.js) and dashboard-specific (dashboard.js) files for better modularity and conditional loading.
+
+#### Removed
+
+- Hardcoded dashboard update intervals, replaced by user-configurable settings.
+- Direct inline CSS transitions for the progress bar, now managed dynamically by JavaScript.
+- Outdated CSS classes and structures related to previous report card and website list layouts, simplifying the stylesheet.
+
+#### Fixed
+
+- Adjusted responsive layouts for improved display on various screen sizes, especially for drawers and main content grids.
+- Ensured website deletion redirects correctly to the websites list page after an action.
+- Clarified the confirmation message when deleting a website to better reflect its impact on data.
+
+---
+
+# 0.1.0
+
+- Initial release of the Skopos Web Analytics project.

@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const itemDetailDrawerClose = document.getElementById("item-detail-drawer-close");
   const manualRefreshBtn = document.getElementById("manual-refresh-btn");
   const dataPeriodLabel = document.getElementById("data-period-label");
+  const dataRetentionInput = document.getElementById("data-retention-input");
 
   const websiteSettingsBtn = document.getElementById("website-settings-btn");
   const websiteSettingsDrawer = document.getElementById("website-settings-drawer");
@@ -288,7 +289,7 @@ document.addEventListener("DOMContentLoaded", () => {
       dataPeriodLabel.textContent = `Displaying data for the last ${settings.dataPeriod} days`;
     }
 
-    fetchDashboardData(WEBSITE_ID);
+    fetchDashboardData();
     setupRefreshInterval();
   }
 
@@ -296,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (refreshInterval) {
       clearInterval(refreshInterval);
     }
-    if (!settings.autoRefresh || !WEBSITE_ID) {
+    if (!settings.autoRefresh) {
       if (progressBar) {
         progressBar.style.transition = "none";
         progressBar.style.width = "0%";
@@ -305,7 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     animateProgressBar(settings.refreshRate);
     refreshInterval = setInterval(() => {
-      fetchDashboardData(WEBSITE_ID);
+      fetchDashboardData();
       animateProgressBar(settings.refreshRate);
     }, settings.refreshRate);
   }
@@ -327,20 +328,6 @@ document.addEventListener("DOMContentLoaded", () => {
     detailDrawerOverlay.classList.remove("active");
   }
 
-  function closeDetailListDrawer() {
-    detailDrawer.classList.remove("active");
-    if (!itemDetailDrawer.classList.contains("active") && !websiteSettingsDrawer.classList.contains("active")) {
-      detailDrawerOverlay.classList.remove("active");
-    }
-  }
-
-  function closeItemDetailDrawer() {
-    itemDetailDrawer.classList.remove("active");
-    if (!detailDrawer.classList.contains("active") && !websiteSettingsDrawer.classList.contains("active")) {
-      detailDrawerOverlay.classList.remove("active");
-    }
-  }
-
   function openItemDetailDrawer(title, content) {
     const drawerTitle = document.getElementById("item-detail-drawer-title");
     const drawerContent = document.getElementById("item-detail-content");
@@ -353,24 +340,55 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (detailDrawerClose) {
-    detailDrawerClose.addEventListener("click", closeDetailListDrawer);
+    detailDrawerClose.addEventListener("click", () => {
+      detailDrawer.classList.remove("active");
+      if (!itemDetailDrawer.classList.contains("active")) {
+        detailDrawerOverlay.classList.remove("active");
+      }
+    });
   }
 
   if (itemDetailDrawerClose) {
-    itemDetailDrawerClose.addEventListener("click", closeItemDetailDrawer);
+    itemDetailDrawerClose.addEventListener("click", () => {
+      itemDetailDrawer.classList.remove("active");
+      if (!detailDrawer.classList.contains("active")) {
+        detailDrawerOverlay.classList.remove("active");
+      }
+    });
   }
 
   if (detailDrawerOverlay) {
-    detailDrawerOverlay.addEventListener("click", closeAllDrawers);
+    detailDrawerOverlay.addEventListener("click", () => {
+      const activeDrawers = document.querySelectorAll(".drawer.active");
+      if (activeDrawers.length === 0) return;
+
+      let topDrawer = null;
+      if (ipBlacklistDrawer?.classList.contains("active")) {
+        topDrawer = ipBlacklistDrawer;
+      } else if (itemDetailDrawer?.classList.contains("active")) {
+        topDrawer = itemDetailDrawer;
+      } else if (detailDrawer?.classList.contains("active")) {
+        topDrawer = detailDrawer;
+      } else if (websiteSettingsDrawer?.classList.contains("active")) {
+        topDrawer = websiteSettingsDrawer;
+      }
+
+      if (topDrawer) {
+        topDrawer.classList.remove("active");
+      }
+
+      const remainingActiveDrawers = document.querySelectorAll(".drawer.active");
+      if (remainingActiveDrawers.length === 0) {
+        detailDrawerOverlay.classList.remove("active");
+      }
+    });
   }
 
   if (manualRefreshBtn) {
     manualRefreshBtn.addEventListener("click", () => {
-      if (WEBSITE_ID) {
-        fetchDashboardData(WEBSITE_ID);
-        if (settings.autoRefresh) {
-          setupRefreshInterval();
-        }
+      fetchDashboardData();
+      if (settings.autoRefresh) {
+        setupRefreshInterval();
       }
     });
   }
@@ -405,11 +423,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateChartTheme() {
     if (!lineChart) return;
     const colors = getThemeColors();
-    lineChart.updateOptions({
+    const chartOptions = {
       xaxis: { labels: { style: { colors: colors.textSecondary } } },
       yaxis: { labels: { style: { colors: colors.textSecondary } } },
       grid: { borderColor: colors.borderColor },
-      colors: [colors.primary],
       tooltip: {
         theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
         style: {
@@ -419,7 +436,15 @@ document.addEventListener("DOMContentLoaded", () => {
         custom: (params) => params,
       },
       noData: { style: { color: colors.textSecondary } },
-    });
+    };
+
+    if (WEBSITE_ID) {
+      chartOptions.colors = [colors.primary];
+    } else {
+      chartOptions.colors = undefined;
+    }
+
+    lineChart.updateOptions(chartOptions);
 
     if (worldMap) {
       initializeWorldMap(getCurrentMapData());
@@ -430,9 +455,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const chartElement = document.getElementById("analytics-chart");
     if (!chartElement) return;
 
-    const hasData = initialData.length > 0 && initialData[0].data.some((point) => point[1] > 0);
+    const hasData = initialData.length > 0 && initialData.some((series) => series.data.some((point) => point[1] > 0));
+
     const colors = getThemeColors();
     const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+
     const options = {
       series: hasData ? initialData : [],
       chart: {
@@ -464,7 +491,6 @@ document.addEventListener("DOMContentLoaded", () => {
           stops: [0, 90, 100],
         },
       },
-      colors: [colors.primary],
       noData: {
         text: "No page view data available for this period.",
         align: "center",
@@ -474,6 +500,11 @@ document.addEventListener("DOMContentLoaded", () => {
         style: { color: colors.textSecondary, fontSize: "14px" },
       },
     };
+
+    if (WEBSITE_ID) {
+      options.colors = [colors.primary];
+    }
+
     if (lineChart) lineChart.destroy();
     lineChart = new ApexCharts(chartElement, options);
     lineChart.render();
@@ -490,7 +521,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!mapElement) return;
 
     const colors = getThemeColors();
-    const backgroundColor = colors.background || "#f3f4f6";
     const regionInitialFill = colors.borderColor;
     const regionHoverFill = colors.primary;
     const minScale = colors.mapScaleMin;
@@ -605,14 +635,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
     if (data.chartData && lineChart) {
-      const hasData = data.chartData.length > 0 && data.chartData[0].data.some((point) => point[1] > 0);
+      const hasData = data.chartData.length > 0 && data.chartData.some((series) => series.data.some((point) => point[1] > 0));
       lineChart.updateSeries(hasData ? data.chartData : []);
     }
   }
 
-  async function fetchDashboardData(websiteId) {
+  async function fetchDashboardData() {
     try {
-      const url = `/dashboard/data/${websiteId}?period=${settings.dataPeriod}&limit=${settings.resultsLimit}`;
+      const endpoint = WEBSITE_ID ? `/dashboard/data/${WEBSITE_ID}` : "/overview/data";
+      const url = `${endpoint}?period=${settings.dataPeriod}&limit=${settings.resultsLimit}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
@@ -623,6 +654,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function fetchDetailedData(reportType) {
+    if (!WEBSITE_ID) return;
     const tableContainer = document.getElementById("detail-table-container");
     tableContainer.innerHTML = '<div class="spinner-container" style="opacity: 1; visibility: visible;"><div class="spinner"></div></div>';
     try {
@@ -667,6 +699,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function fetchCustomEventDetails(eventName) {
+    if (!WEBSITE_ID) return;
     const loadingHTML = '<div class="spinner-container" style="opacity: 1; visibility: visible; position: relative;"><div class="spinner"></div></div>';
     openItemDetailDrawer(`Details for: ${eventName}`, loadingHTML);
 
@@ -821,6 +854,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function updateWebsiteSetting(payload) {
+    if (!WEBSITE_ID) return;
     try {
       const response = await fetch(`/dashboard/settings/${WEBSITE_ID}`, {
         method: "POST",
@@ -872,7 +906,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (dataRetentionInput) {
+    dataRetentionInput.addEventListener("change", (e) => {
+      updateWebsiteSetting({
+        dataRetentionDays: e.target.value,
+      });
+    });
+  }
+
   async function fetchAndRenderIpBlacklist() {
+    if (!WEBSITE_ID) return;
     try {
       const response = await fetch(`/dashboard/settings/${WEBSITE_ID}`);
       const data = await response.json();
@@ -901,7 +944,7 @@ document.addEventListener("DOMContentLoaded", () => {
     addIpForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const ip = ipAddressInput.value.trim();
-      if (!ip) return;
+      if (!ip || !WEBSITE_ID) return;
 
       try {
         const response = await fetch(`/dashboard/blacklist/${WEBSITE_ID}/add`, {
@@ -927,6 +970,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const removeBtn = e.target.closest(".remove-ip-btn");
       if (removeBtn) {
         const ip = removeBtn.dataset.ip;
+        if (!WEBSITE_ID) return;
         try {
           const response = await fetch(`/dashboard/blacklist/${WEBSITE_ID}/remove`, {
             method: "POST",
@@ -970,7 +1014,5 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 10);
   });
 
-  if (WEBSITE_ID) {
-    updateDashboardSettings();
-  }
+  updateDashboardSettings();
 });

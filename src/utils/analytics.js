@@ -138,6 +138,30 @@ export function getChartDataFromSummaries(summaries, startDate, endDate) {
   return [{ name: "Page Views", data }];
 }
 
+export function getMultiWebsiteChartData(summariesByWebsite, startDate, endDate) {
+  const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
+  const series = [];
+
+  for (const { website, summaries } of summariesByWebsite) {
+    const pageViewCounts = new Map(dateRange.map((d) => [format(d, "yyyy-MM-dd"), 0]));
+
+    for (const summary of summaries) {
+      const summaryDateString = summary.date.substring(0, 10);
+      if (pageViewCounts.has(summaryDateString)) {
+        pageViewCounts.set(summaryDateString, pageViewCounts.get(summaryDateString) + (summary.summary?.pageViews || 0));
+      }
+    }
+
+    const data = Array.from(pageViewCounts.entries())
+      .map(([dateString, count]) => [new Date(dateString).getTime(), count])
+      .sort((a, b) => a[0] - b[0]);
+
+    series.push({ name: website.name, data });
+  }
+
+  return series;
+}
+
 export async function calculateActiveUsers(websiteId) {
   const date = new Date();
   date.setMinutes(date.getMinutes() - 5);
@@ -151,12 +175,12 @@ export async function calculateActiveUsers(websiteId) {
   return result.totalItems;
 }
 
-export function calculatePercentageChange(current, previous, invert = false) {
+export function calculatePercentageChange(current, previous) {
   if (previous === 0) {
     return current > 0 ? 100 : 0;
   }
   const change = ((current - previous) / previous) * 100;
-  return Math.round(invert ? change * -1 : change);
+  return Math.round(change);
 }
 
 export function calculateMetrics(sessions, events) {

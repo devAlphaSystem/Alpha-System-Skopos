@@ -1,7 +1,7 @@
 import { pb } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
 import { subDays } from "date-fns";
-import { aggregateSummaries, getReportsFromSummaries, getChartDataFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData } from "../utils/analytics.js";
+import { aggregateSummaries, getReportsFromSummaries, getChartDataFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData, getMultiWebsiteChartData } from "../utils/analytics.js";
 
 async function getCommonData(userId) {
   const websites = await pb.collection("websites").getFullList({
@@ -32,12 +32,70 @@ async function fetchSummaries(websiteId, startDate, endDate) {
   return summaries;
 }
 
-export async function showIndex(req, res) {
-  const { websites } = await getCommonData(res.locals.user.id);
-  if (websites.length > 0) {
-    res.redirect(`/dashboard/${websites[0].id}`);
-  } else {
-    res.redirect("/websites");
+export async function showOverview(req, res) {
+  try {
+    const { websites } = await getCommonData(res.locals.user.id);
+    if (websites.length === 0) {
+      return res.redirect("/websites");
+    }
+
+    const dataPeriod = 7;
+    const resultsLimit = 10;
+    const today = new Date();
+
+    const currentStartDate = subDays(today, dataPeriod - 1);
+    const currentEndDate = today;
+    const prevStartDate = subDays(currentStartDate, dataPeriod);
+
+    const websiteIds = websites.map((w) => w.id);
+    const allSummariesPromises = websiteIds.map((id) => fetchSummaries(id, prevStartDate, currentEndDate));
+    const summariesByWebsiteRaw = await Promise.all(allSummariesPromises);
+
+    const allSummariesFlat = summariesByWebsiteRaw.flat();
+
+    const currentSummaries = allSummariesFlat.filter((s) => new Date(s.date) >= currentStartDate);
+    const prevSummaries = allSummariesFlat.filter((s) => new Date(s.date) < currentStartDate);
+
+    const activeUsersPromises = websiteIds.map((id) => calculateActiveUsers(id));
+    const activeUsersCounts = await Promise.all(activeUsersPromises);
+    const activeUsers = activeUsersCounts.reduce((sum, count) => sum + count, 0);
+
+    const currentMetrics = aggregateSummaries(currentSummaries);
+    const prevMetrics = aggregateSummaries(prevSummaries);
+
+    const metrics = {
+      ...currentMetrics,
+      change: {
+        pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
+        visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
+        engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
+        avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
+        jsErrors: calculatePercentageChange(currentMetrics.jsErrors, prevMetrics.jsErrors),
+      },
+    };
+
+    const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
+
+    const summariesByWebsite = websites.map((website, index) => {
+      return {
+        website,
+        summaries: summariesByWebsiteRaw[index].filter((s) => new Date(s.date) >= currentStartDate),
+      };
+    });
+    const chartData = getMultiWebsiteChartData(summariesByWebsite, currentStartDate, currentEndDate);
+
+    res.render("overview", {
+      websites,
+      currentWebsite: null,
+      metrics,
+      reports,
+      activeUsers,
+      chartData: JSON.stringify(chartData),
+      currentPage: "overview",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Error loading overview.");
   }
 }
 
@@ -142,6 +200,70 @@ export async function deleteWebsite(req, res) {
   } catch (error) {
     console.error("Error deleting website:", error);
     res.status(500).send("Failed to delete website.");
+  }
+}
+
+export async function getOverviewData(req, res) {
+  try {
+    const userId = res.locals.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const { websites } = await getCommonData(userId);
+    if (websites.length === 0) {
+      return res.status(200).json({ metrics: {}, reports: {}, chartData: [] });
+    }
+
+    const dataPeriod = Number.parseInt(req.query.period) || 7;
+    const resultsLimit = Number.parseInt(req.query.limit) || 10;
+    const today = new Date();
+
+    const currentStartDate = subDays(today, dataPeriod - 1);
+    const currentEndDate = today;
+    const prevStartDate = subDays(currentStartDate, dataPeriod);
+
+    const websiteIds = websites.map((w) => w.id);
+    const allSummariesPromises = websiteIds.map((id) => fetchSummaries(id, prevStartDate, currentEndDate));
+    const summariesByWebsiteRaw = await Promise.all(allSummariesPromises);
+
+    const allSummariesFlat = summariesByWebsiteRaw.flat();
+
+    const currentSummaries = allSummariesFlat.filter((s) => new Date(s.date) >= currentStartDate);
+    const prevSummaries = allSummariesFlat.filter((s) => new Date(s.date) < currentStartDate);
+
+    const activeUsersPromises = websiteIds.map((id) => calculateActiveUsers(id));
+    const activeUsersCounts = await Promise.all(activeUsersPromises);
+    const activeUsers = activeUsersCounts.reduce((sum, count) => sum + count, 0);
+
+    const currentMetrics = aggregateSummaries(currentSummaries);
+    const prevMetrics = aggregateSummaries(prevSummaries);
+
+    const metrics = {
+      ...currentMetrics,
+      change: {
+        pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
+        visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
+        engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
+        avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
+        jsErrors: calculatePercentageChange(currentMetrics.jsErrors, prevMetrics.jsErrors),
+      },
+    };
+
+    const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
+
+    const summariesByWebsite = websites.map((website, index) => {
+      return {
+        website,
+        summaries: summariesByWebsiteRaw[index].filter((s) => new Date(s.date) >= currentStartDate),
+      };
+    });
+    const chartData = getMultiWebsiteChartData(summariesByWebsite, currentStartDate, currentEndDate);
+
+    res.status(200).json({ activeUsers, metrics, reports, chartData });
+  } catch (error) {
+    console.error("[API ERROR] Failed to fetch overview data:", error);
+    res.status(500).json({ error: "Failed to fetch overview data." });
   }
 }
 
@@ -369,7 +491,12 @@ export async function updateWebsiteSettings(req, res) {
 
     const website = await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
 
-    await pb.collection("websites").update(website.id, { ...req.body });
+    const dataToUpdate = { ...req.body };
+    if (dataToUpdate.dataRetentionDays !== undefined && dataToUpdate.dataRetentionDays !== null) {
+      dataToUpdate.dataRetentionDays = Number(dataToUpdate.dataRetentionDays);
+    }
+
+    await pb.collection("websites").update(website.id, dataToUpdate);
 
     res.status(200).json({ success: true });
   } catch (error) {

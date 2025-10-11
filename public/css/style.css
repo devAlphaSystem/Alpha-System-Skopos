@@ -767,7 +767,7 @@ body {
 
 .drawer.nested {
   z-index: 1300;
-  width: 50%;
+  width: 40%;
 }
 
 .drawer.active {

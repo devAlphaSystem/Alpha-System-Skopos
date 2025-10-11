@@ -1,5 +1,5 @@
 import express from "express";
-import { showDashboard, showWebsites, addWebsite, deleteWebsite, showIndex, getDashboardData, getDetailedReport, getCustomEventDetails, updateWebsiteSettings, getWebsiteSettings, addIpToBlacklist, removeIpFromBlacklist } from "../controllers/dashboardController.js";
+import { showDashboard, showWebsites, addWebsite, deleteWebsite, showOverview, getDashboardData, getDetailedReport, getCustomEventDetails, updateWebsiteSettings, getWebsiteSettings, addIpToBlacklist, removeIpFromBlacklist, getOverviewData } from "../controllers/dashboardController.js";
 import { showLoginPage, handleLogin, handleLogout } from "../controllers/authController.js";
 
 const router = express.Router();
@@ -11,7 +11,7 @@ function requireAuth(req, res, next) {
   res.redirect("/login");
 }
 
-router.get("/", requireAuth, showIndex);
+router.get("/", requireAuth, showOverview);
 router.get("/login", showLoginPage);
 router.post("/login", handleLogin);
 router.get("/logout", handleLogout);
@@ -20,6 +20,7 @@ router.get("/websites", requireAuth, showWebsites);
 router.post("/websites", requireAuth, addWebsite);
 router.post("/websites/delete/:id", requireAuth, deleteWebsite);
 
+router.get("/overview/data", requireAuth, getOverviewData);
 router.get("/dashboard/data/:websiteId", requireAuth, getDashboardData);
 router.get("/dashboard/report/:websiteId/custom-event-details", requireAuth, getCustomEventDetails);
 router.get("/dashboard/report/:websiteId/:reportType", requireAuth, getDetailedReport);
