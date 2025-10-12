@@ -1,3 +1,16 @@
+# 0.10.1
+
+#### Added
+
+- Added a new "Languages" report card to the overview dashboard.
+- Introduced a local vendor copy of jsVectorMap (version 1.7.0) with custom fixes.
+
+#### Changed
+
+- Reordered report cards on the dashboard overview page for improved layout.
+
+---
+
 # 0.10.0
 
 #### Removed

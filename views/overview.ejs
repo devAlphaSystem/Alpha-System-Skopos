@@ -123,6 +123,13 @@
 
           <div class="card">
             <div class="card-header">
+              <h2>Devices</h2>
+            </div>
+            <div class="report-content" id="report-devices"><%- include('partials/report-table', { data: reports.deviceBreakdown }) %></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
               <h2>Browsers</h2>
             </div>
             <div class="report-content" id="report-browsers"><%- include('partials/report-table', { data: reports.browserBreakdown }) %></div>
@@ -130,9 +137,9 @@
 
           <div class="card">
             <div class="card-header">
-              <h2>Devices</h2>
+              <h2>Languages</h2>
             </div>
-            <div class="report-content" id="report-devices"><%- include('partials/report-table', { data: reports.deviceBreakdown }) %></div>
+            <div class="report-content" id="report-languages"><%- include('partials/report-table', { data: reports.languageBreakdown }) %></div>
           </div>
         </div>
       <% } %>
