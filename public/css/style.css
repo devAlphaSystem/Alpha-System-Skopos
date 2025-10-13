@@ -1127,6 +1127,11 @@ input:checked + .toggle-slider:before {
   margin: 0;
 }
 
+.website-card-header a {
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
 .website-card-body {
   padding: 1.25rem;
   display: flex;
@@ -1208,6 +1213,104 @@ input:checked + .toggle-slider:before {
   margin-top: 0.5rem;
   border: none;
   padding: 0;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--drawer-overlay);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s,
+    visibility 0.3s;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal {
+  background-color: var(--surface-color);
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-md);
+  width: 90%;
+  max-width: 450px;
+  transform: scale(0.95);
+  transition: transform 0.3s;
+  text-align: center;
+}
+
+.modal-overlay.active .modal {
+  transform: scale(1);
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+.modal-body {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.page-wrapper.archived-state .main-container {
+  filter: grayscale(1);
+}
+
+.archived-state {
+  --primary-color: #6b7280;
+  --primary-hover: #4b5563;
+  --map-scale-min: #d1d5db;
+  --map-scale-max: #6b7280;
+}
+
+.archived-state .btn:disabled,
+.archived-state .btn-icon:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.archived-state .progress-bar-update,
+.archived-state .live-indicator {
+  background-color: var(--primary-color) !important;
+}
+
+.archived-state .metric-icon {
+  background-color: #e5e7eb;
+  color: var(--primary-color);
+}
+
+[data-theme="dark"] .archived-state .metric-icon {
+  background-color: #374151;
+}
+
+.archived-banner {
+  background-color: var(--secondary-color);
+  color: var(--surface-color);
+  padding: 0.75rem 1.25rem;
+  text-align: center;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  border-radius: var(--border-radius);
 }
 
 @media (max-width: 1200px) {

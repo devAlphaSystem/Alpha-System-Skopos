@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import { subDays, formatISO, startOfYesterday } from "date-fns";
-import { pb } from "./pocketbase.js";
+import { pbAdmin } from "./pocketbase.js";
 import { calculateMetrics } from "../utils/analytics.js";
 
 async function pruneOldSummaries() {
@@ -9,13 +9,13 @@ async function pruneOldSummaries() {
     const thirtyDaysAgo = subDays(new Date(), 31);
     const filterDate = thirtyDaysAgo.toISOString().split("T")[0];
 
-    const recordsToDelete = await pb.collection("dash_sum").getFullList({
+    const recordsToDelete = await pbAdmin.collection("dash_sum").getFullList({
       filter: `date < "${filterDate}"`,
       fields: "id",
     });
 
     for (const record of recordsToDelete) {
-      await pb.collection("dash_sum").delete(record.id);
+      await pbAdmin.collection("dash_sum").delete(record.id);
     }
 
     console.log(`Pruned ${recordsToDelete.length} old summary records.`);
@@ -27,7 +27,7 @@ async function pruneOldSummaries() {
 async function enforceDataRetention() {
   console.log("Running cron job: Enforcing data retention policies...");
   try {
-    const websites = await pb.collection("websites").getFullList({
+    const websites = await pbAdmin.collection("websites").getFullList({
       filter: "dataRetentionDays > 0",
     });
 
@@ -37,20 +37,20 @@ async function enforceDataRetention() {
       const cutoffISO = cutoffDate.toISOString();
       const filter = `session.website.id = "${website.id}" && created < "${cutoffISO}"`;
 
-      const eventsToDelete = await pb.collection("events").getFullList({
+      const eventsToDelete = await pbAdmin.collection("events").getFullList({
         filter: filter,
         fields: "id",
       });
       for (const event of eventsToDelete) {
-        await pb.collection("events").delete(event.id);
+        await pbAdmin.collection("events").delete(event.id);
       }
 
-      const sessionsToDelete = await pb.collection("sessions").getFullList({
+      const sessionsToDelete = await pbAdmin.collection("sessions").getFullList({
         filter: `website.id = "${website.id}" && created < "${cutoffISO}"`,
         fields: "id",
       });
       for (const session of sessionsToDelete) {
-        await pb.collection("sessions").delete(session.id);
+        await pbAdmin.collection("sessions").delete(session.id);
       }
 
       console.log(`Data retention for ${website.name}: Removed ${eventsToDelete.length} events and ${sessionsToDelete.length} sessions.`);
@@ -68,7 +68,7 @@ async function finalizeDailySummaries() {
     const yesterdayStart = yesterday.toISOString();
     const yesterdayEnd = new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString();
 
-    const summariesToFinalize = await pb.collection("dash_sum").getFullList({
+    const summariesToFinalize = await pbAdmin.collection("dash_sum").getFullList({
       filter: `date >= "${yesterdayStart}" && date <= "${yesterdayEnd}" && isFinalized = false`,
     });
 
@@ -76,10 +76,10 @@ async function finalizeDailySummaries() {
       const websiteId = summary.website;
       const dateFilter = `created >= "${yesterdayStart}" && created <= "${yesterdayEnd}"`;
 
-      const sessions = await pb.collection("sessions").getFullList({
+      const sessions = await pbAdmin.collection("sessions").getFullList({
         filter: `website.id = "${websiteId}" && ${dateFilter}`,
       });
-      const events = await pb.collection("events").getFullList({
+      const events = await pbAdmin.collection("events").getFullList({
         filter: `session.website.id = "${websiteId}" && ${dateFilter}`,
       });
 
@@ -91,7 +91,7 @@ async function finalizeDailySummaries() {
           avgSessionDuration: finalMetrics.avgSessionDuration,
         };
 
-        await pb.collection("dash_sum").update(summary.id, {
+        await pbAdmin.collection("dash_sum").update(summary.id, {
           summary: updatedSummary,
           isFinalized: true,
         });
@@ -110,13 +110,13 @@ async function pruneOldSessions() {
     const sevenDaysAgo = subDays(new Date(), 7);
     const cutoffISO = sevenDaysAgo.toISOString();
 
-    const recordsToDelete = await pb.collection("sessions").getFullList({
+    const recordsToDelete = await pbAdmin.collection("sessions").getFullList({
       filter: `created < "${cutoffISO}"`,
       fields: "id",
     });
 
     for (const record of recordsToDelete) {
-      await pb.collection("sessions").delete(record.id);
+      await pbAdmin.collection("sessions").delete(record.id);
     }
 
     console.log(`Pruned ${recordsToDelete.length} old session records.`);

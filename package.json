@@ -1,13 +1,20 @@
 {
   "name": "alpha-system-skopos",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "format": "prettier --write .",
     "dev": "nodemon"
   },
-  "keywords": [],
+  "keywords": [
+    "skopos",
+    "analytics",
+    "pocketbase",
+    "privacy",
+    "dashboard",
+    "nodejs"
+  ],
   "author": "Alpha System",
   "license": "MIT",
   "description": "Alpha System Skopos",

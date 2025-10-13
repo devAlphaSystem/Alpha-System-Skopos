@@ -1,14 +1,18 @@
-import { pb } from "../services/pocketbase.js";
+import { pbAdmin } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
 import { subDays } from "date-fns";
 import { aggregateSummaries, getReportsFromSummaries, getChartDataFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData, getMultiWebsiteChartData } from "../utils/analytics.js";
 
 async function getCommonData(userId) {
-  const websites = await pb.collection("websites").getFullList({
+  const allWebsites = await pbAdmin.collection("websites").getFullList({
     filter: `user.id = "${userId}"`,
     sort: "created",
   });
-  return { websites };
+
+  const websites = allWebsites.filter((w) => !w.isArchived);
+  const archivedWebsites = allWebsites.filter((w) => w.isArchived);
+
+  return { websites, archivedWebsites, allWebsites };
 }
 
 async function fetchSummaries(websiteId, startDate, endDate) {
@@ -24,7 +28,7 @@ async function fetchSummaries(websiteId, startDate, endDate) {
 
   const dateFilter = `date >= "${startDateString} 00:00:00.000Z" && date <= "${endDateString} 23:59:59.999Z"`;
 
-  const summaries = await pb.collection("dash_sum").getFullList({
+  const summaries = await pbAdmin.collection("dash_sum").getFullList({
     filter: `website.id = "${websiteId}" && ${dateFilter}`,
     sort: "date",
     $autoCancel: false,
@@ -34,8 +38,8 @@ async function fetchSummaries(websiteId, startDate, endDate) {
 
 export async function showOverview(req, res) {
   try {
-    const { websites } = await getCommonData(res.locals.user.id);
-    if (websites.length === 0) {
+    const { websites, archivedWebsites } = await getCommonData(res.locals.user.id);
+    if (websites.length === 0 && archivedWebsites.length === 0) {
       return res.redirect("/websites");
     }
 
@@ -86,6 +90,7 @@ export async function showOverview(req, res) {
 
     res.render("overview", {
       websites,
+      archivedWebsites,
       currentWebsite: null,
       metrics,
       reports,
@@ -102,9 +107,9 @@ export async function showOverview(req, res) {
 export async function showDashboard(req, res) {
   try {
     const { websiteId } = req.params;
-    const { websites } = await getCommonData(res.locals.user.id);
+    const { websites, archivedWebsites, allWebsites } = await getCommonData(res.locals.user.id);
 
-    const currentWebsite = websites.find((w) => w.id === websiteId);
+    const currentWebsite = allWebsites.find((w) => w.id === websiteId);
     if (!currentWebsite) {
       return res.status(404).send("Website not found or you do not have permission to view it.");
     }
@@ -122,7 +127,7 @@ export async function showDashboard(req, res) {
     const currentSummaries = allSummaries.filter((s) => new Date(s.date) >= currentStartDate);
     const prevSummaries = allSummaries.filter((s) => new Date(s.date) < currentStartDate);
 
-    const activeUsers = await calculateActiveUsers(websiteId);
+    const activeUsers = currentWebsite.isArchived ? 0 : await calculateActiveUsers(websiteId);
 
     const currentMetrics = aggregateSummaries(currentSummaries);
     const prevMetrics = aggregateSummaries(prevSummaries);
@@ -138,11 +143,16 @@ export async function showDashboard(req, res) {
       },
     };
 
+    if (currentWebsite.isArchived) {
+      metrics.change = {};
+    }
+
     const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
     const chartData = getChartDataFromSummaries(currentSummaries, currentStartDate, currentEndDate);
 
     res.render("dashboard", {
       websites,
+      archivedWebsites,
       currentWebsite,
       metrics,
       reports,
@@ -158,9 +168,10 @@ export async function showDashboard(req, res) {
 
 export async function showWebsites(req, res) {
   try {
-    const { websites } = await getCommonData(res.locals.user.id);
+    const { websites, archivedWebsites } = await getCommonData(res.locals.user.id);
     res.render("websites", {
       websites,
+      archivedWebsites,
       currentWebsite: null,
       currentPage: "websites",
     });
@@ -173,7 +184,7 @@ export async function showWebsites(req, res) {
 export async function addWebsite(req, res) {
   const { name, domain, dataRetentionDays } = req.body;
   try {
-    const newSite = await pb.collection("websites").create({
+    const newSite = await pbAdmin.collection("websites").create({
       name,
       domain,
       dataRetentionDays: Number(dataRetentionDays) || 0,
@@ -181,6 +192,7 @@ export async function addWebsite(req, res) {
       user: res.locals.user.id,
       disableLocalhostTracking: false,
       ipBlacklist: [],
+      isArchived: false,
     });
     res.redirect(`/dashboard/${newSite.id}`);
   } catch (error) {
@@ -189,13 +201,64 @@ export async function addWebsite(req, res) {
   }
 }
 
-export async function deleteWebsite(req, res) {
+export async function archiveWebsite(req, res) {
   const { id } = req.params;
   try {
-    const record = await pb.collection("websites").getOne(id);
+    const record = await pbAdmin.collection("websites").getOne(id);
     if (record.user === res.locals.user.id) {
-      await pb.collection("websites").delete(id);
+      await pbAdmin.collection("websites").update(id, { isArchived: true });
     }
+    res.redirect("/websites");
+  } catch (error) {
+    console.error("Error archiving website:", error);
+    res.status(500).send("Failed to archive website.");
+  }
+}
+
+export async function restoreWebsite(req, res) {
+  const { id } = req.params;
+  try {
+    const record = await pbAdmin.collection("websites").getOne(id);
+    if (record.user === res.locals.user.id) {
+      await pbAdmin.collection("websites").update(id, { isArchived: false });
+    }
+    res.redirect("/websites");
+  } catch (error) {
+    console.error("Error restoring website:", error);
+    res.status(500).send("Failed to restore website.");
+  }
+}
+
+export async function deleteWebsite(req, res) {
+  const { id } = req.params;
+  const { deleteData } = req.body;
+
+  try {
+    const record = await pbAdmin.collection("websites").getOne(id);
+    if (record.user !== res.locals.user.id) {
+      return res.status(403).send("You do not have permission to delete this website.");
+    }
+
+    if (deleteData === "true") {
+      const relatedCollections = ["dash_sum", "events", "js_errors", "sessions", "visitors"];
+      for (const collection of relatedCollections) {
+        let items;
+        do {
+          const filterField = collection === "events" || collection === "js_errors" ? "session.website.id" : "website.id";
+          items = await pbAdmin.collection(collection).getFullList({
+            filter: `${filterField} = "${id}"`,
+            fields: "id",
+            perPage: 200,
+          });
+          for (const item of items) {
+            await pbAdmin.collection(collection).delete(item.id);
+          }
+        } while (items.length > 0);
+      }
+    }
+
+    await pbAdmin.collection("websites").delete(id);
+
     res.redirect("/websites");
   } catch (error) {
     console.error("Error deleting website:", error);
@@ -276,11 +339,7 @@ export async function getDashboardData(req, res) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    try {
-      await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
-    } catch (error) {
-      return res.status(403).json({ error: "Forbidden: You do not have access to this website." });
-    }
+    const website = await pbAdmin.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
     const resultsLimit = Number.parseInt(req.query.limit) || 10;
@@ -294,7 +353,7 @@ export async function getDashboardData(req, res) {
 
     const currentSummaries = allSummaries.filter((s) => new Date(s.date) >= currentStartDate);
     const prevSummaries = allSummaries.filter((s) => new Date(s.date) < currentStartDate);
-    const activeUsers = await calculateActiveUsers(websiteId);
+    const activeUsers = website.isArchived ? 0 : await calculateActiveUsers(websiteId);
 
     const currentMetrics = aggregateSummaries(currentSummaries);
     const prevMetrics = aggregateSummaries(prevSummaries);
@@ -309,6 +368,10 @@ export async function getDashboardData(req, res) {
         jsErrors: calculatePercentageChange(currentMetrics.jsErrors, prevMetrics.jsErrors),
       },
     };
+
+    if (website.isArchived) {
+      metrics.change = {};
+    }
 
     const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
     const chartData = getChartDataFromSummaries(currentSummaries, currentStartDate, currentEndDate);
@@ -337,13 +400,13 @@ export async function getDetailedReport(req, res) {
     }
 
     try {
-      await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+      await pbAdmin.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
     } catch (error) {
       return res.status(403).json({ error: "Forbidden: You do not have access to this website." });
     }
 
     if (reportType === "topJsErrors") {
-      const allErrors = await pb.collection("js_errors").getFullList({
+      const allErrors = await pbAdmin.collection("js_errors").getFullList({
         filter: `website.id = "${websiteId}"`,
         sort: "-count",
       });
@@ -375,7 +438,7 @@ export async function getDetailedReport(req, res) {
 
       const dateFilter = `created >= "${startDateString} 00:00:00.000Z" && created <= "${endDateString} 23:59:59.999Z"`;
 
-      const allEvents = await pb.collection("events").getFullList({
+      const allEvents = await pbAdmin.collection("events").getFullList({
         filter: `session.website.id = "${websiteId}" && type = "custom" && ${dateFilter}`,
         fields: "eventName, eventData",
         $autoCancel: false,
@@ -433,7 +496,7 @@ export async function getCustomEventDetails(req, res) {
     }
 
     try {
-      await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+      await pbAdmin.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
     } catch (error) {
       return res.status(403).json({ error: "Forbidden: You do not have access to this website." });
     }
@@ -455,7 +518,7 @@ export async function getCustomEventDetails(req, res) {
 
     const dateFilter = `created >= "${startDateString} 00:00:00.000Z" && created <= "${endDateString} 23:59:59.999Z"`;
 
-    const events = await pb.collection("events").getFullList({
+    const events = await pbAdmin.collection("events").getFullList({
       filter: `session.website.id = "${websiteId}" && type = "custom" && eventName = "${name}" && eventData != null && ${dateFilter}`,
       fields: "eventData",
       $autoCancel: false,
@@ -476,7 +539,7 @@ export async function getWebsiteSettings(req, res) {
     const userId = res.locals.user?.id;
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    const website = await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+    const website = await pbAdmin.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
     res.status(200).json({ ipBlacklist: website.ipBlacklist || [] });
   } catch (error) {
     res.status(404).json({ error: "Website not found." });
@@ -489,14 +552,14 @@ export async function updateWebsiteSettings(req, res) {
     const userId = res.locals.user?.id;
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-    const website = await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+    const website = await pbAdmin.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
 
     const dataToUpdate = { ...req.body };
     if (dataToUpdate.dataRetentionDays !== undefined && dataToUpdate.dataRetentionDays !== null) {
       dataToUpdate.dataRetentionDays = Number(dataToUpdate.dataRetentionDays);
     }
 
-    await pb.collection("websites").update(website.id, dataToUpdate);
+    await pbAdmin.collection("websites").update(website.id, dataToUpdate);
 
     res.status(200).json({ success: true });
   } catch (error) {
@@ -511,7 +574,7 @@ export async function addIpToBlacklist(req, res) {
     const userId = res.locals.user?.id;
     if (!userId || !ip) return res.status(400).json({ error: "Bad Request" });
 
-    const website = await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+    const website = await pbAdmin.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
     const currentBlacklist = website.ipBlacklist || [];
 
     if (currentBlacklist.includes(ip)) {
@@ -519,7 +582,7 @@ export async function addIpToBlacklist(req, res) {
     }
 
     const newBlacklist = [...currentBlacklist, ip];
-    await pb.collection("websites").update(website.id, { ipBlacklist: newBlacklist });
+    await pbAdmin.collection("websites").update(website.id, { ipBlacklist: newBlacklist });
 
     res.status(200).json({ success: true });
   } catch (error) {
@@ -534,11 +597,11 @@ export async function removeIpFromBlacklist(req, res) {
     const userId = res.locals.user?.id;
     if (!userId || !ip) return res.status(400).json({ error: "Bad Request" });
 
-    const website = await pb.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+    const website = await pbAdmin.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
     const currentBlacklist = website.ipBlacklist || [];
 
     const newBlacklist = currentBlacklist.filter((i) => i !== ip);
-    await pb.collection("websites").update(website.id, { ipBlacklist: newBlacklist });
+    await pbAdmin.collection("websites").update(website.id, { ipBlacklist: newBlacklist });
 
     res.status(200).json({ success: true });
   } catch (error) {

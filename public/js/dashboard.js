@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const pageWrapper = document.querySelector(".page-wrapper");
   const WEBSITE_ID = pageWrapper ? pageWrapper.dataset.websiteId : null;
+  const IS_ARCHIVED = pageWrapper ? pageWrapper.dataset.isArchived === "true" : false;
   const progressBar = document.getElementById("update-progress-bar");
   const detailDrawerOverlay = document.getElementById("detail-drawer-overlay");
   const detailDrawer = document.getElementById("detail-drawer");
@@ -289,6 +290,7 @@ document.addEventListener("DOMContentLoaded", () => {
       dataPeriodLabel.textContent = `Displaying data for the last ${settings.dataPeriod} days`;
     }
 
+    if (IS_ARCHIVED) return;
     fetchDashboardData();
     setupRefreshInterval();
   }
@@ -297,7 +299,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (refreshInterval) {
       clearInterval(refreshInterval);
     }
-    if (!settings.autoRefresh) {
+    if (!settings.autoRefresh || IS_ARCHIVED) {
       if (progressBar) {
         progressBar.style.transition = "none";
         progressBar.style.width = "0%";
@@ -386,6 +388,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (manualRefreshBtn) {
     manualRefreshBtn.addEventListener("click", () => {
+      if (IS_ARCHIVED) return;
       fetchDashboardData();
       if (settings.autoRefresh) {
         setupRefreshInterval();
@@ -526,10 +529,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const minScale = colors.mapScaleMin;
     const maxScale = colors.mapScaleMax;
 
-    const mapValues = countryData.reduce((acc, item) => {
-      acc[item.key] = item.count;
-      return acc;
-    }, {});
+    const mapValues = {};
+    for (const item of countryData) {
+      mapValues[item.key] = item.count;
+    }
 
     if (worldMap) {
       worldMap.destroy();
@@ -549,7 +552,7 @@ document.addEventListener("DOMContentLoaded", () => {
           {
             values: mapValues,
             scale: [minScale, maxScale],
-            normalizeFunction: "polynomial",
+            normalizeFunction: "linear",
           },
         ],
       },
@@ -624,10 +627,10 @@ document.addEventListener("DOMContentLoaded", () => {
       updateReportCard("report-countries", data.reports.countryBreakdown);
       updateReportCard("report-js-errors", data.reports.topJsErrors);
       if (worldMap && data.reports.countryBreakdown) {
-        const mapValues = data.reports.countryBreakdown.reduce((acc, item) => {
-          acc[item.key] = item.count;
-          return acc;
-        }, {});
+        const mapValues = {};
+        for (const item of data.reports.countryBreakdown) {
+          mapValues[item.key] = item.count;
+        }
         worldMap.series.regions[0].setValues(mapValues);
       }
     }
@@ -638,6 +641,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function fetchDashboardData() {
+    if (IS_ARCHIVED) return;
     try {
       const endpoint = WEBSITE_ID ? `/dashboard/data/${WEBSITE_ID}` : "/overview/data";
       const url = `${endpoint}?period=${settings.dataPeriod}&limit=${settings.resultsLimit}`;
@@ -1010,6 +1014,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }, 10);
   });
+
+  if (IS_ARCHIVED) {
+    if (manualRefreshBtn) manualRefreshBtn.disabled = true;
+    if (websiteSettingsBtn) websiteSettingsBtn.disabled = true;
+  }
 
   updateDashboardSettings();
 });

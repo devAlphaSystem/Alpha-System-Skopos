@@ -1,7 +1,9 @@
 <%- include('partials/header', {title: 'Dashboard'}) %>
 
-<div class="page-wrapper" data-website-id="<%= currentWebsite.id %>">
-  <%- include('partials/sidebar', { websites, currentWebsite, currentPage }) %>
+<% const isArchived = currentWebsite.isArchived %>
+
+<div class="page-wrapper <%= isArchived ? 'archived-state' : '' %>" data-website-id="<%= currentWebsite.id %>" data-is-archived="<%= isArchived %>">
+  <%- include('partials/sidebar', { websites, archivedWebsites, currentWebsite, currentPage }) %>
   <div class="main-container">
     <header class="main-header">
       <div class="header-content">
@@ -11,19 +13,28 @@
           <p id="data-period-label">Displaying data for the last 7 days</p>
         </div>
         <div class="header-actions">
-          <div class="active-users-widget">
-            <div class="live-indicator"></div>
-            <span id="active-users-count"><%= activeUsers %></span>
-            <span>Active Users</span>
-          </div>
-          <button id="manual-refresh-btn" class="btn-icon" title="Refresh Dashboard"><i class="fa-solid fa-rotate"></i></button>
-          <button id="website-settings-btn" class="btn-icon" title="Website Settings"><i class="fa-solid fa-sliders"></i></button>
+          <% if (!isArchived) { %>
+            <div class="active-users-widget">
+              <div class="live-indicator"></div>
+              <span id="active-users-count"><%= activeUsers %></span>
+              <span>Active Users</span>
+            </div>
+          <% } %>
+          <button id="manual-refresh-btn" class="btn-icon" title="Refresh Dashboard" <%= isArchived ? 'disabled' : '' %>><i class="fa-solid fa-rotate"></i></button>
+          <button id="website-settings-btn" class="btn-icon" title="Website Settings" <%= isArchived ? 'disabled' : '' %>><i class="fa-solid fa-sliders"></i></button>
         </div>
       </div>
-      <div class="update-progress-container"><div id="update-progress-bar" class="progress-bar-update"></div></div>
+      <% if (!isArchived) { %>
+        <div class="update-progress-container"><div id="update-progress-bar" class="progress-bar-update"></div></div>
+      <% } %>
     </header>
     
     <main class="main-content" style="padding-top: 1rem;">
+      <% if (isArchived) { %>
+        <div class="archived-banner">
+          <i class="fa-solid fa-box-archive"></i> This website is archived. Tracking and data refresh are disabled.
+        </div>
+      <% } %>
       <div class="metrics-grid">
         <div class="card metric-card">
           <div class="metric-icon"><i class="fa-solid fa-eye"></i></div>
@@ -97,7 +108,7 @@
         <div id="analytics-chart" class="chart-container"></div>
       </div>
 
-      <% if (metrics.visitors === 0) { %>
+      <% if (metrics.visitors === 0 && !isArchived) { %>
         <div class="card no-data-card">
           <i class="fa-solid fa-triangle-exclamation"></i>
           <h2>No Data Available</h2>
@@ -253,71 +264,73 @@
   </div>
 </div>
 
-<div class="drawer" id="website-settings-drawer">
-  <div class="drawer-header">
-    <h2>Website Settings</h2>
-    <button class="drawer-close" id="website-settings-close"><i class="fa-solid fa-xmark"></i></button>
-  </div>
-  <div class="drawer-content">
-    <div class="settings-group">
-      <h3>Tracking</h3>
-      <div class="settings-item">
-        <div>
-          <div class="settings-label">Disable tracking on localhost</div>
-          <div class="settings-description">Prevent tracking on localhost/127.0.0.1</div>
+<% if (!isArchived) { %>
+  <div class="drawer" id="website-settings-drawer">
+    <div class="drawer-header">
+      <h2>Website Settings</h2>
+      <button class="drawer-close" id="website-settings-close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="drawer-content">
+      <div class="settings-group">
+        <h3>Tracking</h3>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">Disable tracking on localhost</div>
+            <div class="settings-description">Prevent tracking on localhost/127.0.0.1</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="disable-localhost-toggle" <%= currentWebsite.disableLocalhostTracking ? 'checked' : '' %>>
+            <span class="toggle-slider"></span>
+          </label>
         </div>
-        <label class="toggle-switch">
-          <input type="checkbox" id="disable-localhost-toggle" <%= currentWebsite.disableLocalhostTracking ? 'checked' : '' %>>
-          <span class="toggle-slider"></span>
-        </label>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">IP Blacklist</div>
+            <div class="settings-description">Block tracking from specific IP addresses</div>
+          </div>
+          <button class="btn btn-secondary" id="manage-ip-blacklist-btn">Manage</button>
+        </div>
       </div>
-      <div class="settings-item">
-        <div>
-          <div class="settings-label">IP Blacklist</div>
-          <div class="settings-description">Block tracking from specific IP addresses</div>
+      <div class="settings-group">
+        <h3>Data</h3>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">Data Retention</div>
+            <div class="settings-description">Days to keep data (0 for forever)</div>
+          </div>
+          <input type="number" id="data-retention-input" class="settings-select" value="<%= currentWebsite.dataRetentionDays %>" min="0">
         </div>
-        <button class="btn btn-secondary" id="manage-ip-blacklist-btn">Manage</button>
       </div>
     </div>
-    <div class="settings-group">
-      <h3>Data</h3>
-      <div class="settings-item">
-        <div>
-          <div class="settings-label">Data Retention</div>
-          <div class="settings-description">Days to keep data (0 for forever)</div>
-        </div>
-        <input type="number" id="data-retention-input" class="settings-select" value="<%= currentWebsite.dataRetentionDays %>" min="0">
-      </div>
-    </div>
   </div>
-</div>
 
-<div class="drawer nested" id="ip-blacklist-drawer">
-  <div class="drawer-header">
-    <h2>IP Blacklist</h2>
-    <button class="drawer-close" id="ip-blacklist-close"><i class="fa-solid fa-xmark"></i></button>
-  </div>
-  <div class="drawer-content">
-    <form id="add-ip-form" class="detail-drawer-controls">
-      <div class="detail-drawer-search">
-        <input type="text" id="ip-address-input" placeholder="Enter IP address" required>
+  <div class="drawer nested" id="ip-blacklist-drawer">
+    <div class="drawer-header">
+      <h2>IP Blacklist</h2>
+      <button class="drawer-close" id="ip-blacklist-close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="drawer-content">
+      <form id="add-ip-form" class="detail-drawer-controls">
+        <div class="detail-drawer-search">
+          <input type="text" id="ip-address-input" placeholder="Enter IP address" required>
+        </div>
+        <button type="submit" class="btn">Add IP</button>
+      </form>
+      <div class="detail-table-container" style="margin-top: 1rem;">
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>IP Address</th>
+              <th style="width: 50px; text-align: right;"></th>
+            </tr>
+          </thead>
+          <tbody id="ip-blacklist-table-body">
+          </tbody>
+        </table>
       </div>
-      <button type="submit" class="btn">Add IP</button>
-    </form>
-    <div class="detail-table-container" style="margin-top: 1rem;">
-      <table class="detail-table">
-        <thead>
-          <tr>
-            <th>IP Address</th>
-            <th style="width: 50px; text-align: right;"></th>
-          </tr>
-        </thead>
-        <tbody id="ip-blacklist-table-body">
-        </tbody>
-      </table>
     </div>
   </div>
-</div>
+<% } %>
 
 <script>
   const initialChartData = <%- chartData %>;

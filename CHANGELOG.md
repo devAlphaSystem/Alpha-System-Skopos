@@ -1,3 +1,29 @@
+# 0.11.0
+
+#### Added
+
+- Archive and restore functionality for websites, allowing users to temporarily disable tracking and manage inactive sites.
+- A new `isArchived` boolean field in the `websites` database collection to support archiving.
+- A custom, reusable modal dialog system for confirmations and enhanced user interaction.
+- Dedicated UI elements and styling to indicate and manage archived websites, including an "Archived" section in the sidebar and on the website management page.
+- New routes for handling website archive and restore operations.
+- Enhanced website deletion process to optionally remove all associated analytics data (summaries, events, JS errors, sessions, visitors).
+- A separate PocketBase admin client (`pbAdmin`) for all backend data modification and retrieval operations, improving security.
+
+#### Changed
+
+- Implemented stricter access control rules for `reports` and `websites` database collections, restricting access to `user = @request.auth.id`. Other collection rules were updated from empty strings to null for consistency, meaning restricted to admin users only.
+- Dashboard behavior and UI are now adapted for archived websites, disabling active user tracking, auto-refresh, and website settings.
+- Increased the data fetching limit for country breakdown reports from 100 to 1000.
+- Modified the world map data normalization function from `polynomial` to `linear` for improved visual representation.
+- Centralized PocketBase client configuration for `autoCancellation` to ensure consistent behavior across all services.
+
+#### Fixed
+
+- Ensured consistent and proper PocketBase client usage across backend services and controllers, specifically by moving all administrative operations to the `pbAdmin` client and setting `autoCancellation(false)` centrally.
+
+---
+
 # 0.10.1
 
 #### Added

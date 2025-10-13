@@ -40,6 +40,19 @@
         <% } %>
       </ul>
     <% } %>
+    <% if (archivedWebsites && archivedWebsites.length > 0) { %>
+      <p class="nav-header">Archived</p>
+      <ul>
+        <% for (const website of archivedWebsites) { %>
+          <li class="<%= (currentWebsite && currentWebsite.id === website.id) ? 'active' : '' %>">
+            <a href="/dashboard/<%= website.id %>">
+              <i class="fa-solid fa-server icon"></i>
+              <span><%= website.name %></span>
+            </a>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
   </nav>
   <div class="sidebar-footer">
     <% if (user) { %>

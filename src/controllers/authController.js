@@ -11,7 +11,6 @@ export async function handleLogin(req, res) {
   const { email, password } = req.body;
   try {
     const authData = await pb.collection("users").authWithPassword(email, password);
-    pb.autoCancellation(false);
     const cookieOptions = {
       httpOnly: true,
       path: "/",

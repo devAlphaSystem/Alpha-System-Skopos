@@ -1,5 +1,5 @@
 import { eachDayOfInterval, format } from "date-fns";
-import { pb } from "../services/pocketbase.js";
+import { pbAdmin } from "../services/pocketbase.js";
 
 function processAndSort(map, total) {
   if (total === 0) return [];
@@ -91,7 +91,7 @@ export function getReportsFromSummaries(summaries, limit) {
     deviceBreakdown: mergeAndSortReports(summaries, "deviceBreakdown", limit),
     browserBreakdown: mergeAndSortReports(summaries, "browserBreakdown", limit),
     languageBreakdown: mergeAndSortReports(summaries, "languageBreakdown", limit),
-    countryBreakdown: mergeAndSortReports(summaries, "countryBreakdown", 100),
+    countryBreakdown: mergeAndSortReports(summaries, "countryBreakdown", 1000),
     topCustomEvents: mergeAndSortReports(summaries, "topCustomEvents", limit),
     topJsErrors: mergeAndSortReports(summaries, "topJsErrors", limit),
   };
@@ -161,7 +161,7 @@ export async function calculateActiveUsers(websiteId) {
   date.setMinutes(date.getMinutes() - 5);
   const fiveMinutesAgoUTC = date.toISOString().slice(0, 19).replace("T", " ");
 
-  const result = await pb.collection("sessions").getList(1, 1, {
+  const result = await pbAdmin.collection("sessions").getList(1, 1, {
     filter: `website.id = "${websiteId}" && updated >= "${fiveMinutesAgoUTC}"`,
     $autoCancel: false,
   });
