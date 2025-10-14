@@ -27,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let refreshInterval = null;
   let lineChart = null;
   let worldMap = null;
+  let eventSource = null;
 
   const countryNames = {
     AF: "Afghanistan",
@@ -298,19 +299,47 @@ document.addEventListener("DOMContentLoaded", () => {
   function setupRefreshInterval() {
     if (refreshInterval) {
       clearInterval(refreshInterval);
+      refreshInterval = null;
     }
-    if (!settings.autoRefresh || IS_ARCHIVED) {
+    if (eventSource) {
+      eventSource.close();
+      eventSource = null;
+    }
+
+    if (progressBar) {
+      progressBar.style.transition = "none";
+      progressBar.style.width = "0%";
+    }
+
+    if (IS_ARCHIVED) return;
+
+    if (settings.refreshRate === 0) {
       if (progressBar) {
-        progressBar.style.transition = "none";
-        progressBar.style.width = "0%";
+        progressBar.style.width = "100%";
       }
+      eventSource = new EventSource("/dashboard/events");
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === "update") {
+          if (!WEBSITE_ID || data.websiteId === WEBSITE_ID) {
+            fetchDashboardData();
+          }
+        }
+      };
+      eventSource.onerror = (err) => {
+        console.error("EventSource failed:", err);
+        eventSource.close();
+      };
       return;
     }
-    animateProgressBar(settings.refreshRate);
-    refreshInterval = setInterval(() => {
-      fetchDashboardData();
+
+    if (settings.autoRefresh) {
       animateProgressBar(settings.refreshRate);
-    }, settings.refreshRate);
+      refreshInterval = setInterval(() => {
+        fetchDashboardData();
+        animateProgressBar(settings.refreshRate);
+      }, settings.refreshRate);
+    }
   }
 
   function openDetailDrawer(reportType, reportTitle) {

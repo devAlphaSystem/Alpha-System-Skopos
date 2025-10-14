@@ -1,5 +1,5 @@
 import express from "express";
-import { showDashboard, showWebsites, addWebsite, deleteWebsite, showOverview, getDashboardData, getDetailedReport, getCustomEventDetails, updateWebsiteSettings, getWebsiteSettings, addIpToBlacklist, removeIpFromBlacklist, getOverviewData, archiveWebsite, restoreWebsite } from "../controllers/dashboardController.js";
+import { showDashboard, showWebsites, addWebsite, deleteWebsite, showOverview, getDashboardData, getDetailedReport, getCustomEventDetails, updateWebsiteSettings, getWebsiteSettings, addIpToBlacklist, removeIpFromBlacklist, getOverviewData, archiveWebsite, restoreWebsite, handleSseConnection } from "../controllers/dashboardController.js";
 import { showLoginPage, handleLogin, handleLogout, showRegistrationPage, handleRegistration } from "../controllers/authController.js";
 
 const router = express.Router();
@@ -18,6 +18,8 @@ router.post("/login", handleLogin);
 router.get("/logout", handleLogout);
 
 router.get("/", requireAuth, showOverview);
+
+router.get("/dashboard/events", requireAuth, handleSseConnection);
 
 router.get("/websites", requireAuth, showWebsites);
 router.post("/websites", requireAuth, addWebsite);

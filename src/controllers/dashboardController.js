@@ -2,6 +2,20 @@ import { pbAdmin } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
 import { subDays } from "date-fns";
 import { aggregateSummaries, getReportsFromSummaries, getChartDataFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData, getMultiWebsiteChartData } from "../utils/analytics.js";
+import { addClient } from "../services/sseManager.js";
+
+export function handleSseConnection(req, res) {
+  const headers = {
+    "Content-Type": "text/event-stream",
+    Connection: "keep-alive",
+    "Cache-Control": "no-cache",
+  };
+  res.writeHead(200, headers);
+
+  addClient(res);
+
+  res.write('data: { "type": "connected" }\n\n');
+}
 
 async function getCommonData(userId) {
   const allWebsites = await pbAdmin.collection("websites").getFullList({

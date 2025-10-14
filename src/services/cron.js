@@ -141,6 +141,4 @@ export function startCronJobs() {
   cron.schedule("0 2 * * *", pruneOldSessions, {
     timezone: "UTC",
   });
-
-  console.log("Cron jobs scheduled.");
 }

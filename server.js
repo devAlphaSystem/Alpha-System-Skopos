@@ -3,11 +3,15 @@ import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { EventSource } from "eventsource";
+
+global.EventSource = EventSource;
 
 import dashboardRoutes from "./src/routes/dashboard.js";
 import { pb, pbAdmin } from "./src/services/pocketbase.js";
 import { startCronJobs } from "./src/services/cron.js";
 import { userExists, setUserExists } from "./src/services/userState.js";
+import { startRealtimeService } from "./src/services/realtime.js";
 
 dotenv.config();
 
@@ -80,6 +84,7 @@ async function initializeApp() {
   app.listen(port, () => {
     console.log(`Skopos server listening at http://localhost:${port}`);
     startCronJobs();
+    startRealtimeService();
   });
 }
 

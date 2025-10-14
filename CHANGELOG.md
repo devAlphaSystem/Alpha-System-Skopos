@@ -1,3 +1,14 @@
+# 0.13.0
+
+#### Added
+
+- Introduced real-time dashboard updates using Server-Sent Events (SSE), enabling immediate data synchronization without manual refreshes.
+- Implemented new server-side services for real-time functionality, including subscription to database changes and broadcasting updates to connected clients.
+- Exposed a new API endpoint (/dashboard/events) for client-side Server-Sent Events connections.
+- Integrated the `eventsource` package to support Server-Sent Events (SSE) functionality.
+
+---
+
 # 0.12.0
 
 #### Added
