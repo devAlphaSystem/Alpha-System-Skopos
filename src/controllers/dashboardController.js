@@ -184,7 +184,7 @@ export async function showWebsites(req, res) {
 export async function addWebsite(req, res) {
   const { name, domain, dataRetentionDays } = req.body;
   try {
-    const newSite = await pbAdmin.collection("websites").create({
+    await pbAdmin.collection("websites").create({
       name,
       domain,
       dataRetentionDays: Number(dataRetentionDays) || 0,
@@ -194,7 +194,7 @@ export async function addWebsite(req, res) {
       ipBlacklist: [],
       isArchived: false,
     });
-    res.redirect(`/dashboard/${newSite.id}`);
+    res.redirect("/websites");
   } catch (error) {
     console.error("Error adding website:", error);
     res.status(500).send("Failed to add website.");

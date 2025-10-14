@@ -5,8 +5,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import dashboardRoutes from "./src/routes/dashboard.js";
-import { pb } from "./src/services/pocketbase.js";
+import { pb, pbAdmin } from "./src/services/pocketbase.js";
 import { startCronJobs } from "./src/services/cron.js";
+import { userExists, setUserExists } from "./src/services/userState.js";
 
 dotenv.config();
 
@@ -16,56 +17,70 @@ const port = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-
-app.use(async (req, res, next) => {
-  pb.authStore.clear();
-
+async function initializeApp() {
   try {
-    const authCookie = req.cookies.pb_auth;
-    if (authCookie) {
-      const authData = JSON.parse(authCookie);
-      pb.authStore.save(authData.token, authData.model);
-    }
+    const users = await pbAdmin.collection("users").getList(1, 1);
+    setUserExists(users.totalItems > 0);
   } catch (error) {
-    pb.authStore.clear();
+    console.error("Could not check for existing users:", error);
+    setUserExists(false);
   }
-  res.locals.user = pb.authStore.isValid ? pb.authStore.record : null;
-  res.locals.userAvatarUrl = null;
-  try {
-    if (res.locals.user?.avatar) {
-      const internalUrl = pb.files.getURL(res.locals.user, res.locals.user.avatar, { thumb: "80x80" });
-      if (process.env.PUBLIC_POCKETBASE_URL && process.env.POCKETBASE_URL) {
-        res.locals.userAvatarUrl = internalUrl.replace(process.env.POCKETBASE_URL, process.env.PUBLIC_POCKETBASE_URL);
-      } else {
-        res.locals.userAvatarUrl = internalUrl;
-      }
+
+  app.set("view engine", "ejs");
+  app.set("views", path.join(__dirname, "views"));
+
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(cookieParser());
+
+  app.use((req, res, next) => {
+    const allowedPaths = ["/register", "/login"];
+    const isStaticAsset = req.path.startsWith("/css") || req.path.startsWith("/js") || req.path.startsWith("/img");
+
+    if (!userExists && !allowedPaths.includes(req.path) && !isStaticAsset) {
+      return res.redirect("/register");
     }
-  } catch (e) {
-    res.locals.userAvatarUrl = null;
-  }
-  next();
-});
 
-app.use("/", dashboardRoutes);
+    if (userExists && req.path === "/register") {
+      return res.redirect("/login");
+    }
 
-app.use(express.static(path.join(__dirname, "public")));
+    next();
+  });
 
-app.use((req, res, next) => {
-  res.status(404).render("404");
-});
+  app.use(async (req, res, next) => {
+    pb.authStore.clear();
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).render("500");
-});
+    try {
+      const authCookie = req.cookies.pb_auth;
+      if (authCookie) {
+        const authData = JSON.parse(authCookie);
+        pb.authStore.save(authData.token, authData.model);
+      }
+    } catch (error) {
+      pb.authStore.clear();
+    }
+    res.locals.user = pb.authStore.isValid ? pb.authStore.record : null;
+    next();
+  });
 
-app.listen(port, () => {
-  console.log(`Skopos server listening at http://localhost:${port}`);
-  startCronJobs();
-});
+  app.use("/", dashboardRoutes);
+
+  app.use(express.static(path.join(__dirname, "public")));
+
+  app.use((req, res, next) => {
+    res.status(404).render("404");
+  });
+
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).render("500");
+  });
+
+  app.listen(port, () => {
+    console.log(`Skopos server listening at http://localhost:${port}`);
+    startCronJobs();
+  });
+}
+
+initializeApp();

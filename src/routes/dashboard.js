@@ -1,6 +1,6 @@
 import express from "express";
 import { showDashboard, showWebsites, addWebsite, deleteWebsite, showOverview, getDashboardData, getDetailedReport, getCustomEventDetails, updateWebsiteSettings, getWebsiteSettings, addIpToBlacklist, removeIpFromBlacklist, getOverviewData, archiveWebsite, restoreWebsite } from "../controllers/dashboardController.js";
-import { showLoginPage, handleLogin, handleLogout } from "../controllers/authController.js";
+import { showLoginPage, handleLogin, handleLogout, showRegistrationPage, handleRegistration } from "../controllers/authController.js";
 
 const router = express.Router();
 
@@ -11,10 +11,13 @@ function requireAuth(req, res, next) {
   res.redirect("/login");
 }
 
-router.get("/", requireAuth, showOverview);
+router.get("/register", showRegistrationPage);
+router.post("/register", handleRegistration);
 router.get("/login", showLoginPage);
 router.post("/login", handleLogin);
 router.get("/logout", handleLogout);
+
+router.get("/", requireAuth, showOverview);
 
 router.get("/websites", requireAuth, showWebsites);
 router.post("/websites", requireAuth, addWebsite);

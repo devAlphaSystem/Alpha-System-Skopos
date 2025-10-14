@@ -1,4 +1,5 @@
-import { pb } from "../services/pocketbase.js";
+import { pb, pbAdmin } from "../services/pocketbase.js";
+import { setUserExists } from "../services/userState.js";
 
 export function showLoginPage(req, res) {
   if (res.locals.user) {
@@ -28,4 +29,45 @@ export function handleLogout(req, res) {
   pb.authStore.clear();
   res.clearCookie("pb_auth");
   res.redirect("/login");
+}
+
+export function showRegistrationPage(req, res) {
+  res.render("register", { error: null });
+}
+
+export async function handleRegistration(req, res) {
+  try {
+    const existingUsers = await pbAdmin.collection("users").getList(1, 1);
+    if (existingUsers.totalItems > 0) {
+      return res.redirect("/login");
+    }
+
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).render("register", { error: "All fields are required." });
+    }
+    if (password.length < 8) {
+      return res.status(400).render("register", { error: "Password must be at least 8 characters long." });
+    }
+
+    await pbAdmin.collection("users").create({
+      name,
+      email,
+      password,
+      passwordConfirm: password,
+      emailVisibility: false,
+      verified: true,
+    });
+
+    setUserExists(true);
+    res.redirect("/login");
+  } catch (error) {
+    console.error("Registration failed:", error);
+    let errorMessage = "Failed to create account. The email might already be in use.";
+    if (error?.response?.data?.email?.message) {
+      errorMessage = error.response.data.email.message;
+    }
+    res.status(400).render("register", { error: errorMessage });
+  }
 }

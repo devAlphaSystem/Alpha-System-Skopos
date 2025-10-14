@@ -1,3 +1,24 @@
+# 0.12.0
+
+#### Added
+
+- Implemented an initial user registration process for first-time setup, including new `/register` routes and a dedicated registration page.
+- Introduced a user state service to manage and track the existence of the initial user account.
+- Added middleware to guide users through the initial setup or login based on user existence.
+
+#### Changed
+
+- Refactored server initialization to perform an asynchronous check for existing users upon startup.
+- Improved the website creation workflow to redirect to the website list after adding a new site.
+- Adjusted dashboard metric displays to show 0% change for archived websites.
+- Enhanced the login page by adding `autofocus` to the email input field.
+
+#### Removed
+
+- The user avatar field and associated avatar URL handling from the database schema and the application's user interface.
+
+---
+
 # 0.11.0
 
 #### Added

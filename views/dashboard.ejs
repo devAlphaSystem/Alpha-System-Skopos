@@ -41,10 +41,14 @@
           <div class="metric-content">
             <h3>Page Views</h3>
             <p class="metric-value" id="pageviews-value"><%= metrics.pageViews %></p>
-            <% if(metrics.change.pageViews >= 0) { %>
-              <span class="metric-change positive" id="pageviews-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.pageViews %>%</span>
+            <% if (isArchived) { %>
+              <span class="metric-change positive" id="pageviews-change"><i class="fa-solid fa-arrow-up"></i> 0%</span>
             <% } else { %>
-              <span class="metric-change negative" id="pageviews-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.pageViews) %>%</span>
+              <% if (metrics.change.pageViews >= 0) { %>
+                <span class="metric-change positive" id="pageviews-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.pageViews %>%</span>
+              <% } else { %>
+                <span class="metric-change negative" id="pageviews-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.pageViews) %>%</span>
+              <% } %>
             <% } %>
           </div>
         </div>
@@ -53,10 +57,14 @@
           <div class="metric-content">
             <h3>Visitors</h3>
             <p class="metric-value" id="visitors-value"><%= metrics.visitors %></p>
-            <% if(metrics.change.visitors >= 0) { %>
-              <span class="metric-change positive" id="visitors-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.visitors %>%</span>
+            <% if (isArchived) { %>
+              <span class="metric-change positive" id="visitors-change"><i class="fa-solid fa-arrow-up"></i> 0%</span>
             <% } else { %>
-              <span class="metric-change negative" id="visitors-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.visitors) %>%</span>
+              <% if (metrics.change.visitors >= 0) { %>
+                <span class="metric-change positive" id="visitors-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.visitors %>%</span>
+              <% } else { %>
+                <span class="metric-change negative" id="visitors-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.visitors) %>%</span>
+              <% } %>
             <% } %>
           </div>
         </div>
@@ -65,10 +73,14 @@
           <div class="metric-content">
             <h3>Engagement</h3>
             <p class="metric-value" id="engagementrate-value"><%= metrics.engagementRate %>%</p>
-            <% if(metrics.change.engagementRate >= 0) { %>
-              <span class="metric-change positive" id="engagementrate-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.engagementRate %>%</span>
+            <% if (isArchived) { %>
+              <span class="metric-change positive" id="engagementrate-change"><i class="fa-solid fa-arrow-up"></i> 0%</span>
             <% } else { %>
-              <span class="metric-change negative" id="engagementrate-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.engagementRate) %>%</span>
+              <% if (metrics.change.engagementRate >= 0) { %>
+                <span class="metric-change positive" id="engagementrate-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.engagementRate %>%</span>
+              <% } else { %>
+                <span class="metric-change negative" id="engagementrate-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.engagementRate) %>%</span>
+              <% } %>
             <% } %>
           </div>
         </div>
@@ -77,10 +89,14 @@
           <div class="metric-content">
             <h3>Avg. Session</h3>
             <p class="metric-value" id="avgsession-value"><%= metrics.avgSessionDuration.formatted %></p>
-            <% if(metrics.change.avgSessionDuration >= 0) { %>
-              <span class="metric-change positive" id="avgsession-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.avgSessionDuration %>%</span>
+            <% if (isArchived) { %>
+              <span class="metric-change positive" id="avgsession-change"><i class="fa-solid fa-arrow-up"></i> 0%</span>
             <% } else { %>
-              <span class="metric-change negative" id="avgsession-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.avgSessionDuration) %>%</span>
+              <% if (metrics.change.avgSessionDuration >= 0) { %>
+                <span class="metric-change positive" id="avgsession-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.avgSessionDuration %>%</span>
+              <% } else { %>
+                <span class="metric-change negative" id="avgsession-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.avgSessionDuration) %>%</span>
+              <% } %>
             <% } %>
           </div>
         </div>
@@ -89,10 +105,14 @@
           <div class="metric-content">
             <h3>JS Errors</h3>
             <p class="metric-value" id="jserrors-value"><%= metrics.jsErrors %></p>
-            <% if(metrics.change.jsErrors >= 0) { %>
-              <span class="metric-change positive" id="jserrors-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.jsErrors %>%</span>
+            <% if (isArchived) { %>
+              <span class="metric-change positive" id="jserrors-change"><i class="fa-solid fa-arrow-up"></i> 0%</span>
             <% } else { %>
-              <span class="metric-change negative" id="jserrors-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.jsErrors) %>%</span>
+              <% if (metrics.change.jsErrors >= 0) { %>
+                <span class="metric-change positive" id="jserrors-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.jsErrors %>%</span>
+              <% } else { %>
+                <span class="metric-change negative" id="jserrors-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.jsErrors) %>%</span>
+              <% } %>
             <% } %>
           </div>
         </div>

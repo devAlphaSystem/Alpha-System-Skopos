@@ -57,7 +57,6 @@
   <div class="sidebar-footer">
     <% if (user) { %>
       <div class="user-info">
-        <img src="<%= userAvatarUrl ? userAvatarUrl : ('https://ui-avatars.com/api/?name=' + encodeURIComponent(user.email || 'User') + '&background=111827&color=ffffff') %>" alt="User Avatar" />
         <div class="user-meta">
           <span class="user-name"><%= user.name %></span>
           <span class="user-role"><%= user.email %></span>
