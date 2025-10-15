@@ -1,70 +1,83 @@
 import cron from "node-cron";
-import { subDays } from "date-fns";
+import { subDays, startOfYesterday } from "date-fns";
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { calculateMetrics } from "../utils/analytics.js";
+import logger from "./logger.js";
 
 async function pruneOldSummaries() {
-  console.log("Running cron job: Pruning old dashboard summaries...");
+  logger.info("Running cron job: Pruning old dashboard summaries...");
   try {
     await ensureAdminAuth();
     const thirtyDaysAgo = subDays(new Date(), 31);
     const filterDate = thirtyDaysAgo.toISOString().split("T")[0];
+    logger.debug("Pruning summaries older than %s", filterDate);
 
     const recordsToDelete = await pbAdmin.collection("dash_sum").getFullList({
       filter: `date < "${filterDate}"`,
       fields: "id",
     });
 
-    for (const record of recordsToDelete) {
-      await pbAdmin.collection("dash_sum").delete(record.id);
+    if (recordsToDelete.length > 0) {
+      logger.debug("Found %d old summary records to prune.", recordsToDelete.length);
+      for (const record of recordsToDelete) {
+        await pbAdmin.collection("dash_sum").delete(record.id);
+      }
     }
 
-    console.log(`Pruned ${recordsToDelete.length} old summary records.`);
+    logger.info(`Pruned ${recordsToDelete.length} old summary records.`);
   } catch (error) {
-    console.error("Error during summary pruning cron job:", error);
+    logger.error("Error during summary pruning cron job: %o", error);
   }
 }
 
 async function enforceDataRetention() {
-  console.log("Running cron job: Enforcing data retention policies...");
+  logger.info("Running cron job: Enforcing data retention policies...");
   try {
     await ensureAdminAuth();
     const websites = await pbAdmin.collection("websites").getFullList({
       filter: "dataRetentionDays > 0",
     });
+    logger.debug("Found %d websites with data retention policies.", websites.length);
 
     for (const website of websites) {
       const retentionDays = website.dataRetentionDays;
       const cutoffDate = subDays(new Date(), retentionDays);
       const cutoffISO = cutoffDate.toISOString();
       const filter = `session.website.id = "${website.id}" && created < "${cutoffISO}"`;
+      logger.debug("Enforcing %d-day retention for website %s (ID: %s). Cutoff: %s", retentionDays, website.name, website.id, cutoffISO);
 
       const eventsToDelete = await pbAdmin.collection("events").getFullList({
         filter: filter,
         fields: "id",
       });
-      for (const event of eventsToDelete) {
-        await pbAdmin.collection("events").delete(event.id);
+      if (eventsToDelete.length > 0) {
+        logger.debug("Found %d events to delete for website %s.", eventsToDelete.length, website.name);
+        for (const event of eventsToDelete) {
+          await pbAdmin.collection("events").delete(event.id);
+        }
       }
 
       const sessionsToDelete = await pbAdmin.collection("sessions").getFullList({
         filter: `website.id = "${website.id}" && created < "${cutoffISO}"`,
         fields: "id",
       });
-      for (const session of sessionsToDelete) {
-        await pbAdmin.collection("sessions").delete(session.id);
+      if (sessionsToDelete.length > 0) {
+        logger.debug("Found %d sessions to delete for website %s.", sessionsToDelete.length, website.name);
+        for (const session of sessionsToDelete) {
+          await pbAdmin.collection("sessions").delete(session.id);
+        }
       }
 
-      console.log(`Data retention for ${website.name}: Removed ${eventsToDelete.length} events and ${sessionsToDelete.length} sessions.`);
+      logger.info(`Data retention for ${website.name}: Removed ${eventsToDelete.length} events and ${sessionsToDelete.length} sessions.`);
     }
-    console.log("Finished enforcing data retention.");
+    logger.info("Finished enforcing data retention.");
   } catch (error) {
-    console.error("Error during data retention cron job:", error);
+    logger.error("Error during data retention cron job: %o", error);
   }
 }
 
 async function finalizeDailySummaries() {
-  console.log("Running cron job: Finalizing yesterday's summaries...");
+  logger.info("Running cron job: Finalizing yesterday's summaries...");
   try {
     await ensureAdminAuth();
     const yesterday = startOfYesterday();
@@ -75,9 +88,12 @@ async function finalizeDailySummaries() {
       filter: `date >= "${yesterdayStart}" && date <= "${yesterdayEnd}" && isFinalized = false`,
     });
 
+    logger.debug("Found %d summaries to finalize for yesterday.", summariesToFinalize.length);
+
     for (const summary of summariesToFinalize) {
       const websiteId = summary.website;
       const dateFilter = `created >= "${yesterdayStart}" && created <= "${yesterdayEnd}"`;
+      logger.debug("Finalizing summary for website: %s", websiteId);
 
       const sessions = await pbAdmin.collection("sessions").getFullList({
         filter: `website.id = "${websiteId}" && ${dateFilter}`,
@@ -87,6 +103,7 @@ async function finalizeDailySummaries() {
       });
 
       if (sessions.length > 0 || events.length > 0) {
+        logger.debug("Calculating final metrics for website %s with %d sessions and %d events.", websiteId, sessions.length, events.length);
         const finalMetrics = calculateMetrics(sessions, events);
         const updatedSummary = {
           ...summary.summary,
@@ -98,34 +115,41 @@ async function finalizeDailySummaries() {
           summary: updatedSummary,
           isFinalized: true,
         });
-        console.log(`Finalized summary for website ${websiteId}`);
+        logger.info(`Finalized summary for website ${websiteId}`);
+      } else {
+        logger.debug("No sessions or events for website %s yesterday, marking as finalized.", websiteId);
+        await pbAdmin.collection("dash_sum").update(summary.id, { isFinalized: true });
       }
     }
-    console.log("Finished finalizing daily summaries.");
+    logger.info("Finished finalizing daily summaries.");
   } catch (error) {
-    console.error("Error during summary finalization cron job:", error);
+    logger.error("Error during summary finalization cron job: %o", error);
   }
 }
 
 async function pruneOldSessions() {
-  console.log("Running cron job: Pruning old sessions...");
+  logger.info("Running cron job: Pruning old sessions...");
   try {
     await ensureAdminAuth();
     const sevenDaysAgo = subDays(new Date(), 7);
     const cutoffISO = sevenDaysAgo.toISOString();
+    logger.debug("Pruning sessions older than %s", cutoffISO);
 
     const recordsToDelete = await pbAdmin.collection("sessions").getFullList({
       filter: `created < "${cutoffISO}"`,
       fields: "id",
     });
 
-    for (const record of recordsToDelete) {
-      await pbAdmin.collection("sessions").delete(record.id);
+    if (recordsToDelete.length > 0) {
+      logger.debug("Found %d old session records to prune.", recordsToDelete.length);
+      for (const record of recordsToDelete) {
+        await pbAdmin.collection("sessions").delete(record.id);
+      }
     }
 
-    console.log(`Pruned ${recordsToDelete.length} old session records.`);
+    logger.info(`Pruned ${recordsToDelete.length} old session records.`);
   } catch (error) {
-    console.error("Error during session pruning cron job:", error);
+    logger.error("Error during session pruning cron job: %o", error);
   }
 }
 

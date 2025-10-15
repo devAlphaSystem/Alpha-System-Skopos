@@ -1,5 +1,6 @@
-import PocketBase from "pocketbase";
 import dotenv from "dotenv";
+import PocketBase from "pocketbase";
+import logger from "./logger.js";
 
 dotenv.config();
 
@@ -21,13 +22,13 @@ export async function ensureAdminAuth() {
   try {
     await pbAdmin.collection("_superusers").authWithPassword(adminEmail, adminPassword);
     if (!isInitialAuthDone) {
-      console.log("Successfully authenticated with Pocketbase as admin.");
+      logger.info("Successfully authenticated with Pocketbase as admin.");
       isInitialAuthDone = true;
     } else {
-      console.log("PocketBase admin token refreshed successfully.");
+      logger.info("PocketBase admin token refreshed successfully.");
     }
   } catch (error) {
-    console.error("FATAL: Failed to authenticate with Pocketbase as admin:", error.message);
+    logger.error("FATAL: Failed to authenticate with Pocketbase as admin: %s", error.message);
     if (!isInitialAuthDone) {
       process.exit(1);
     }

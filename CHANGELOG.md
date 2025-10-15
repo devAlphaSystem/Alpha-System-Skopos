@@ -1,3 +1,51 @@
+# 0.15.0
+
+#### Added
+
+- Introduced a comprehensive logging system using Winston with daily rotating file support.
+- Added `NODE_ENV` and `LOG_LEVEL` environment variables to `.env.example` for configurable application environment and logging verbosity.
+- Included a `logs` directory in `.gitignore` to manage generated log files.
+- Added new dependencies `winston` and `winston-daily-rotate-file` to `package.json`.
+
+#### Changed
+
+- Replaced all direct `console.log` and `console.error` calls with the new structured logging system, providing more consistent and detailed output for application events, errors, and user actions.
+
+#### Fixed
+
+- Standardized error page rendering for critical application and API errors, improving user experience by displaying consistent error pages (`500` for server errors, `404` for not found) rather than generic text responses.
+- Ensured that calling `doesUserExist()` before app state initialization now throws a more informative error, improving developer experience.
+
+---
+
+# 0.14.0
+
+#### Added
+
+- Introduced new mini-charts displaying daily trends for Page Views, Visitors, Engagement Rate, and Average Session Duration directly within their respective metric cards.
+- Added `createMiniChart` and `initializeMetricCharts` functions in `dashboard.js` to support the rendering and updating of the new mini-trend charts.
+- Implemented the `getMetricTrends` utility function to efficiently calculate daily metric trends for displaying in the new charts.
+
+#### Changed
+
+- Refactored the dashboard and overview pages to integrate mini-trend charts into metric cards, replacing the single large 'Page Views Over Time' chart.
+- Adjusted the layout of the metrics grid on dashboard and overview pages from 5 columns to 4 for better visual organization.
+- Improved the precision of date range filtering for previous summaries in analytics data fetching, ensuring more accurate change calculations.
+- Refactored `ensureAdminAuth` calls within dashboard controllers, streamlining authentication checks.
+- Updated chart theming logic to apply to the new mini-trend charts, ensuring consistent visual experience.
+- Adjusted the `onRegionTooltipShow` function signature in `dashboard.js` for consistency.
+
+#### Removed
+
+- Eliminated the dedicated 'Page Views Over Time' chart from both dashboard and overview pages.
+- Removed the 'JS Errors' metric card from the dashboard and overview interfaces.
+- Deprecated `getChartDataFromSummaries` and `getMultiWebsiteChartData` utility functions, as their functionality is replaced by `getMetricTrends`.
+- Removed the `lineChart` variable and associated initialization/update logic in `dashboard.js`.
+- Removed the `closeAllDrawers` function from `dashboard.js`.
+- Removed the `req` parameter from `handleSseConnection` in `dashboardController.js`.
+
+---
+
 # 0.13.2
 
 #### Added

@@ -1,6 +1,6 @@
 {
   "name": "alpha-system-skopos",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -26,7 +26,9 @@
     "eventsource": "^4.0.0",
     "express": "^5.1.0",
     "node-cron": "^4.2.1",
-    "pocketbase": "^0.26.2"
+    "pocketbase": "^0.26.2",
+    "winston": "^3.18.3",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",

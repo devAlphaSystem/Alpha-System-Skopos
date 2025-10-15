@@ -12,6 +12,7 @@ import { pb } from "./src/services/pocketbase.js";
 import { startCronJobs } from "./src/services/cron.js";
 import { initialize as initializeAppState, doesUserExist } from "./src/services/appState.js";
 import { startRealtimeService } from "./src/services/realtime.js";
+import logger from "./src/services/logger.js";
 
 dotenv.config();
 
@@ -71,12 +72,12 @@ async function initializeApp() {
   });
 
   app.use((err, req, res, next) => {
-    console.error(err.stack);
+    logger.error("Unhandled application error: %o", err);
     res.status(500).render("500");
   });
 
   app.listen(port, () => {
-    console.log(`Skopos server listening at http://localhost:${port}`);
+    logger.info(`Skopos server listening at http://localhost:${port}`);
     startCronJobs();
     startRealtimeService();
   });
