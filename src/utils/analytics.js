@@ -1,4 +1,4 @@
-import { eachDayOfInterval, format } from "date-fns";
+import { eachDayOfInterval, format, subDays } from "date-fns";
 import { pbAdmin } from "../services/pocketbase.js";
 
 function processAndSort(map, total) {
@@ -114,46 +114,62 @@ export function getAllData(summaries, reportType) {
   return reportKey ? mergeAndSortReports(summaries, reportKey, 10000) : [];
 }
 
-export function getChartDataFromSummaries(summaries, startDate, endDate) {
+export function getMetricTrends(summaries, trendDays = 7) {
+  const trends = {
+    pageViews: [],
+    visitors: [],
+    engagementRate: [],
+    avgSessionDuration: [],
+  };
+
+  const endDate = new Date();
+  const startDate = subDays(endDate, trendDays - 1);
   const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
-  const pageViewCounts = new Map(dateRange.map((d) => [format(d, "yyyy-MM-dd"), 0]));
+
+  const dailyData = new Map(
+    dateRange.map((d) => [
+      format(d, "yyyy-MM-dd"),
+      {
+        pageViews: 0,
+        visitors: 0,
+        engagedSessions: 0,
+        totalDurationSeconds: 0,
+        finalizedVisitorsCount: 0,
+      },
+    ]),
+  );
 
   for (const summary of summaries) {
     const summaryDateString = summary.date.substring(0, 10);
-    if (pageViewCounts.has(summaryDateString)) {
-      pageViewCounts.set(summaryDateString, pageViewCounts.get(summaryDateString) + (summary.summary?.pageViews || 0));
-    }
-  }
+    if (dailyData.has(summaryDateString)) {
+      const dayData = dailyData.get(summaryDateString);
+      const s = summary.summary;
+      const dailyVisitors = s.visitors || 0;
 
-  const data = Array.from(pageViewCounts.entries())
-    .map(([dateString, count]) => [new Date(dateString).getTime(), count])
-    .sort((a, b) => a[0] - b[0]);
-
-  return [{ name: "Page Views", data }];
-}
-
-export function getMultiWebsiteChartData(summariesByWebsite, startDate, endDate) {
-  const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
-  const series = [];
-
-  for (const { website, summaries } of summariesByWebsite) {
-    const pageViewCounts = new Map(dateRange.map((d) => [format(d, "yyyy-MM-dd"), 0]));
-
-    for (const summary of summaries) {
-      const summaryDateString = summary.date.substring(0, 10);
-      if (pageViewCounts.has(summaryDateString)) {
-        pageViewCounts.set(summaryDateString, pageViewCounts.get(summaryDateString) + (summary.summary?.pageViews || 0));
+      dayData.pageViews += s.pageViews || 0;
+      dayData.visitors += dailyVisitors;
+      dayData.engagedSessions += s.engagedSessions || 0;
+      if (summary.isFinalized && dailyVisitors > 0) {
+        dayData.finalizedVisitorsCount += dailyVisitors;
+        dayData.totalDurationSeconds += (s.avgSessionDuration?.raw || 0) * dailyVisitors;
       }
     }
-
-    const data = Array.from(pageViewCounts.entries())
-      .map(([dateString, count]) => [new Date(dateString).getTime(), count])
-      .sort((a, b) => a[0] - b[0]);
-
-    series.push({ name: website.name, data });
   }
 
-  return series;
+  for (const day of dateRange) {
+    const dateString = format(day, "yyyy-MM-dd");
+    const data = dailyData.get(dateString);
+
+    const engagementRate = data.visitors > 0 ? Math.round((data.engagedSessions / data.visitors) * 100) : 0;
+    const avgDurationSeconds = data.finalizedVisitorsCount > 0 ? data.totalDurationSeconds / data.finalizedVisitorsCount : 0;
+
+    trends.pageViews.push(data.pageViews);
+    trends.visitors.push(data.visitors);
+    trends.engagementRate.push(engagementRate);
+    trends.avgSessionDuration.push(Math.round(avgDurationSeconds));
+  }
+
+  return trends;
 }
 
 export async function calculateActiveUsers(websiteId) {

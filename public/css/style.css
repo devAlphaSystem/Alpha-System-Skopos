@@ -552,7 +552,7 @@ body {
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -563,6 +563,7 @@ body {
   gap: 1rem;
   min-height: auto;
   padding: 1rem;
+  justify-content: space-between;
 }
 
 .metric-icon {
@@ -581,6 +582,10 @@ body {
 [data-theme="dark"] .metric-icon {
   background-color: rgba(248, 113, 113, 0.2);
   color: var(--primary-color);
+}
+
+.metric-content {
+  flex-grow: 1;
 }
 
 .metric-content h3 {
@@ -606,9 +611,10 @@ body {
   color: var(--negative-color);
 }
 
-.chart-card {
-  margin-bottom: 1rem;
-  padding: 1rem;
+.metric-chart {
+  width: 120px;
+  height: 40px;
+  align-self: center;
 }
 
 .dashboard-grid {

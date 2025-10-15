@@ -1,10 +1,10 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
 import { subDays } from "date-fns";
-import { aggregateSummaries, getReportsFromSummaries, getChartDataFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData, getMultiWebsiteChartData } from "../utils/analytics.js";
+import { aggregateSummaries, getReportsFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData, getMetricTrends } from "../utils/analytics.js";
 import { addClient } from "../services/sseManager.js";
 
-export function handleSseConnection(req, res) {
+export function handleSseConnection(res) {
   const headers = {
     "Content-Type": "text/event-stream",
     Connection: "keep-alive",
@@ -18,6 +18,7 @@ export function handleSseConnection(req, res) {
 }
 
 async function getCommonData(userId) {
+  await ensureAdminAuth();
   const allWebsites = await pbAdmin.collection("websites").getFullList({
     filter: `user.id = "${userId}"`,
     sort: "created",
@@ -30,6 +31,7 @@ async function getCommonData(userId) {
 }
 
 async function fetchSummaries(websiteId, startDate, endDate) {
+  await ensureAdminAuth();
   const startYear = startDate.getUTCFullYear();
   const startMonth = String(startDate.getUTCMonth() + 1).padStart(2, "0");
   const startDay = String(startDate.getUTCDate()).padStart(2, "0");
@@ -50,9 +52,8 @@ async function fetchSummaries(websiteId, startDate, endDate) {
   return summaries;
 }
 
-export async function showOverview(req, res) {
+export async function showOverview(res) {
   try {
-    await ensureAdminAuth();
     const { websites, archivedWebsites } = await getCommonData(res.locals.user.id);
     if (websites.length === 0 && archivedWebsites.length === 0) {
       return res.redirect("/websites");
@@ -60,20 +61,22 @@ export async function showOverview(req, res) {
 
     const dataPeriod = 7;
     const resultsLimit = 10;
+    const trendDays = 7;
     const today = new Date();
 
     const currentStartDate = subDays(today, dataPeriod - 1);
-    const currentEndDate = today;
     const prevStartDate = subDays(currentStartDate, dataPeriod);
 
     const websiteIds = websites.map((w) => w.id);
-    const allSummariesPromises = websiteIds.map((id) => fetchSummaries(id, prevStartDate, currentEndDate));
+    const allSummariesPromises = websiteIds.map((id) => fetchSummaries(id, prevStartDate, today));
     const summariesByWebsiteRaw = await Promise.all(allSummariesPromises);
-
     const allSummariesFlat = summariesByWebsiteRaw.flat();
 
     const currentSummaries = allSummariesFlat.filter((s) => new Date(s.date) >= currentStartDate);
-    const prevSummaries = allSummariesFlat.filter((s) => new Date(s.date) < currentStartDate);
+    const prevSummaries = allSummariesFlat.filter((s) => {
+      const d = new Date(s.date);
+      return d >= prevStartDate && d < currentStartDate;
+    });
 
     const activeUsersPromises = websiteIds.map((id) => calculateActiveUsers(id));
     const activeUsersCounts = await Promise.all(activeUsersPromises);
@@ -81,27 +84,20 @@ export async function showOverview(req, res) {
 
     const currentMetrics = aggregateSummaries(currentSummaries);
     const prevMetrics = aggregateSummaries(prevSummaries);
+    const trends = getMetricTrends(currentSummaries, trendDays);
 
     const metrics = {
       ...currentMetrics,
+      trends,
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
         engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
         avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
-        jsErrors: calculatePercentageChange(currentMetrics.jsErrors, prevMetrics.jsErrors),
       },
     };
 
     const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
-
-    const summariesByWebsite = websites.map((website, index) => {
-      return {
-        website,
-        summaries: summariesByWebsiteRaw[index].filter((s) => new Date(s.date) >= currentStartDate),
-      };
-    });
-    const chartData = getMultiWebsiteChartData(summariesByWebsite, currentStartDate, currentEndDate);
 
     res.render("overview", {
       websites,
@@ -110,7 +106,6 @@ export async function showOverview(req, res) {
       metrics,
       reports,
       activeUsers,
-      chartData: JSON.stringify(chartData),
       currentPage: "overview",
     });
   } catch (error) {
@@ -121,7 +116,6 @@ export async function showOverview(req, res) {
 
 export async function showDashboard(req, res) {
   try {
-    await ensureAdminAuth();
     const { websiteId } = req.params;
     const { websites, archivedWebsites, allWebsites } = await getCommonData(res.locals.user.id);
 
@@ -132,30 +126,34 @@ export async function showDashboard(req, res) {
 
     const dataPeriod = 7;
     const resultsLimit = 10;
+    const trendDays = 7;
     const today = new Date();
 
     const currentStartDate = subDays(today, dataPeriod - 1);
-    const currentEndDate = today;
     const prevStartDate = subDays(currentStartDate, dataPeriod);
 
-    const allSummaries = await fetchSummaries(websiteId, prevStartDate, currentEndDate);
+    const allSummaries = await fetchSummaries(websiteId, prevStartDate, today);
 
     const currentSummaries = allSummaries.filter((s) => new Date(s.date) >= currentStartDate);
-    const prevSummaries = allSummaries.filter((s) => new Date(s.date) < currentStartDate);
+    const prevSummaries = allSummaries.filter((s) => {
+      const d = new Date(s.date);
+      return d >= prevStartDate && d < currentStartDate;
+    });
 
     const activeUsers = currentWebsite.isArchived ? 0 : await calculateActiveUsers(websiteId);
 
     const currentMetrics = aggregateSummaries(currentSummaries);
     const prevMetrics = aggregateSummaries(prevSummaries);
+    const trends = getMetricTrends(currentSummaries, trendDays);
 
     const metrics = {
       ...currentMetrics,
+      trends,
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
         engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
         avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
-        jsErrors: calculatePercentageChange(currentMetrics.jsErrors, prevMetrics.jsErrors),
       },
     };
 
@@ -164,7 +162,6 @@ export async function showDashboard(req, res) {
     }
 
     const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
-    const chartData = getChartDataFromSummaries(currentSummaries, currentStartDate, currentEndDate);
 
     res.render("dashboard", {
       websites,
@@ -173,7 +170,6 @@ export async function showDashboard(req, res) {
       metrics,
       reports,
       activeUsers,
-      chartData: JSON.stringify(chartData),
       currentPage: "dashboard",
     });
   } catch (error) {
@@ -182,7 +178,7 @@ export async function showDashboard(req, res) {
   }
 }
 
-export async function showWebsites(req, res) {
+export async function showWebsites(res) {
   try {
     await ensureAdminAuth();
     const { websites, archivedWebsites } = await getCommonData(res.locals.user.id);
@@ -289,7 +285,6 @@ export async function deleteWebsite(req, res) {
 
 export async function getOverviewData(req, res) {
   try {
-    await ensureAdminAuth();
     const userId = res.locals.user?.id;
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -297,25 +292,27 @@ export async function getOverviewData(req, res) {
 
     const { websites } = await getCommonData(userId);
     if (websites.length === 0) {
-      return res.status(200).json({ metrics: {}, reports: {}, chartData: [] });
+      return res.status(200).json({ metrics: {}, reports: {} });
     }
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
     const resultsLimit = Number.parseInt(req.query.limit) || 10;
+    const trendDays = 7;
     const today = new Date();
 
     const currentStartDate = subDays(today, dataPeriod - 1);
-    const currentEndDate = today;
     const prevStartDate = subDays(currentStartDate, dataPeriod);
 
     const websiteIds = websites.map((w) => w.id);
-    const allSummariesPromises = websiteIds.map((id) => fetchSummaries(id, prevStartDate, currentEndDate));
+    const allSummariesPromises = websiteIds.map((id) => fetchSummaries(id, prevStartDate, today));
     const summariesByWebsiteRaw = await Promise.all(allSummariesPromises);
-
     const allSummariesFlat = summariesByWebsiteRaw.flat();
 
     const currentSummaries = allSummariesFlat.filter((s) => new Date(s.date) >= currentStartDate);
-    const prevSummaries = allSummariesFlat.filter((s) => new Date(s.date) < currentStartDate);
+    const prevSummaries = allSummariesFlat.filter((s) => {
+      const d = new Date(s.date);
+      return d >= prevStartDate && d < currentStartDate;
+    });
 
     const activeUsersPromises = websiteIds.map((id) => calculateActiveUsers(id));
     const activeUsersCounts = await Promise.all(activeUsersPromises);
@@ -323,29 +320,22 @@ export async function getOverviewData(req, res) {
 
     const currentMetrics = aggregateSummaries(currentSummaries);
     const prevMetrics = aggregateSummaries(prevSummaries);
+    const trends = getMetricTrends(currentSummaries, trendDays);
 
     const metrics = {
       ...currentMetrics,
+      trends,
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
         engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
         avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
-        jsErrors: calculatePercentageChange(currentMetrics.jsErrors, prevMetrics.jsErrors),
       },
     };
 
     const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
 
-    const summariesByWebsite = websites.map((website, index) => {
-      return {
-        website,
-        summaries: summariesByWebsiteRaw[index].filter((s) => new Date(s.date) >= currentStartDate),
-      };
-    });
-    const chartData = getMultiWebsiteChartData(summariesByWebsite, currentStartDate, currentEndDate);
-
-    res.status(200).json({ activeUsers, metrics, reports, chartData });
+    res.status(200).json({ activeUsers, metrics, reports });
   } catch (error) {
     console.error("[API ERROR] Failed to fetch overview data:", error);
     res.status(500).json({ error: "Failed to fetch overview data." });
@@ -354,7 +344,6 @@ export async function getOverviewData(req, res) {
 
 export async function getDashboardData(req, res) {
   try {
-    await ensureAdminAuth();
     const { websiteId } = req.params;
     const userId = res.locals.user?.id;
 
@@ -366,29 +355,34 @@ export async function getDashboardData(req, res) {
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
     const resultsLimit = Number.parseInt(req.query.limit) || 10;
+    const trendDays = 7;
     const today = new Date();
 
     const currentStartDate = subDays(today, dataPeriod - 1);
-    const currentEndDate = today;
     const prevStartDate = subDays(currentStartDate, dataPeriod);
 
-    const allSummaries = await fetchSummaries(websiteId, prevStartDate, currentEndDate);
+    const allSummaries = await fetchSummaries(websiteId, prevStartDate, today);
 
     const currentSummaries = allSummaries.filter((s) => new Date(s.date) >= currentStartDate);
-    const prevSummaries = allSummaries.filter((s) => new Date(s.date) < currentStartDate);
+    const prevSummaries = allSummaries.filter((s) => {
+      const d = new Date(s.date);
+      return d >= prevStartDate && d < currentStartDate;
+    });
+
     const activeUsers = website.isArchived ? 0 : await calculateActiveUsers(websiteId);
 
     const currentMetrics = aggregateSummaries(currentSummaries);
     const prevMetrics = aggregateSummaries(prevSummaries);
+    const trends = getMetricTrends(currentSummaries, trendDays);
 
     const metrics = {
       ...currentMetrics,
+      trends,
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
         engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
         avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
-        jsErrors: calculatePercentageChange(currentMetrics.jsErrors, prevMetrics.jsErrors),
       },
     };
 
@@ -397,16 +391,8 @@ export async function getDashboardData(req, res) {
     }
 
     const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
-    const chartData = getChartDataFromSummaries(currentSummaries, currentStartDate, currentEndDate);
 
-    const updateData = {
-      activeUsers,
-      metrics,
-      reports,
-      chartData,
-    };
-
-    res.status(200).json(updateData);
+    res.status(200).json({ activeUsers, metrics, reports });
   } catch (error) {
     console.error("[API ERROR] Failed to fetch dashboard data:", error);
     res.status(500).json({ error: "Failed to fetch dashboard data." });

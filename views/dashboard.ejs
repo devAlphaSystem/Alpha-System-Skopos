@@ -51,6 +51,7 @@
               <% } %>
             <% } %>
           </div>
+          <div class="metric-chart" id="pageviews-trend-chart"></div>
         </div>
         <div class="card metric-card">
           <div class="metric-icon"><i class="fa-solid fa-users"></i></div>
@@ -67,6 +68,7 @@
               <% } %>
             <% } %>
           </div>
+          <div class="metric-chart" id="visitors-trend-chart"></div>
         </div>
         <div class="card metric-card">
           <div class="metric-icon"><i class="fa-solid fa-hand-pointer"></i></div>
@@ -83,6 +85,7 @@
               <% } %>
             <% } %>
           </div>
+          <div class="metric-chart" id="engagementrate-trend-chart"></div>
         </div>
         <div class="card metric-card">
           <div class="metric-icon"><i class="fa-solid fa-clock"></i></div>
@@ -99,33 +102,8 @@
               <% } %>
             <% } %>
           </div>
+          <div class="metric-chart" id="avgsession-trend-chart"></div>
         </div>
-        <div class="card metric-card">
-          <div class="metric-icon"><i class="fa-solid fa-bug"></i></div>
-          <div class="metric-content">
-            <h3>JS Errors</h3>
-            <p class="metric-value" id="jserrors-value"><%= metrics.jsErrors %></p>
-            <% if (isArchived) { %>
-              <span class="metric-change positive" id="jserrors-change"><i class="fa-solid fa-arrow-up"></i> 0%</span>
-            <% } else { %>
-              <% if (metrics.change.jsErrors >= 0) { %>
-                <span class="metric-change positive" id="jserrors-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.jsErrors %>%</span>
-              <% } else { %>
-                <span class="metric-change negative" id="jserrors-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.jsErrors) %>%</span>
-              <% } %>
-            <% } %>
-          </div>
-        </div>
-      </div>
-
-      <div class="card chart-card loading">
-        <div class="card-header">
-          <h2>Page Views Over Time</h2>
-        </div>
-        <div class="spinner-container">
-          <div class="spinner"></div>
-        </div>
-        <div id="analytics-chart" class="chart-container"></div>
       </div>
 
       <% if (metrics.visitors === 0 && !isArchived) { %>
@@ -353,7 +331,7 @@
 <% } %>
 
 <script>
-  const initialChartData = <%- chartData %>;
+  const initialMetrics = <%- JSON.stringify(metrics) %>;
   const initialReportData = <%- JSON.stringify(reports) %>;
 </script>
 

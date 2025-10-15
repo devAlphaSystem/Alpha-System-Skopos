@@ -25,9 +25,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let settings = window.__SKOPOS_SETTINGS__;
   let refreshInterval = null;
-  let lineChart = null;
   let worldMap = null;
   let eventSource = null;
+  let metricCharts = {};
 
   const countryNames = {
     AF: "Afghanistan",
@@ -351,14 +351,6 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchDetailedData(reportType);
   }
 
-  function closeAllDrawers() {
-    detailDrawer.classList.remove("active");
-    itemDetailDrawer.classList.remove("active");
-    websiteSettingsDrawer.classList.remove("active");
-    ipBlacklistDrawer.classList.remove("active");
-    detailDrawerOverlay.classList.remove("active");
-  }
-
   function openItemDetailDrawer(title, content) {
     const drawerTitle = document.getElementById("item-detail-drawer-title");
     const drawerContent = document.getElementById("item-detail-content");
@@ -453,93 +445,43 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateChartTheme() {
-    if (!lineChart) return;
+    if (Object.keys(metricCharts).length === 0) return;
     const colors = getThemeColors();
-    const chartOptions = {
-      xaxis: { labels: { style: { colors: colors.textSecondary } } },
-      yaxis: { labels: { style: { colors: colors.textSecondary } } },
-      grid: { borderColor: colors.borderColor },
-      tooltip: {
-        theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
-        style: {
-          fontSize: "14px",
-          fontFamily: "inherit",
-        },
-        custom: (params) => params,
-      },
-      noData: { style: { color: colors.textSecondary } },
-    };
-
-    if (WEBSITE_ID) {
-      chartOptions.colors = [colors.primary];
-    } else {
-      chartOptions.colors = undefined;
+    for (const key in metricCharts) {
+      metricCharts[key].updateOptions({
+        stroke: { colors: [colors.primary] },
+      });
     }
-
-    lineChart.updateOptions(chartOptions);
-
     if (worldMap) {
       initializeWorldMap(getCurrentMapData());
     }
   }
 
-  function initializeLineChart(initialData) {
-    const chartElement = document.getElementById("analytics-chart");
-    if (!chartElement) return;
-
-    const hasData = initialData.length > 0 && initialData.some((series) => series.data.some((point) => point[1] > 0));
-
-    const colors = getThemeColors();
-    const theme = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
-
+  function createMiniChart(elementId, data, color) {
     const options = {
-      series: hasData ? initialData : [],
+      series: [{ data: data }],
       chart: {
-        height: 350,
-        type: "area",
-        toolbar: { show: false },
-        zoom: { enabled: false },
-        animations: { enabled: true, easing: "easeinout", speed: 800 },
+        type: "line",
+        height: 40,
+        width: 120,
+        sparkline: { enabled: true },
+        animations: { enabled: false },
       },
-      dataLabels: { enabled: false },
-      stroke: { curve: "smooth", width: 2 },
-      xaxis: {
-        type: "datetime",
-        labels: { style: { colors: colors.textSecondary } },
-      },
-      yaxis: { labels: { style: { colors: colors.textSecondary } } },
-      tooltip: {
-        theme: theme,
-        style: { fontSize: "14px", fontFamily: "inherit" },
-        custom: (params) => params,
-      },
-      grid: { borderColor: colors.borderColor },
-      fill: {
-        type: "gradient",
-        gradient: {
-          shadeIntensity: 1,
-          opacityFrom: 0.7,
-          opacityTo: 0.2,
-          stops: [0, 90, 100],
-        },
-      },
-      noData: {
-        text: "No page view data available for this period.",
-        align: "center",
-        verticalAlign: "middle",
-        offsetX: 0,
-        offsetY: 0,
-        style: { color: colors.textSecondary, fontSize: "14px" },
-      },
+      stroke: { curve: "smooth", width: 2, colors: [color] },
+      tooltip: { enabled: false },
     };
+    const chart = new ApexCharts(document.getElementById(elementId), options);
+    chart.render();
+    return chart;
+  }
 
-    if (WEBSITE_ID) {
-      options.colors = [colors.primary];
-    }
-
-    if (lineChart) lineChart.destroy();
-    lineChart = new ApexCharts(chartElement, options);
-    lineChart.render();
+  function initializeMetricCharts(metrics) {
+    if (!metrics || !metrics.trends) return;
+    const colors = getThemeColors();
+    metricCharts["pageviews"] = createMiniChart("pageviews-trend-chart", metrics.trends.pageViews, colors.primary);
+    metricCharts["visitors"] = createMiniChart("visitors-trend-chart", metrics.trends.visitors, colors.primary);
+    metricCharts["engagementrate"] = createMiniChart("engagementrate-trend-chart", metrics.trends.engagementRate, colors.primary);
+    metricCharts["avgsession"] = createMiniChart("avgsession-trend-chart", metrics.trends.avgSessionDuration, colors.primary);
   }
 
   function getCurrentMapData() {
@@ -585,7 +527,7 @@ document.addEventListener("DOMContentLoaded", () => {
           },
         ],
       },
-      onRegionTooltipShow(event, tooltip, code) {
+      onRegionTooltipShow(tooltip, code) {
         const countryName = countryNames[code] || code;
         const visitorCount = mapValues[code] || 0;
         tooltip.text(`${countryName}: ${visitorCount} visitors`);
@@ -593,8 +535,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  if (typeof initialChartData !== "undefined") {
-    initializeLineChart(initialChartData);
+  if (typeof initialMetrics !== "undefined") {
+    initializeMetricCharts(initialMetrics);
   }
 
   if (typeof initialReportData !== "undefined" && initialReportData.countryBreakdown) {
@@ -642,7 +584,13 @@ document.addEventListener("DOMContentLoaded", () => {
       updateMetricCard("visitors", data.metrics.visitors, data.metrics.change.visitors);
       updateMetricCard("engagementrate", `${data.metrics.engagementRate}%`, data.metrics.change.engagementRate);
       updateMetricCard("avgsession", data.metrics.avgSessionDuration.formatted, data.metrics.change.avgSessionDuration);
-      updateMetricCard("jserrors", data.metrics.jsErrors, data.metrics.change.jsErrors);
+
+      if (data.metrics.trends) {
+        metricCharts["pageviews"]?.updateSeries([{ data: data.metrics.trends.pageViews }]);
+        metricCharts["visitors"]?.updateSeries([{ data: data.metrics.trends.visitors }]);
+        metricCharts["engagementrate"]?.updateSeries([{ data: data.metrics.trends.engagementRate }]);
+        metricCharts["avgsession"]?.updateSeries([{ data: data.metrics.trends.avgSessionDuration }]);
+      }
     }
     if (data.reports) {
       updateReportCard("report-top-pages", data.reports.topPages);
@@ -662,10 +610,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         worldMap.series.regions[0].setValues(mapValues);
       }
-    }
-    if (data.chartData && lineChart) {
-      const hasData = data.chartData.length > 0 && data.chartData.some((series) => series.data.some((point) => point[1] > 0));
-      lineChart.updateSeries(hasData ? data.chartData : []);
     }
   }
 
@@ -1033,13 +977,6 @@ document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
       if (worldMap && initialReportData && initialReportData.countryBreakdown) {
         initializeWorldMap(initialReportData.countryBreakdown);
-      }
-      if (lineChart) {
-        lineChart.updateOptions({
-          tooltip: {
-            theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
-          },
-        });
       }
     }, 10);
   });
