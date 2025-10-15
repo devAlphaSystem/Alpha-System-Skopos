@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let worldMap = null;
   let eventSource = null;
   let metricCharts = {};
+  let currentCountryData = [];
 
   const countryNames = {
     AF: "Afghanistan",
@@ -453,7 +454,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
     if (worldMap) {
-      initializeWorldMap(getCurrentMapData());
+      initializeWorldMap(currentCountryData);
     }
   }
 
@@ -484,15 +485,11 @@ document.addEventListener("DOMContentLoaded", () => {
     metricCharts["avgsession"] = createMiniChart("avgsession-trend-chart", metrics.trends.avgSessionDuration, colors.primary);
   }
 
-  function getCurrentMapData() {
-    const mapElement = document.getElementById("report-countries");
-    if (!mapElement || !window.initialReportData || !window.initialReportData.countryBreakdown) return [];
-    return window.initialReportData.countryBreakdown;
-  }
-
   function initializeWorldMap(countryData) {
     const mapElement = document.getElementById("world-map");
     if (!mapElement) return;
+
+    currentCountryData = countryData;
 
     const colors = getThemeColors();
     const regionInitialFill = colors.borderColor;
@@ -507,7 +504,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (worldMap) {
       worldMap.destroy();
+      worldMap = null;
     }
+    mapElement.innerHTML = "";
 
     worldMap = new jsVectorMap({
       selector: "#world-map",
@@ -527,7 +526,7 @@ document.addEventListener("DOMContentLoaded", () => {
           },
         ],
       },
-      onRegionTooltipShow(tooltip, code) {
+      onRegionTooltipShow(event, tooltip, code) {
         const countryName = countryNames[code] || code;
         const visitorCount = mapValues[code] || 0;
         tooltip.text(`${countryName}: ${visitorCount} visitors`);
@@ -604,6 +603,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updateReportCard("report-countries", data.reports.countryBreakdown);
       updateReportCard("report-js-errors", data.reports.topJsErrors);
       if (worldMap && data.reports.countryBreakdown) {
+        currentCountryData = data.reports.countryBreakdown;
         const mapValues = {};
         for (const item of data.reports.countryBreakdown) {
           mapValues[item.key] = item.count;
@@ -974,11 +974,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.addEventListener("themeChanged", () => {
     updateChartTheme();
-    setTimeout(() => {
-      if (worldMap && initialReportData && initialReportData.countryBreakdown) {
-        initializeWorldMap(initialReportData.countryBreakdown);
-      }
-    }, 10);
   });
 
   if (IS_ARCHIVED) {
@@ -986,5 +981,22 @@ document.addEventListener("DOMContentLoaded", () => {
     if (websiteSettingsBtn) websiteSettingsBtn.disabled = true;
   }
 
-  updateDashboardSettings();
+  (() => {
+    settings = window.__SKOPOS_SETTINGS__;
+    try {
+      const stored = localStorage.getItem("skopos-settings");
+      if (stored) {
+        settings = { ...settings, ...JSON.parse(stored) };
+      }
+    } catch (e) {
+      console.error("Failed to parse settings:", e);
+    }
+
+    if (dataPeriodLabel) {
+      dataPeriodLabel.textContent = `Displaying data for the last ${settings.dataPeriod} days`;
+    }
+
+    if (IS_ARCHIVED) return;
+    setupRefreshInterval();
+  })();
 });

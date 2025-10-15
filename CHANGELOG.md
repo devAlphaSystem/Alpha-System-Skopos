@@ -1,3 +1,16 @@
+# 0.15.1
+
+#### Changed
+
+- Improved the world map's data handling and rendering efficiency, leading to smoother updates when geographical data or themes change.
+- Refactored dashboard initialization logic for better performance and stability.
+
+#### Fixed
+
+- Corrected issues where the world map might not re-render properly or could consume extra memory, especially after theme changes or data updates.
+
+---
+
 # 0.15.0
 
 #### Added
