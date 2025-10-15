@@ -1,3 +1,16 @@
+# 0.13.1
+
+#### Added
+
+- Implemented automatic token refresh for Pocketbase admin authentication every 15 minutes to ensure continuous active sessions.
+- Introduced startup validation to check for the presence of `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD` environment variables, terminating the process if essential credentials are not configured.
+
+#### Changed
+
+- Refactored Pocketbase admin authentication logic for improved modularity and clearer error reporting.
+
+---
+
 # 0.13.0
 
 #### Added
