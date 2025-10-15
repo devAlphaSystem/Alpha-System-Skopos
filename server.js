@@ -8,9 +8,9 @@ import { EventSource } from "eventsource";
 global.EventSource = EventSource;
 
 import dashboardRoutes from "./src/routes/dashboard.js";
-import { pb, pbAdmin } from "./src/services/pocketbase.js";
+import { pb } from "./src/services/pocketbase.js";
 import { startCronJobs } from "./src/services/cron.js";
-import { userExists, setUserExists } from "./src/services/userState.js";
+import { initialize as initializeAppState, doesUserExist } from "./src/services/appState.js";
 import { startRealtimeService } from "./src/services/realtime.js";
 
 dotenv.config();
@@ -22,13 +22,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function initializeApp() {
-  try {
-    const users = await pbAdmin.collection("users").getList(1, 1);
-    setUserExists(users.totalItems > 0);
-  } catch (error) {
-    console.error("Could not check for existing users:", error);
-    setUserExists(false);
-  }
+  await initializeAppState();
 
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "views"));
@@ -41,11 +35,11 @@ async function initializeApp() {
     const allowedPaths = ["/register", "/login"];
     const isStaticAsset = req.path.startsWith("/css") || req.path.startsWith("/js") || req.path.startsWith("/img");
 
-    if (!userExists && !allowedPaths.includes(req.path) && !isStaticAsset) {
+    if (!doesUserExist() && !allowedPaths.includes(req.path) && !isStaticAsset) {
       return res.redirect("/register");
     }
 
-    if (userExists && req.path === "/register") {
+    if (doesUserExist() && req.path === "/register") {
       return res.redirect("/login");
     }
 

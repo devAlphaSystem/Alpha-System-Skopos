@@ -1,4 +1,4 @@
-import { pbAdmin } from "../services/pocketbase.js";
+import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
 import { subDays } from "date-fns";
 import { aggregateSummaries, getReportsFromSummaries, getChartDataFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData, getMultiWebsiteChartData } from "../utils/analytics.js";
@@ -52,6 +52,7 @@ async function fetchSummaries(websiteId, startDate, endDate) {
 
 export async function showOverview(req, res) {
   try {
+    await ensureAdminAuth();
     const { websites, archivedWebsites } = await getCommonData(res.locals.user.id);
     if (websites.length === 0 && archivedWebsites.length === 0) {
       return res.redirect("/websites");
@@ -120,6 +121,7 @@ export async function showOverview(req, res) {
 
 export async function showDashboard(req, res) {
   try {
+    await ensureAdminAuth();
     const { websiteId } = req.params;
     const { websites, archivedWebsites, allWebsites } = await getCommonData(res.locals.user.id);
 
@@ -182,6 +184,7 @@ export async function showDashboard(req, res) {
 
 export async function showWebsites(req, res) {
   try {
+    await ensureAdminAuth();
     const { websites, archivedWebsites } = await getCommonData(res.locals.user.id);
     res.render("websites", {
       websites,
@@ -198,6 +201,7 @@ export async function showWebsites(req, res) {
 export async function addWebsite(req, res) {
   const { name, domain, dataRetentionDays } = req.body;
   try {
+    await ensureAdminAuth();
     await pbAdmin.collection("websites").create({
       name,
       domain,
@@ -218,6 +222,7 @@ export async function addWebsite(req, res) {
 export async function archiveWebsite(req, res) {
   const { id } = req.params;
   try {
+    await ensureAdminAuth();
     const record = await pbAdmin.collection("websites").getOne(id);
     if (record.user === res.locals.user.id) {
       await pbAdmin.collection("websites").update(id, { isArchived: true });
@@ -232,6 +237,7 @@ export async function archiveWebsite(req, res) {
 export async function restoreWebsite(req, res) {
   const { id } = req.params;
   try {
+    await ensureAdminAuth();
     const record = await pbAdmin.collection("websites").getOne(id);
     if (record.user === res.locals.user.id) {
       await pbAdmin.collection("websites").update(id, { isArchived: false });
@@ -248,6 +254,7 @@ export async function deleteWebsite(req, res) {
   const { deleteData } = req.body;
 
   try {
+    await ensureAdminAuth();
     const record = await pbAdmin.collection("websites").getOne(id);
     if (record.user !== res.locals.user.id) {
       return res.status(403).send("You do not have permission to delete this website.");
@@ -282,6 +289,7 @@ export async function deleteWebsite(req, res) {
 
 export async function getOverviewData(req, res) {
   try {
+    await ensureAdminAuth();
     const userId = res.locals.user?.id;
     if (!userId) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -346,6 +354,7 @@ export async function getOverviewData(req, res) {
 
 export async function getDashboardData(req, res) {
   try {
+    await ensureAdminAuth();
     const { websiteId } = req.params;
     const userId = res.locals.user?.id;
 
@@ -406,6 +415,7 @@ export async function getDashboardData(req, res) {
 
 export async function getDetailedReport(req, res) {
   try {
+    await ensureAdminAuth();
     const { websiteId, reportType } = req.params;
     const userId = res.locals.user?.id;
 
@@ -501,6 +511,7 @@ export async function getDetailedReport(req, res) {
 
 export async function getCustomEventDetails(req, res) {
   try {
+    await ensureAdminAuth();
     const { websiteId } = req.params;
     const { name, period } = req.query;
     const userId = res.locals.user?.id;
@@ -549,6 +560,7 @@ export async function getCustomEventDetails(req, res) {
 
 export async function getWebsiteSettings(req, res) {
   try {
+    await ensureAdminAuth();
     const { websiteId } = req.params;
     const userId = res.locals.user?.id;
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -562,6 +574,7 @@ export async function getWebsiteSettings(req, res) {
 
 export async function updateWebsiteSettings(req, res) {
   try {
+    await ensureAdminAuth();
     const { websiteId } = req.params;
     const userId = res.locals.user?.id;
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
@@ -583,6 +596,7 @@ export async function updateWebsiteSettings(req, res) {
 
 export async function addIpToBlacklist(req, res) {
   try {
+    await ensureAdminAuth();
     const { websiteId } = req.params;
     const { ip } = req.body;
     const userId = res.locals.user?.id;
@@ -606,6 +620,7 @@ export async function addIpToBlacklist(req, res) {
 
 export async function removeIpFromBlacklist(req, res) {
   try {
+    await ensureAdminAuth();
     const { websiteId } = req.params;
     const { ip } = req.body;
     const userId = res.locals.user?.id;

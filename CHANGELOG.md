@@ -1,3 +1,25 @@
+# 0.13.2
+
+#### Added
+
+- Introduced a new dedicated service for managing overall application state, including user existence, for better consistency.
+- Implemented `ensureAdminAuth` to handle PocketBase admin authentication, ensuring tokens are valid and refreshed as needed.
+
+#### Changed
+
+- Refactored the core application initialization and user existence checks to utilize the new centralized `appState` service.
+- Updated authentication, dashboard, cron, and realtime services to use the robust `ensureAdminAuth` mechanism for all administrative PocketBase operations.
+
+#### Removed
+
+- The `userState` service has been removed, as its functionality is now handled by the new `appState` service.
+
+#### Fixed
+
+- Addressed potential issues with PocketBase admin authentication tokens expiring by ensuring automatic re-authentication before critical operations.
+
+---
+
 # 0.13.1
 
 #### Added

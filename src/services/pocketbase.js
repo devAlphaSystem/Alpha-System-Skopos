@@ -11,35 +11,25 @@ pbAdmin.autoCancellation(false);
 
 const adminEmail = process.env.POCKETBASE_ADMIN_EMAIL;
 const adminPassword = process.env.POCKETBASE_ADMIN_PASSWORD;
+let isInitialAuthDone = false;
 
-async function refreshAdminAuth() {
-  if (!adminEmail || !adminPassword) {
-    console.error("Admin credentials not available for token refresh.");
+export async function ensureAdminAuth() {
+  if (pbAdmin.authStore.isValid) {
     return;
   }
-  try {
-    await pbAdmin.collection("_superusers").authWithPassword(adminEmail, adminPassword);
-    console.log("Successfully refreshed Pocketbase admin authentication token.");
-  } catch (error) {
-    console.error("Failed to refresh Pocketbase admin authentication token:", error.message);
-  }
-}
-
-async function initializeAdminAuth() {
-  if (!adminEmail || !adminPassword) {
-    console.error("FATAL: POCKETBASE_ADMIN_EMAIL and POCKETBASE_ADMIN_PASSWORD must be set in .env file.");
-    process.exit(1);
-  }
 
   try {
     await pbAdmin.collection("_superusers").authWithPassword(adminEmail, adminPassword);
-    console.log("Successfully authenticated with Pocketbase as admin.");
-
-    setInterval(refreshAdminAuth, 15 * 60 * 1000);
+    if (!isInitialAuthDone) {
+      console.log("Successfully authenticated with Pocketbase as admin.");
+      isInitialAuthDone = true;
+    } else {
+      console.log("PocketBase admin token refreshed successfully.");
+    }
   } catch (error) {
-    console.error("Failed to authenticate with Pocketbase as admin on startup:", error.message);
-    process.exit(1);
+    console.error("FATAL: Failed to authenticate with Pocketbase as admin:", error.message);
+    if (!isInitialAuthDone) {
+      process.exit(1);
+    }
   }
 }
-
-initializeAdminAuth();

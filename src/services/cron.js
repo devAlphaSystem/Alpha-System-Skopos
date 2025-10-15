@@ -1,11 +1,12 @@
 import cron from "node-cron";
-import { subDays, formatISO, startOfYesterday } from "date-fns";
-import { pbAdmin } from "./pocketbase.js";
+import { subDays } from "date-fns";
+import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { calculateMetrics } from "../utils/analytics.js";
 
 async function pruneOldSummaries() {
   console.log("Running cron job: Pruning old dashboard summaries...");
   try {
+    await ensureAdminAuth();
     const thirtyDaysAgo = subDays(new Date(), 31);
     const filterDate = thirtyDaysAgo.toISOString().split("T")[0];
 
@@ -27,6 +28,7 @@ async function pruneOldSummaries() {
 async function enforceDataRetention() {
   console.log("Running cron job: Enforcing data retention policies...");
   try {
+    await ensureAdminAuth();
     const websites = await pbAdmin.collection("websites").getFullList({
       filter: "dataRetentionDays > 0",
     });
@@ -64,6 +66,7 @@ async function enforceDataRetention() {
 async function finalizeDailySummaries() {
   console.log("Running cron job: Finalizing yesterday's summaries...");
   try {
+    await ensureAdminAuth();
     const yesterday = startOfYesterday();
     const yesterdayStart = yesterday.toISOString();
     const yesterdayEnd = new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString();
@@ -107,6 +110,7 @@ async function finalizeDailySummaries() {
 async function pruneOldSessions() {
   console.log("Running cron job: Pruning old sessions...");
   try {
+    await ensureAdminAuth();
     const sevenDaysAgo = subDays(new Date(), 7);
     const cutoffISO = sevenDaysAgo.toISOString();
 

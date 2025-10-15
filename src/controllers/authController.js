@@ -1,5 +1,5 @@
-import { pb, pbAdmin } from "../services/pocketbase.js";
-import { setUserExists } from "../services/userState.js";
+import { pb, pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
+import { initialize as initializeAppState } from "../services/appState.js";
 
 export function showLoginPage(req, res) {
   if (res.locals.user) {
@@ -37,6 +37,7 @@ export function showRegistrationPage(req, res) {
 
 export async function handleRegistration(req, res) {
   try {
+    await ensureAdminAuth();
     const existingUsers = await pbAdmin.collection("users").getList(1, 1);
     if (existingUsers.totalItems > 0) {
       return res.redirect("/login");
@@ -60,7 +61,7 @@ export async function handleRegistration(req, res) {
       verified: true,
     });
 
-    setUserExists(true);
+    await initializeAppState();
     res.redirect("/login");
   } catch (error) {
     console.error("Registration failed:", error);
