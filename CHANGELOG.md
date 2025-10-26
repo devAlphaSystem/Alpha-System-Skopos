@@ -1,3 +1,15 @@
+# 0.15.2
+
+#### Changed
+
+- Refactored dashboard settings and refresh interval handling for improved maintainability.
+
+#### Fixed
+
+- Resolved visual issues in list item display, enhancing readability for long keys and ensuring consistent alignment.
+
+---
+
 # 0.15.1
 
 #### Changed

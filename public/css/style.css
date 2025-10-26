@@ -692,13 +692,16 @@ body {
   justify-content: space-between;
   margin-bottom: 0.25rem;
   font-size: 0.875rem;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .list-item-key {
   font-weight: 600;
-  white-space: nowrap;
+  word-break: break-word;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: normal;
   padding-right: 1rem;
 }
 
@@ -717,6 +720,10 @@ body {
   background: var(--primary-color);
   height: 100%;
   border-radius: 99px;
+}
+
+.list-item-count {
+  flex-shrink: 0;
 }
 
 .no-data-card {

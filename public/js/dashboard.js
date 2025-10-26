@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let refreshInterval = null;
   let worldMap = null;
   let eventSource = null;
-  let metricCharts = {};
+  const metricCharts = {};
   let currentCountryData = [];
 
   const countryNames = {
@@ -479,10 +479,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function initializeMetricCharts(metrics) {
     if (!metrics || !metrics.trends) return;
     const colors = getThemeColors();
-    metricCharts["pageviews"] = createMiniChart("pageviews-trend-chart", metrics.trends.pageViews, colors.primary);
-    metricCharts["visitors"] = createMiniChart("visitors-trend-chart", metrics.trends.visitors, colors.primary);
-    metricCharts["engagementrate"] = createMiniChart("engagementrate-trend-chart", metrics.trends.engagementRate, colors.primary);
-    metricCharts["avgsession"] = createMiniChart("avgsession-trend-chart", metrics.trends.avgSessionDuration, colors.primary);
+    metricCharts.pageviews = createMiniChart("pageviews-trend-chart", metrics.trends.pageViews, colors.primary);
+    metricCharts.visitors = createMiniChart("visitors-trend-chart", metrics.trends.visitors, colors.primary);
+    metricCharts.engagementrate = createMiniChart("engagementrate-trend-chart", metrics.trends.engagementRate, colors.primary);
+    metricCharts.avgsession = createMiniChart("avgsession-trend-chart", metrics.trends.avgSessionDuration, colors.primary);
   }
 
   function initializeWorldMap(countryData) {
@@ -585,10 +585,10 @@ document.addEventListener("DOMContentLoaded", () => {
       updateMetricCard("avgsession", data.metrics.avgSessionDuration.formatted, data.metrics.change.avgSessionDuration);
 
       if (data.metrics.trends) {
-        metricCharts["pageviews"]?.updateSeries([{ data: data.metrics.trends.pageViews }]);
-        metricCharts["visitors"]?.updateSeries([{ data: data.metrics.trends.visitors }]);
-        metricCharts["engagementrate"]?.updateSeries([{ data: data.metrics.trends.engagementRate }]);
-        metricCharts["avgsession"]?.updateSeries([{ data: data.metrics.trends.avgSessionDuration }]);
+        metricCharts.pageviews?.updateSeries([{ data: data.metrics.trends.pageViews }]);
+        metricCharts.visitors?.updateSeries([{ data: data.metrics.trends.visitors }]);
+        metricCharts.engagementrate?.updateSeries([{ data: data.metrics.trends.engagementRate }]);
+        metricCharts.avgsession?.updateSeries([{ data: data.metrics.trends.avgSessionDuration }]);
       }
     }
     if (data.reports) {
@@ -982,21 +982,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   (() => {
-    settings = window.__SKOPOS_SETTINGS__;
-    try {
-      const stored = localStorage.getItem("skopos-settings");
-      if (stored) {
-        settings = { ...settings, ...JSON.parse(stored) };
-      }
-    } catch (e) {
-      console.error("Failed to parse settings:", e);
-    }
-
-    if (dataPeriodLabel) {
-      dataPeriodLabel.textContent = `Displaying data for the last ${settings.dataPeriod} days`;
-    }
-
-    if (IS_ARCHIVED) return;
-    setupRefreshInterval();
+    updateDashboardSettings();
   })();
 });
