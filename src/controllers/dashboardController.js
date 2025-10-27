@@ -674,3 +674,17 @@ export async function removeIpFromBlacklist(req, res) {
     res.status(500).json({ error: "Failed to remove IP from blacklist." });
   }
 }
+
+export async function getUserIp(req, res) {
+  logger.debug("API call to get user's public IP address");
+  try {
+    const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() || req.headers["x-real-ip"] || req.socket.remoteAddress || req.connection.remoteAddress;
+
+    const cleanIp = ip?.replace("::ffff:", "") || "Unknown";
+    logger.debug("Detected user IP: %s", cleanIp);
+    res.status(200).json({ ip: cleanIp });
+  } catch (error) {
+    logger.error("Failed to get user IP: %o", error);
+    res.status(500).json({ error: "Failed to get user IP.", ip: "Unknown" });
+  }
+}

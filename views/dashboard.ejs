@@ -319,9 +319,25 @@
           <thead>
             <tr>
               <th>IP Address</th>
-              <th style="width: 50px; text-align: right;"></th>
+              <th style="width: 100px; text-align: right;"></th>
             </tr>
           </thead>
+          <tbody>
+            <tr id="user-ip-row" style="background-color: var(--surface-color); border-bottom: 2px solid var(--border-color);">
+              <td>
+                <strong id="user-ip-address">Loading...</strong>
+                <span style="font-size: 0.85rem; color: var(--text-secondary); margin-left: 8px;">(Your IP)</span>
+              </td>
+              <td style="text-align: right;">
+                <button class="btn-icon btn-danger" id="add-user-ip-btn" style="display: none;" title="Block your IP">
+                  <i class="fa-solid fa-ban"></i>
+                </button>
+                <button class="btn-icon btn-success" id="remove-user-ip-btn" style="display: none;" title="Unblock your IP">
+                  <i class="fa-solid fa-circle-check"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
           <tbody id="ip-blacklist-table-body">
           </tbody>
         </table>

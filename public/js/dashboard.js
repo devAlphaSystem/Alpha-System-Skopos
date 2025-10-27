@@ -22,8 +22,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const addIpForm = document.getElementById("add-ip-form");
   const ipAddressInput = document.getElementById("ip-address-input");
   const ipBlacklistTableBody = document.getElementById("ip-blacklist-table-body");
+  const userIpAddressEl = document.getElementById("user-ip-address");
+  const addUserIpBtn = document.getElementById("add-user-ip-btn");
+  const removeUserIpBtn = document.getElementById("remove-user-ip-btn");
 
   let settings = window.__SKOPOS_SETTINGS__;
+  let userCurrentIp = null;
   let refreshInterval = null;
   let worldMap = null;
   let eventSource = null;
@@ -888,18 +892,55 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  async function fetchUserIp() {
+    try {
+      const response = await fetch("/api/user-ip");
+      const data = await response.json();
+      userCurrentIp = data.ip;
+      if (userIpAddressEl) {
+        userIpAddressEl.textContent = userCurrentIp;
+      }
+    } catch (error) {
+      console.error("Failed to fetch user IP:", error);
+      if (userIpAddressEl) {
+        userIpAddressEl.textContent = "Unable to detect";
+      }
+    }
+  }
+
+  function updateUserIpButtons(ipList) {
+    if (!userCurrentIp || !addUserIpBtn || !removeUserIpBtn) return;
+
+    const isBlocked = ipList.includes(userCurrentIp);
+    if (isBlocked) {
+      addUserIpBtn.style.display = "none";
+      removeUserIpBtn.style.display = "inherit";
+    } else {
+      addUserIpBtn.style.display = "inherit";
+      removeUserIpBtn.style.display = "none";
+    }
+  }
+
   async function fetchAndRenderIpBlacklist() {
     if (!WEBSITE_ID) return;
+
+    if (!userCurrentIp) {
+      await fetchUserIp();
+    }
+
     try {
       const response = await fetch(`/dashboard/settings/${WEBSITE_ID}`);
       const data = await response.json();
       const ipList = data.ipBlacklist || [];
+
+      updateUserIpButtons(ipList);
+
       ipBlacklistTableBody.innerHTML = ipList
         .map(
           (ip) => `
         <tr>
           <td>${ip}</td>
-          <td>
+          <td style="text-align: right;">
             <button class="btn-icon btn-danger remove-ip-btn" data-ip="${ip}">
               <i class="fa-solid fa-trash"></i>
             </button>
@@ -935,6 +976,49 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } catch (error) {
         alert("Failed to add IP address.");
+      }
+    });
+  }
+
+  if (addUserIpBtn) {
+    addUserIpBtn.addEventListener("click", async () => {
+      if (!userCurrentIp || !WEBSITE_ID) return;
+
+      try {
+        const response = await fetch(`/dashboard/blacklist/${WEBSITE_ID}/add`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ip: userCurrentIp }),
+        });
+        if (response.ok) {
+          fetchAndRenderIpBlacklist();
+        } else {
+          const errorData = await response.json();
+          alert(`Error: ${errorData.error}`);
+        }
+      } catch (error) {
+        alert("Failed to add your IP address to blocklist.");
+      }
+    });
+  }
+
+  if (removeUserIpBtn) {
+    removeUserIpBtn.addEventListener("click", async () => {
+      if (!userCurrentIp || !WEBSITE_ID) return;
+
+      try {
+        const response = await fetch(`/dashboard/blacklist/${WEBSITE_ID}/remove`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ip: userCurrentIp }),
+        });
+        if (response.ok) {
+          fetchAndRenderIpBlacklist();
+        } else {
+          alert("Failed to remove your IP address from blocklist.");
+        }
+      } catch (error) {
+        alert("Failed to remove your IP address from blocklist.");
       }
     });
   }

@@ -1,3 +1,16 @@
+# 0.16.0
+
+#### Added
+
+- Implemented user-specific IP address display and management within the IP Blacklist feature, allowing users to block or unblock their own IP directly from the dashboard.
+- Added a new API endpoint /api/user-ip to retrieve the client's current IP address.
+
+#### Fixed
+
+- Corrected horizontal alignment of icons in detail tables for better visual consistency.
+
+---
+
 # 0.15.2
 
 #### Changed

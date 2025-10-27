@@ -436,6 +436,40 @@ body {
   background-color: rgba(220, 38, 38, 0.2);
 }
 
+.btn-icon.btn-success {
+  color: #10b981;
+  background-color: transparent;
+}
+.btn-icon.btn-success:hover {
+  background-color: #d1fae5;
+  color: #059669;
+}
+
+[data-theme="dark"] .btn-icon.btn-success {
+  background-color: transparent;
+}
+
+[data-theme="dark"] .btn-icon.btn-success:hover {
+  background-color: rgba(16, 185, 129, 0.2);
+}
+
+.btn-icon.btn-primary {
+  color: var(--primary-color);
+  background-color: transparent;
+}
+.btn-icon.btn-primary:hover {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+[data-theme="dark"] .btn-icon.btn-primary {
+  background-color: transparent;
+}
+
+[data-theme="dark"] .btn-icon.btn-primary:hover {
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
 .sidebar-toggle {
   display: none;
   background: none;
@@ -1041,6 +1075,14 @@ input:checked + .toggle-slider:before {
   margin-left: 0.5rem;
   font-size: 0.8em;
   color: var(--text-secondary);
+}
+
+.detail-table td i.fa-circle-check {
+  margin-left: 0rem;
+}
+
+.detail-table td i.fa-ban {
+  margin-left: 0rem;
 }
 
 .detail-table td i.fa-trash {
