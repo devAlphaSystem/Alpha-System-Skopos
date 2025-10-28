@@ -7,7 +7,11 @@ import { EventSource } from "eventsource";
 
 global.EventSource = EventSource;
 
+import authRoutes from "./src/routes/auth.js";
 import dashboardRoutes from "./src/routes/dashboard.js";
+import websitesRoutes from "./src/routes/websites.js";
+import sessionsRoutes from "./src/routes/sessions.js";
+import apiRoutes from "./src/routes/api.js";
 import { pb } from "./src/services/pocketbase.js";
 import { startCronJobs } from "./src/services/cron.js";
 import { initialize as initializeAppState, doesUserExist } from "./src/services/appState.js";
@@ -63,7 +67,11 @@ async function initializeApp() {
     next();
   });
 
+  app.use("/", authRoutes);
   app.use("/", dashboardRoutes);
+  app.use("/", websitesRoutes);
+  app.use("/", sessionsRoutes);
+  app.use("/", apiRoutes);
 
   app.use(express.static(path.join(__dirname, "public")));
 

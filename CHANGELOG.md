@@ -1,3 +1,18 @@
+# 0.18.0
+
+#### Added
+
+- A new API controller and dedicated API routes to handle all dashboard data, detailed reports, custom event details, Server-Sent Events (SSE) connections, and public IP retrieval.
+- Dedicated authentication controller and routes for user registration, login, and logout.
+- Dedicated website management controller and routes for adding, archiving, restoring, deleting websites, and configuring website settings, including IP blacklists.
+- Dedicated session management controller and routes for viewing user sessions, session details, and deleting specific sessions or all sessions for a visitor.
+
+#### Changed
+
+- Major architectural refactor: Core functionalities related to API calls, authentication, website management, and session management have been extracted from the main dashboard controller and routes into new, specialized controllers and route files for improved modularity and maintainability.
+
+---
+
 # 0.17.0
 
 #### Added
