@@ -1,0 +1,28 @@
+<% if (typeof isMobile !== 'undefined' && isMobile) { %>
+  <header class="mobile-header">
+    <div class="mobile-header-content">
+      <button class="sidebar-toggle" id="mobile-sidebar-toggle" aria-label="Toggle Sidebar">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div class="mobile-header-brand">
+        <div class="brand-icon">S</div>
+        <span class="brand-name">Skopos</span>
+      </div>
+      <div class="mobile-header-actions">
+        <% if (typeof currentWebsite !== 'undefined' && currentWebsite && !currentWebsite.isArchived) { %>
+          <button id="mobile-refresh-btn" class="mobile-btn-icon" title="Refresh">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+          <button id="mobile-settings-btn" class="mobile-btn-icon" title="Settings">
+            <i class="fa-solid fa-sliders"></i>
+          </button>
+        <% } %>
+      </div>
+    </div>
+    <% if (typeof currentWebsite !== 'undefined' && currentWebsite && !currentWebsite.isArchived) { %>
+      <div class="update-progress-container">
+        <div id="mobile-update-progress-bar" class="progress-bar-update"></div>
+      </div>
+    <% } %>
+  </header>
+<% } %>

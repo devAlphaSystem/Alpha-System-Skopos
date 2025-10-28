@@ -1,3 +1,22 @@
+# 0.19.0
+
+#### Added
+
+- Implemented a new responsive mobile header for improved navigation and user experience on smaller screens.
+- Introduced server-side device detection middleware to identify mobile clients, enabling mobile-specific UI.
+- Added dedicated CSS styles for the new mobile header and its components, including buttons and a progress bar.
+- Integrated a new `mobile-header.ejs` partial across all main application views.
+- Added JavaScript logic to manage the mobile sidebar toggle and ensure proper closing behavior when clicking outside.
+- Included mobile-specific refresh and website settings buttons with corresponding JavaScript functionality for the dashboard.
+
+#### Changed
+
+- Enhanced dashboard UI: 'View Sessions' button now uses a new `header-button` style, and refresh/settings buttons are optimized for both desktop and mobile layouts.
+- Adjusted sidebar behavior on mobile devices; it now slides in from the left, overlays content, and includes a semi-transparent background when open.
+- Modified the main container padding on mobile to accommodate the new fixed mobile header.
+
+---
+
 # 0.18.0
 
 #### Added

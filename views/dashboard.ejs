@@ -2,6 +2,8 @@
 
 <% const isArchived = currentWebsite.isArchived %>
 
+<%- include('partials/mobile-header') %>
+
 <div class="page-wrapper <%= isArchived ? 'archived-state' : '' %>" data-website-id="<%= currentWebsite.id %>" data-is-archived="<%= isArchived %>">
   <%- include('partials/sidebar', { websites, archivedWebsites, currentWebsite, currentPage }) %>
   <div class="main-container">
@@ -19,10 +21,10 @@
               <span id="active-users-count"><%= activeUsers %></span>
               <span>Active Users</span>
             </div>
-            <a href="/sessions/<%= currentWebsite.id %>" class="btn-icon" title="View Sessions"><i class="fa-solid fa-users-viewfinder"></i></a>
+            <a href="/sessions/<%= currentWebsite.id %>" class="header-button" title="View Sessions"><span>Sessions</span></a>
+            <button id="manual-refresh-btn" class="btn-icon" title="Refresh Dashboard" <%= isArchived ? 'disabled' : '' %>><i class="fa-solid fa-rotate"></i></button>
+            <button id="website-settings-btn" class="btn-icon" title="Website Settings" <%= isArchived ? 'disabled' : '' %>><i class="fa-solid fa-sliders"></i></button>
           <% } %>
-          <button id="manual-refresh-btn" class="btn-icon" title="Refresh Dashboard" <%= isArchived ? 'disabled' : '' %>><i class="fa-solid fa-rotate"></i></button>
-          <button id="website-settings-btn" class="btn-icon" title="Website Settings" <%= isArchived ? 'disabled' : '' %>><i class="fa-solid fa-sliders"></i></button>
         </div>
       </div>
       <% if (!isArchived) { %>

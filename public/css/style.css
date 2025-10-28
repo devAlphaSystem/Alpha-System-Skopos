@@ -322,6 +322,25 @@ body {
   align-items: center;
 }
 
+.header-button {
+  padding: 0.4rem 0.8rem;
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  transition:
+    background-color 0.2s,
+    box-shadow 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
 .active-users-widget {
   display: flex;
   align-items: center;
@@ -409,6 +428,7 @@ body {
   border-radius: 999px;
   border: 1px solid var(--border-color);
   background: var(--surface-color);
+  cursor: pointer;
   color: var(--text-primary);
   display: inline-flex;
   align-items: center;
@@ -482,6 +502,102 @@ body {
   font-size: 1.5rem;
   color: var(--text-primary);
   cursor: pointer;
+}
+
+.mobile-header {
+  display: none;
+  background-color: var(--surface-color);
+  border-bottom: 1px solid var(--border-color);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 950;
+  box-shadow: var(--shadow-sm);
+}
+
+.mobile-header-content {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0.75rem 1rem;
+}
+
+.mobile-header-content .sidebar-toggle {
+  justify-self: start;
+}
+
+.mobile-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
+  justify-self: center;
+}
+
+.mobile-header-brand .brand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--text-primary);
+  color: var(--surface-color);
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.mobile-header-brand .brand-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mobile-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  justify-self: end;
+}
+
+.mobile-btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  cursor: pointer;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+
+.mobile-btn-icon:hover {
+  background-color: #f9fafb;
+}
+
+[data-theme="dark"] .mobile-btn-icon:hover {
+  background-color: #1f2937;
+}
+
+.mobile-header .update-progress-container {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background-color: var(--border-color);
+}
+
+.mobile-header .progress-bar-update {
+  height: 100%;
+  background-color: var(--primary-color);
+  width: 100%;
 }
 
 .update-progress-container {
@@ -1411,16 +1527,38 @@ input:checked + .toggle-slider:before {
 @media (max-width: 992px) {
   .sidebar {
     transform: translateX(-100%);
+    z-index: 1100;
+    background-color: var(--sidebar-bg);
   }
   .sidebar.open {
     transform: translateX(0);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
   }
+
+  .sidebar-header,
+  .sidebar-nav,
+  .sidebar-footer {
+    background-color: var(--sidebar-bg);
+    position: relative;
+    z-index: 1;
+  }
+
   .main-container {
     margin-left: 0;
+  }
+
+  .mobile-header ~ .page-wrapper .main-container {
+    padding-top: 60px;
   }
   .sidebar-toggle {
     display: block;
     margin-right: 1rem;
+  }
+  .mobile-header {
+    display: block;
+  }
+  .main-header {
+    display: none;
   }
   .header-content {
     flex-grow: 1;
@@ -1441,6 +1579,17 @@ input:checked + .toggle-slider:before {
   }
   .drawer.nested {
     width: 80%;
+  }
+
+  .sidebar.open::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 280px;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: -1;
   }
 }
 
@@ -1495,6 +1644,12 @@ input:checked + .toggle-slider:before {
     white-space: normal;
     word-break: break-all;
     font-size: 0.75rem;
+  }
+  .mobile-header-brand .brand-name {
+    font-size: 1rem;
+  }
+  .mobile-header-content {
+    padding: 0.65rem 0.75rem;
   }
 }
 

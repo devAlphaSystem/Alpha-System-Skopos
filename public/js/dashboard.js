@@ -3,16 +3,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const WEBSITE_ID = pageWrapper ? pageWrapper.dataset.websiteId : null;
   const IS_ARCHIVED = pageWrapper ? pageWrapper.dataset.isArchived === "true" : false;
   const progressBar = document.getElementById("update-progress-bar");
+  const mobileProgressBar = document.getElementById("mobile-update-progress-bar");
   const detailDrawerOverlay = document.getElementById("detail-drawer-overlay");
   const detailDrawer = document.getElementById("detail-drawer");
   const detailDrawerClose = document.getElementById("detail-drawer-close");
   const itemDetailDrawer = document.getElementById("item-detail-drawer");
   const itemDetailDrawerClose = document.getElementById("item-detail-drawer-close");
   const manualRefreshBtn = document.getElementById("manual-refresh-btn");
+  const mobileRefreshBtn = document.getElementById("mobile-refresh-btn");
   const dataPeriodLabel = document.getElementById("data-period-label");
   const dataRetentionInput = document.getElementById("data-retention-input");
 
   const websiteSettingsBtn = document.getElementById("website-settings-btn");
+  const mobileSettingsBtn = document.getElementById("mobile-settings-btn");
   const websiteSettingsDrawer = document.getElementById("website-settings-drawer");
   const websiteSettingsClose = document.getElementById("website-settings-close");
   const ipBlacklistBtn = document.getElementById("manage-ip-blacklist-btn");
@@ -315,12 +318,19 @@ document.addEventListener("DOMContentLoaded", () => {
       progressBar.style.transition = "none";
       progressBar.style.width = "0%";
     }
+    if (mobileProgressBar) {
+      mobileProgressBar.style.transition = "none";
+      mobileProgressBar.style.width = "0%";
+    }
 
     if (IS_ARCHIVED) return;
 
     if (settings.refreshRate === 0) {
       if (progressBar) {
         progressBar.style.width = "100%";
+      }
+      if (mobileProgressBar) {
+        mobileProgressBar.style.width = "100%";
       }
       eventSource = new EventSource("/dashboard/events");
       eventSource.onmessage = (event) => {
@@ -414,6 +424,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (manualRefreshBtn) {
     manualRefreshBtn.addEventListener("click", () => {
+      if (IS_ARCHIVED) return;
+      fetchDashboardData();
+      if (settings.autoRefresh) {
+        setupRefreshInterval();
+      }
+    });
+  }
+
+  if (mobileRefreshBtn) {
+    mobileRefreshBtn.addEventListener("click", () => {
       if (IS_ARCHIVED) return;
       fetchDashboardData();
       if (settings.autoRefresh) {
@@ -823,12 +843,20 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function animateProgressBar(duration) {
-    if (!progressBar) return;
-    progressBar.style.transition = "none";
-    progressBar.style.width = "100%";
-    progressBar.offsetHeight;
-    progressBar.style.transition = `width ${duration}ms linear`;
-    progressBar.style.width = "0%";
+    if (progressBar) {
+      progressBar.style.transition = "none";
+      progressBar.style.width = "100%";
+      progressBar.offsetHeight;
+      progressBar.style.transition = `width ${duration}ms linear`;
+      progressBar.style.width = "0%";
+    }
+    if (mobileProgressBar) {
+      mobileProgressBar.style.transition = "none";
+      mobileProgressBar.style.width = "100%";
+      mobileProgressBar.offsetHeight;
+      mobileProgressBar.style.transition = `width ${duration}ms linear`;
+      mobileProgressBar.style.width = "0%";
+    }
   }
 
   async function updateWebsiteSetting(payload) {
@@ -849,6 +877,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (websiteSettingsBtn) {
     websiteSettingsBtn.addEventListener("click", () => {
+      detailDrawerOverlay.classList.add("active");
+      websiteSettingsDrawer.classList.add("active");
+    });
+  }
+
+  if (mobileSettingsBtn) {
+    mobileSettingsBtn.addEventListener("click", () => {
       detailDrawerOverlay.classList.add("active");
       websiteSettingsDrawer.classList.add("active");
     });

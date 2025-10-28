@@ -16,6 +16,7 @@ import { pb } from "./src/services/pocketbase.js";
 import { startCronJobs } from "./src/services/cron.js";
 import { initialize as initializeAppState, doesUserExist } from "./src/services/appState.js";
 import { startRealtimeService } from "./src/services/realtime.js";
+import { deviceDetectionMiddleware } from "./src/utils/deviceDetection.js";
 import logger from "./src/services/logger.js";
 
 dotenv.config();
@@ -35,6 +36,7 @@ async function initializeApp() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
+  app.use(deviceDetectionMiddleware);
 
   app.use((req, res, next) => {
     const allowedPaths = ["/register", "/login"];
@@ -68,10 +70,10 @@ async function initializeApp() {
   });
 
   app.use("/", authRoutes);
+  app.use("/", apiRoutes);
   app.use("/", dashboardRoutes);
   app.use("/", websitesRoutes);
   app.use("/", sessionsRoutes);
-  app.use("/", apiRoutes);
 
   app.use(express.static(path.join(__dirname, "public")));
 

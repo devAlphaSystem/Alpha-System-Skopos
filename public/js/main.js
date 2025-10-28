@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   const sidebarToggle = document.getElementById("sidebar-toggle");
+  const mobileSidebarToggle = document.getElementById("mobile-sidebar-toggle");
   const sidebar = document.getElementById("sidebar");
   const settingsBtn = document.getElementById("settings-btn");
   const settingsDrawerOverlay = document.getElementById("settings-drawer-overlay");
@@ -70,6 +71,22 @@ document.addEventListener("DOMContentLoaded", () => {
   if (sidebarToggle && sidebar) {
     sidebarToggle.addEventListener("click", () => {
       sidebar.classList.toggle("open");
+    });
+  }
+
+  if (mobileSidebarToggle && sidebar) {
+    mobileSidebarToggle.addEventListener("click", () => {
+      sidebar.classList.toggle("open");
+    });
+  }
+
+  if (sidebar) {
+    document.addEventListener("click", (e) => {
+      if (window.innerWidth <= 992 && sidebar.classList.contains("open")) {
+        if (!sidebar.contains(e.target) && e.target !== sidebarToggle && e.target !== mobileSidebarToggle && !e.target.closest(".sidebar-toggle")) {
+          sidebar.classList.remove("open");
+        }
+      }
     });
   }
 
