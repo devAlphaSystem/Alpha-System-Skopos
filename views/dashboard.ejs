@@ -19,6 +19,7 @@
               <span id="active-users-count"><%= activeUsers %></span>
               <span>Active Users</span>
             </div>
+            <a href="/sessions/<%= currentWebsite.id %>" class="btn-icon" title="View Sessions"><i class="fa-solid fa-users-viewfinder"></i></a>
           <% } %>
           <button id="manual-refresh-btn" class="btn-icon" title="Refresh Dashboard" <%= isArchived ? 'disabled' : '' %>><i class="fa-solid fa-rotate"></i></button>
           <button id="website-settings-btn" class="btn-icon" title="Website Settings" <%= isArchived ? 'disabled' : '' %>><i class="fa-solid fa-sliders"></i></button>

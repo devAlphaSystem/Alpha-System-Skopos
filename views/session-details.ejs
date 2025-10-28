@@ -1,0 +1,185 @@
+<%- include('partials/header', {title: 'Session Details'}) %>
+
+<div class="page-wrapper">
+  <%- include('partials/sidebar', { websites, archivedWebsites, currentWebsite, currentPage }) %>
+  <div class="main-container">
+    <header class="main-header">
+      <div class="header-content">
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle Sidebar"><i class="fa-solid fa-bars"></i></button>
+        <div class="header-title">
+          <h1>Session Details</h1>
+          <p>Visitor: <code><%= sessionInfo.visitorId.substring(0, 16) %>...</code></p>
+        </div>
+        <div class="header-actions">
+          <a href="/sessions/<%= currentWebsite.id %>" class="btn-icon" title="Back to Sessions"><i class="fa-solid fa-arrow-left"></i></a>
+          <form action="/sessions/<%= currentWebsite.id %>/session/<%= sessionInfo.sessionId %>/delete" method="POST" style="display: inline;">
+            <button type="submit" class="btn-icon btn-danger delete-session-btn" data-session-id="<%= sessionInfo.sessionId %>" title="Delete this session"><i class="fa-solid fa-trash"></i></button>
+          </form>
+        </div>
+      </div>
+    </header>
+    
+    <main class="main-content" style="padding-top: 1rem;">
+      <div class="session-info-grid">
+        <div class="card session-info-card">
+          <div class="session-info-icon"><i class="fa-solid fa-clock"></i></div>
+          <div class="session-info-content">
+            <h3>Session Start</h3>
+            <p><%= new Date(sessionInfo.startTime).toLocaleString() %></p>
+          </div>
+        </div>
+        <div class="card session-info-card">
+          <div class="session-info-icon"><i class="fa-solid fa-hourglass-end"></i></div>
+          <div class="session-info-content">
+            <h3>Session End</h3>
+            <p><%= new Date(sessionInfo.endTime).toLocaleString() %></p>
+          </div>
+        </div>
+        <div class="card session-info-card">
+          <div class="session-info-icon"><i class="fa-solid fa-stopwatch"></i></div>
+          <div class="session-info-content">
+            <h3>Duration</h3>
+            <p><%= sessionInfo.duration %></p>
+          </div>
+        </div>
+        <div class="card session-info-card">
+          <div class="session-info-icon"><i class="fa-solid fa-file-lines"></i></div>
+          <div class="session-info-content">
+            <h3>Page Views</h3>
+            <p><%= metrics.pageViews %></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="session-details-grid">
+        <div class="card">
+          <div class="card-header">
+            <h2>Session Information</h2>
+          </div>
+          <div class="session-details-list">
+            <div class="session-detail-item">
+              <span class="detail-label">Entry Page:</span>
+              <span class="detail-value"><%= sessionInfo.entryPath %></span>
+            </div>
+            <div class="session-detail-item">
+              <span class="detail-label">Exit Page:</span>
+              <span class="detail-value"><%= sessionInfo.exitPath %></span>
+            </div>
+            <div class="session-detail-item">
+              <span class="detail-label">Referrer:</span>
+              <span class="detail-value"><%= sessionInfo.referrer %></span>
+            </div>
+            <div class="session-detail-item">
+              <span class="detail-label">Device:</span>
+              <span class="detail-value"><%= sessionInfo.device || 'Unknown' %></span>
+            </div>
+            <div class="session-detail-item">
+              <span class="detail-label">Browser:</span>
+              <span class="detail-value"><%= sessionInfo.browser || 'Unknown' %></span>
+            </div>
+            <div class="session-detail-item">
+              <span class="detail-label">Operating System:</span>
+              <span class="detail-value"><%= sessionInfo.os || 'Unknown' %></span>
+            </div>
+            <div class="session-detail-item">
+              <span class="detail-label">Country:</span>
+              <span class="detail-value"><%= sessionInfo.country || 'Unknown' %></span>
+            </div>
+            <div class="session-detail-item">
+              <span class="detail-label">Language:</span>
+              <span class="detail-value"><%= sessionInfo.language || 'Unknown' %></span>
+            </div>
+            <% if (sessionInfo.screenWidth && sessionInfo.screenHeight) { %>
+              <div class="session-detail-item">
+                <span class="detail-label">Screen Resolution:</span>
+                <span class="detail-value"><%= sessionInfo.screenWidth %> x <%= sessionInfo.screenHeight %></span>
+              </div>
+            <% } %>
+            <div class="session-detail-item">
+              <span class="detail-label">Visitor Type:</span>
+              <span class="detail-value"><%= sessionInfo.isNewVisitor ? 'New Visitor' : 'Returning Visitor' %></span>
+            </div>
+          </div>
+        </div>
+
+        <% if (reports.topPages.length > 0) { %>
+          <div class="card">
+            <div class="card-header">
+              <h2>Pages Visited</h2>
+            </div>
+            <div class="report-content">
+              <%- include('partials/report-table', { data: reports.topPages }) %>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (reports.topCustomEvents.length > 0) { %>
+          <div class="card">
+            <div class="card-header">
+              <h2>Custom Events</h2>
+            </div>
+            <div class="report-content">
+              <%- include('partials/report-table', { data: reports.topCustomEvents }) %>
+            </div>
+          </div>
+        <% } %>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2>Event Timeline</h2>
+        </div>
+        <div class="timeline-container">
+          <% if (events.length === 0) { %>
+            <p class="no-data">No events recorded for this session.</p>
+          <% } else { %>
+            <% for (const event of events) { %>
+              <div class="timeline-item">
+                <div class="timeline-icon <%= event.type === 'pageView' ? 'timeline-pageview' : 'timeline-custom' %>">
+                  <i class="fa-solid <%= event.type === 'pageView' ? 'fa-file' : 'fa-bolt' %>"></i>
+                </div>
+                <div class="timeline-content">
+                  <div class="timeline-header">
+                    <span class="timeline-type"><%= event.type === 'pageView' ? 'Page View' : 'Custom Event' %></span>
+                    <span class="timeline-time"><%= new Date(event.created).toLocaleTimeString() %></span>
+                  </div>
+                  <div class="timeline-details">
+                    <% if (event.type === 'pageView') { %>
+                      <strong><%= event.path %></strong>
+                    <% } else if (event.eventName) { %>
+                      <strong><%= event.eventName %></strong>
+                      <% if (event.eventData) { %>
+                        <pre class="event-data"><%= JSON.stringify(event.eventData, null, 2) %></pre>
+                      <% } %>
+                    <% } %>
+                  </div>
+                </div>
+              </div>
+            <% } %>
+          <% } %>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+  document.body.addEventListener("click", async (e) => {
+    const deleteSessionButton = e.target.closest(".delete-session-btn");
+
+    if (deleteSessionButton && !deleteSessionButton.dataset.confirmed) {
+      e.preventDefault();
+      const form = deleteSessionButton.closest("form");
+      if (!form) return;
+      const confirmed = await window.customConfirm("Delete Session?", `Are you sure you want to delete this session? This action cannot be undone.`);
+      if (confirmed) {
+        deleteSessionButton.dataset.confirmed = "true";
+        deleteSessionButton.click();
+      }
+    } else if (deleteSessionButton?.dataset.confirmed) {
+      delete deleteSessionButton.dataset.confirmed;
+    }
+  });
+</script>
+
+<%- include('partials/footer', { scripts: [] }) %>

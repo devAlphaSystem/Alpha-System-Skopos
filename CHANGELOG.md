@@ -1,3 +1,15 @@
+# 0.17.0
+
+#### Added
+
+- Implemented comprehensive Session Management features, providing dedicated pages for viewing all visitor sessions grouped by visitor and detailed views for individual sessions.
+- Introduced new controllers and API routes to handle session listing, detailed session information, and deletion of sessions or entire visitor histories.
+- Added new styling for the session and session details pages to support the new user interface elements.
+- Integrated a direct link to the Sessions page from the Dashboard for improved accessibility.
+- Enabled deletion of individual sessions and all sessions associated with a specific visitor.
+
+---
+
 # 0.16.1
 
 #### Fixed

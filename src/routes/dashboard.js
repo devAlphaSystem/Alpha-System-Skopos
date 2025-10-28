@@ -1,5 +1,5 @@
 import express from "express";
-import { showDashboard, showWebsites, addWebsite, deleteWebsite, showOverview, getDashboardData, getDetailedReport, getCustomEventDetails, updateWebsiteSettings, getWebsiteSettings, addIpToBlacklist, removeIpFromBlacklist, getOverviewData, archiveWebsite, restoreWebsite, handleSseConnection, getUserIp } from "../controllers/dashboardController.js";
+import { showDashboard, showWebsites, addWebsite, deleteWebsite, showOverview, getDashboardData, getDetailedReport, getCustomEventDetails, updateWebsiteSettings, getWebsiteSettings, addIpToBlacklist, removeIpFromBlacklist, getOverviewData, archiveWebsite, restoreWebsite, handleSseConnection, getUserIp, showSessions, showSessionDetails, deleteSession, deleteVisitorSessions } from "../controllers/dashboardController.js";
 import { showLoginPage, handleLogin, handleLogout, showRegistrationPage, handleRegistration } from "../controllers/authController.js";
 
 const router = express.Router();
@@ -37,6 +37,11 @@ router.get("/dashboard/settings/:websiteId", requireAuth, getWebsiteSettings);
 router.post("/dashboard/settings/:websiteId", requireAuth, updateWebsiteSettings);
 router.post("/dashboard/blacklist/:websiteId/add", requireAuth, addIpToBlacklist);
 router.post("/dashboard/blacklist/:websiteId/remove", requireAuth, removeIpFromBlacklist);
+
+router.get("/sessions/:websiteId", requireAuth, showSessions);
+router.get("/sessions/:websiteId/session/:sessionId", requireAuth, showSessionDetails);
+router.post("/sessions/:websiteId/session/:sessionId/delete", requireAuth, deleteSession);
+router.post("/sessions/:websiteId/visitor/:visitorId/delete", requireAuth, deleteVisitorSessions);
 
 router.get("/api/user-ip", requireAuth, getUserIp);
 
