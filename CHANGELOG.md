@@ -1,3 +1,15 @@
+# 0.16.1
+
+#### Fixed
+
+- Resolved visual overflow issues within map cards and for the world map display.
+- Corrected text truncation and wrapping for long tracking IDs and other `truncated-text` elements, preventing content overflow.
+- Addressed responsive layout for website card headers, actions, and content on mobile devices, ensuring proper alignment and usability.
+- Ensured consistent sizing for nested drawers across various screen sizes.
+- Prevented unintended global scrollbars by adjusting body overflow properties.
+
+---
+
 # 0.16.0
 
 #### Added

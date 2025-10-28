@@ -663,6 +663,13 @@ body {
   padding: 1rem;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+
+.map-card .chart-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .countries-report-card {
@@ -674,6 +681,17 @@ body {
 .countries-report-card .report-content {
   flex-grow: 1;
   overflow-y: auto;
+}
+
+#world-map {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#world-map svg {
+  max-width: 100%;
+  height: auto;
 }
 
 .jvm-container {
@@ -1227,6 +1245,8 @@ input:checked + .toggle-slider:before {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
+  word-break: break-all;
 }
 
 .copy-btn {
@@ -1408,8 +1428,13 @@ input:checked + .toggle-slider:before {
   }
   .map-card {
     grid-column: span 1;
+    height: auto;
+    min-height: 250px;
   }
   .drawer {
+    width: 80%;
+  }
+  .drawer.nested {
     width: 80%;
   }
 }
@@ -1428,7 +1453,42 @@ input:checked + .toggle-slider:before {
   .metrics-grid {
     grid-template-columns: 1fr;
   }
+  .map-card {
+    height: auto;
+    min-height: 200px;
+    max-height: 300px;
+  }
   .drawer {
     width: 100%;
+  }
+  .drawer.nested {
+    width: 100%;
+  }
+  .website-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  .website-card-header .header-actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .website-card-header .header-actions form {
+    margin: 0 !important;
+    width: 100%;
+  }
+  .website-card-header .header-actions .btn {
+    width: 100%;
+  }
+  .website-card-body {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .tracking-id-container code {
+    white-space: normal;
+    word-break: break-all;
+    font-size: 0.75rem;
   }
 }
