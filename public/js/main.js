@@ -2,10 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const sidebarToggle = document.getElementById("sidebar-toggle");
   const mobileSidebarToggle = document.getElementById("mobile-sidebar-toggle");
   const sidebar = document.getElementById("sidebar");
-  const settingsBtn = document.getElementById("settings-btn");
-  const settingsDrawerOverlay = document.getElementById("settings-drawer-overlay");
-  const settingsDrawer = document.getElementById("settings-drawer");
-  const settingsClose = document.getElementById("settings-close");
+  const websiteSelector = document.getElementById("website-selector");
 
   const DEFAULT_SETTINGS = {
     theme: "light",
@@ -54,20 +51,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function openSettingsDrawer() {
-    if (settingsDrawerOverlay && settingsDrawer) {
-      settingsDrawerOverlay.classList.add("active");
-      settingsDrawer.classList.add("active");
-    }
-  }
-
-  function closeSettingsDrawer() {
-    if (settingsDrawerOverlay && settingsDrawer) {
-      settingsDrawerOverlay.classList.remove("active");
-      settingsDrawer.classList.remove("active");
-    }
-  }
-
   if (sidebarToggle && sidebar) {
     sidebarToggle.addEventListener("click", () => {
       sidebar.classList.toggle("open");
@@ -90,16 +73,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  if (settingsBtn) {
-    settingsBtn.addEventListener("click", openSettingsDrawer);
-  }
-
-  if (settingsClose) {
-    settingsClose.addEventListener("click", closeSettingsDrawer);
-  }
-
-  if (settingsDrawerOverlay) {
-    settingsDrawerOverlay.addEventListener("click", closeSettingsDrawer);
+  if (websiteSelector) {
+    websiteSelector.addEventListener("change", (e) => {
+      const selectedWebsiteId = e.target.value;
+      if (selectedWebsiteId) {
+        window.location.href = `/dashboard/${selectedWebsiteId}`;
+      }
+    });
   }
 
   const themeToggle = document.getElementById("theme-toggle");

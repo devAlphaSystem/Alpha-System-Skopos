@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const dataRetentionInput = document.getElementById("data-retention-input");
 
   const websiteSettingsBtn = document.getElementById("website-settings-btn");
+  const websiteSettingsBtnSidebar = document.getElementById("website-settings-btn-sidebar");
   const mobileSettingsBtn = document.getElementById("mobile-settings-btn");
   const websiteSettingsDrawer = document.getElementById("website-settings-drawer");
   const websiteSettingsClose = document.getElementById("website-settings-close");
@@ -28,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const userIpAddressEl = document.getElementById("user-ip-address");
   const addUserIpBtn = document.getElementById("add-user-ip-btn");
   const removeUserIpBtn = document.getElementById("remove-user-ip-btn");
+  const websiteSelector = document.getElementById("website-selector");
 
   let settings = window.__SKOPOS_SETTINGS__;
   let userCurrentIp = null;
@@ -882,10 +884,26 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  if (websiteSettingsBtnSidebar) {
+    websiteSettingsBtnSidebar.addEventListener("click", () => {
+      detailDrawerOverlay.classList.add("active");
+      websiteSettingsDrawer.classList.add("active");
+    });
+  }
+
   if (mobileSettingsBtn) {
     mobileSettingsBtn.addEventListener("click", () => {
       detailDrawerOverlay.classList.add("active");
       websiteSettingsDrawer.classList.add("active");
+    });
+  }
+
+  if (websiteSelector) {
+    websiteSelector.addEventListener("change", (e) => {
+      const selectedWebsiteId = e.target.value;
+      if (selectedWebsiteId) {
+        window.location.href = `/dashboard/${selectedWebsiteId}`;
+      }
     });
   }
 

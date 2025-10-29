@@ -1,0 +1,114 @@
+<%- include('partials/header', {title: 'Settings'}) %>
+
+<%- include('partials/mobile-header') %>
+
+<div class="page-wrapper">
+  <%- include('partials/sidebar', { currentPage: 'settings', websites: websites, currentWebsite: null, user: user }) %>
+  <div class="main-container">
+    <div class="main-header">
+      <div class="header-content">
+        <div class="header-title">
+          <h1>App Settings</h1>
+          <p>Manage your application preferences</p>
+        </div>
+      </div>
+    </div>
+    
+    <main class="main-content" style="padding-top: 1rem;">
+      <div class="settings-card">
+        <div class="settings-card-body">
+          <section class="settings-group">
+            <header class="settings-group-header">
+              <div class="group-title">
+                <span>Appearance</span>
+              </div>
+              <p>Personalize the look and feel.</p>
+            </header>
+
+            <div class="settings-option">
+              <div class="settings-option-info">
+                <div class="settings-option-label">Dark Mode</div>
+                <div class="settings-option-description">Switch between light and dark themes.</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="theme-toggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </section>
+
+          <section class="settings-group">
+            <header class="settings-group-header">
+              <div class="group-title">
+                <span>Dashboard Updates</span>
+              </div>
+              <p>Stay in sync with live data.</p>
+            </header>
+
+            <div class="settings-option">
+              <div class="settings-option-info">
+                <div class="settings-option-label">Auto Refresh</div>
+                <div class="settings-option-description">Automatically pull the latest dashboard metrics.</div>
+              </div>
+              <label class="toggle-switch">
+                <input type="checkbox" id="auto-refresh-toggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="settings-option">
+              <div class="settings-option-info">
+                <div class="settings-option-label">Refresh Interval</div>
+                <div class="settings-option-description">Choose how often we refresh the data.</div>
+              </div>
+              <select id="refresh-rate-select" class="settings-select">
+                <option value="0">Instant</option>
+                <option value="10000">10 seconds</option>
+                <option value="30000">30 seconds</option>
+                <option value="60000">1 minute</option>
+                <option value="300000">5 minutes</option>
+                <option value="900000">15 minutes</option>
+                <option value="1800000">30 minutes</option>
+              </select>
+            </div>
+          </section>
+
+          <section class="settings-group">
+            <header class="settings-group-header">
+              <div class="group-title">
+                <span>Data Display</span>
+              </div>
+              <p>Control how reports summarise insights.</p>
+            </header>
+
+            <div class="settings-option">
+              <div class="settings-option-info">
+                <div class="settings-option-label">Data Period</div>
+                <div class="settings-option-description">Number of trailing days included in reports.</div>
+              </div>
+              <select id="data-period-select" class="settings-select">
+                <option value="7">7 days</option>
+                <option value="15">15 days</option>
+                <option value="30">30 days</option>
+              </select>
+            </div>
+
+            <div class="settings-option">
+              <div class="settings-option-info">
+                <div class="settings-option-label">Results Per Card</div>
+                <div class="settings-option-description">How many entries to surface inside each report card.</div>
+              </div>
+              <select id="results-limit-select" class="settings-select">
+                <option value="5">5 results</option>
+                <option value="10">10 results</option>
+                <option value="25">25 results</option>
+              </select>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<%- include('partials/footer', { scripts: [] }) %>

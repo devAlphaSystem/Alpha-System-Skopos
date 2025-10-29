@@ -20,34 +20,39 @@
           <span>Websites</span>
         </a>
       </li>
-      <li>
-        <button type="button" id="settings-btn">
+      <li class="<%= (currentPage === 'settings') ? 'active' : '' %>">
+        <a href="/settings">
           <i class="fa-solid fa-gear icon"></i>
           <span>Settings</span>
-        </button>
+        </a>
       </li>
     </ul>
     <% if (websites && websites.length > 0) { %>
       <p class="nav-header">Websites</p>
       <ul>
-        <% for (const website of websites) { %>
-          <li class="<%= (currentWebsite && currentWebsite.id === website.id) ? 'active' : '' %>">
-            <a href="/dashboard/<%= website.id %>">
-              <i class="fa-solid fa-server icon"></i>
-              <span><%= website.name %></span>
+        <li class="website-selector-item">
+          <select id="website-selector" class="website-selector">
+            <% if (!currentWebsite) { %>
+              <option value="" disabled selected>Select a website...</option>
+            <% } %>
+            <% for (const website of websites) { %>
+              <option value="<%= website.id %>" <%= (currentWebsite && currentWebsite.id === website.id) ? 'selected' : '' %>>
+                <%= website.name %>
+              </option>
+            <% } %>
+          </select>
+        </li>
+        <% if (currentWebsite && !currentWebsite.isArchived) { %>
+          <li class="<%= (currentPage === 'dashboard') ? 'active' : '' %>">
+            <a href="/dashboard/<%= currentWebsite.id %>">
+              <i class="fa-solid fa-chart-line icon"></i>
+              <span>Dashboard</span>
             </a>
           </li>
-        <% } %>
-      </ul>
-    <% } %>
-    <% if (archivedWebsites && archivedWebsites.length > 0) { %>
-      <p class="nav-header">Archived</p>
-      <ul>
-        <% for (const website of archivedWebsites) { %>
-          <li class="<%= (currentWebsite && currentWebsite.id === website.id) ? 'active' : '' %>">
-            <a href="/dashboard/<%= website.id %>">
-              <i class="fa-solid fa-server icon"></i>
-              <span><%= website.name %></span>
+          <li class="<%= (currentPage === 'sessions') ? 'active' : '' %>">
+            <a href="/sessions/<%= currentWebsite.id %>">
+              <i class="fa-solid fa-clock-rotate-left icon"></i>
+              <span>Sessions</span>
             </a>
           </li>
         <% } %>
@@ -55,6 +60,12 @@
     <% } %>
   </nav>
   <div class="sidebar-footer">
+    <% if (typeof appVersion !== 'undefined') { %>
+      <a href="https://github.com/devAlphaSystem/Alpha-System-Skopos" target="_blank" rel="noopener noreferrer" class="app-version" title="View on GitHub">
+        <i class="fa-brands fa-github"></i>
+        <span>v<%= appVersion %></span>
+      </a>
+    <% } %>
     <% if (user) { %>
       <div class="user-info">
         <div class="user-meta">

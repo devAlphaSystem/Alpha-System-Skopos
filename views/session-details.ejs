@@ -12,12 +12,6 @@
           <h1>Session Details</h1>
           <p>Visitor: <code><%= sessionInfo.visitorId.substring(0, 16) %>...</code></p>
         </div>
-        <div class="header-actions">
-          <a href="/sessions/<%= currentWebsite.id %>" class="btn-icon" title="Back to Sessions"><i class="fa-solid fa-arrow-left"></i></a>
-          <form action="/sessions/<%= currentWebsite.id %>/session/<%= sessionInfo.sessionId %>/delete" method="POST" style="display: inline;">
-            <button type="submit" class="btn-icon btn-danger delete-session-btn" data-session-id="<%= sessionInfo.sessionId %>" title="Delete this session"><i class="fa-solid fa-trash"></i></button>
-          </form>
-        </div>
       </div>
     </header>
     

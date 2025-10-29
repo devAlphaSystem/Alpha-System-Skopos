@@ -1,3 +1,32 @@
+# 0.20.0
+
+#### Added
+
+- Introduced a new, dedicated 'Settings' page with an improved, organized layout for managing application preferences.
+- Implemented a website selector dropdown in the sidebar for seamless switching between different active websites.
+- Added an application version display to the sidebar footer, providing a direct link to the project's GitHub repository.
+- New CSS styles for the redesigned settings page components (e.g., cards, groups, options) and the website selector.
+- New JavaScript functionality to handle website selection changes and open website settings directly from the sidebar.
+- New server-side routes and a dedicated controller to manage and render the settings page.
+- The application version from `package.json` is now exposed to templates for dynamic display.
+
+#### Changed
+
+- Redesigned the sidebar navigation: the 'Settings' entry is now a link to the dedicated settings page, and website navigation is streamlined via a dropdown selector.
+- Conditional display of 'Dashboard' and 'Sessions' links in the sidebar, active only for the currently selected and unarchived website.
+- Adjusted padding in the main header for a more refined user interface.
+- Modified session list items to prevent accidental navigation when interacting with action buttons (e.g., delete) within the list item.
+
+#### Removed
+
+- Eliminated the previous global settings drawer component, including its associated HTML and JavaScript.
+- Removed the 'View Sessions' button from the dashboard header.
+- Removed the 'Back to Sessions' and 'Delete Session' buttons from the session details header.
+- Removed the 'Back to Dashboard' button from the sessions page header. Session navigation is now primarily handled via the sidebar or directly within session list items.
+- The explicit listing of individual websites and the dedicated 'Archived' section from the sidebar for a cleaner navigation experience.
+
+---
+
 # 0.19.0
 
 #### Added

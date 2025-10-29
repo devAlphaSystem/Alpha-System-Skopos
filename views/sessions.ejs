@@ -12,9 +12,6 @@
           <h1><%= currentWebsite.name %> - Sessions</h1>
           <p>View and manage all visitor sessions</p>
         </div>
-        <div class="header-actions">
-          <a href="/dashboard/<%= currentWebsite.id %>" class="btn-icon" title="Back to Dashboard"><i class="fa-solid fa-arrow-left"></i></a>
-        </div>
       </div>
     </header>
     
@@ -44,7 +41,7 @@
                 </div>
                 <div class="sessions-list">
                   <% for (const session of visitorData.sessions) { %>
-                    <div class="session-item" onclick="window.location.href='/sessions/<%= currentWebsite.id %>/session/<%= session.sessionId %>'">
+                    <div class="session-item" onclick="if (!event.target.closest('.session-actions')) { window.location.href='/sessions/<%= currentWebsite.id %>/session/<%= session.sessionId %>'; }">
                       <div class="session-main-info">
                         <div class="session-time">
                           <div class="session-meta">
@@ -84,7 +81,7 @@
                           <span><%= session.country || 'Unknown' %></span>
                         </div>
                       </div>
-                      <div class="session-actions" onclick="event.stopPropagation()">
+                      <div class="session-actions">
                         <form action="/sessions/<%= currentWebsite.id %>/session/<%= session.sessionId %>/delete" method="POST">
                           <button type="submit" class="btn-icon btn-danger delete-session-btn" data-session-id="<%= session.sessionId %>" title="Delete this session"><i class="fa-solid fa-trash"></i></button>
                         </form>
