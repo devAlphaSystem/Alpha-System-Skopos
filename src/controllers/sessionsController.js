@@ -139,7 +139,7 @@ export async function showSessionDetails(req, res) {
 
     const events = await pbAdmin.collection("events").getFullList({
       filter: `session.id = "${sessionId}"`,
-      sort: "created",
+      sort: "-created",
       $autoCancel: false,
     });
 

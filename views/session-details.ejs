@@ -111,6 +111,8 @@
                       <%= JSON.stringify(value) %>
                     <% } else if (typeof value === 'boolean') { %>
                       <span class="<%= value ? 'badge-success' : 'badge-default' %>"><%= value ? 'Yes' : 'No' %></span>
+                    <% } else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) { %>
+                      <%= new Date(value).toLocaleString() %>
                     <% } else { %>
                       <%= value %>
                     <% } %>
