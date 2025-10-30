@@ -2272,3 +2272,256 @@ input:checked + .toggle-slider:before {
     font-size: 0.75rem;
   }
 }
+
+/* User Identification Badges */
+.visitor-id-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.visitor-id-badge code {
+  background: transparent;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+/* Success/Error backgrounds for cards */
+.success-bg {
+  --success-bg: rgba(34, 197, 94, 0.1);
+  --success-color: #16a34a;
+}
+
+[data-theme="dark"] .success-bg {
+  --success-bg: rgba(34, 197, 94, 0.15);
+  --success-color: #4ade80;
+}
+
+/* User info in session details */
+.session-detail-item pre.event-data {
+  background: var(--background-color);
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  overflow-x: auto;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.session-detail-item hr {
+  margin: 1rem 0;
+  border: none;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Identified user styling */
+.visitor-header .visitor-info h3 i {
+  vertical-align: middle;
+}
+
+/* Session Tabs */
+.session-tabs-container {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  padding: 0.5rem;
+}
+
+.session-tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
+.session-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.session-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.session-tabs::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.session-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex: 1;
+  min-width: fit-content;
+  position: relative;
+}
+
+.session-tab:hover,
+.session-tab.active {
+  color: var(--primary-color);
+  background: var(--surface-color);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+}
+
+.session-tab i {
+  font-size: 1.1rem;
+}
+
+.session-tab-content {
+  display: none;
+  margin-top: 1rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.session-tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.no-data-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
+  text-align: center;
+}
+
+.no-data-card i {
+  font-size: 3rem;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  margin-bottom: 1rem;
+}
+
+.no-data-card h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.no-data-card p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+/* Mobile responsive tabs */
+@media (max-width: 768px) {
+  .session-tabs-container {
+    margin-top: 1rem;
+    padding: 0.35rem;
+    border-radius: 10px;
+  }
+
+  .session-tab {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.85rem;
+    gap: 0.4rem;
+    flex: 0 0 auto;
+  }
+
+  .session-tab i {
+    font-size: 1rem;
+  }
+
+  .session-tab-content {
+    margin-top: 0.75rem;
+  }
+}
+
+/* Badge styles for metadata */
+.badge-success,
+.badge-default {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.badge-success {
+  background: var(--success-bg);
+  color: var(--success-color);
+}
+
+.badge-default {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+@media (max-width: 480px) {
+  .session-tabs-container {
+    padding: 0.25rem;
+  }
+
+  .session-tab {
+    padding: 0.6rem 0.65rem;
+    font-size: 0;
+    min-width: 3rem;
+  }
+
+  .session-tab i {
+    font-size: 1.25rem;
+    margin: 0;
+  }
+
+  .session-tab span {
+    display: none;
+  }
+
+  /* Show tooltips on mobile */
+  .session-tab::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -2.5rem;
+    left: 50%;
+    transform: translateX(-50%) scale(0);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: transform 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+  }
+
+  .session-tab:active::after {
+    transform: translateX(-50%) scale(1);
+  }
+}

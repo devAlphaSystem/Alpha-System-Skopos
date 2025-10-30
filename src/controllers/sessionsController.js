@@ -1,5 +1,6 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import logger from "../services/logger.js";
+import { initializeAdjustments, accumulateSessionAdjustments, accumulateJsErrorAdjustments, applyDashSummaryAdjustments } from "../services/dashSummary.js";
 
 async function getCommonData(userId) {
   logger.debug("Fetching common data for user: %s", userId);
@@ -61,6 +62,10 @@ export async function showSessions(req, res) {
           sessionId: session.id,
           visitorId: visitor.visitorId,
           visitorRecordId: visitor.id,
+          userId: visitor.userId,
+          userName: visitor.name,
+          userEmail: visitor.email,
+          userMetadata: visitor.metadata,
           startTime: session.created,
           endTime: session.updated,
           duration: `${durationMinutes}m ${durationSeconds}s`,
@@ -81,6 +86,10 @@ export async function showSessions(req, res) {
         groupedSessions.set(session.visitorRecordId, {
           visitorId: session.visitorId,
           visitorRecordId: session.visitorRecordId,
+          userId: session.userId,
+          userName: session.userName,
+          userEmail: session.userEmail,
+          userMetadata: session.userMetadata,
           sessions: [],
         });
       }
@@ -174,6 +183,11 @@ export async function showSessionDetails(req, res) {
       sessionId: session.id,
       visitorId: session.expand?.visitor?.visitorId || "Unknown",
       visitorRecordId: session.visitor,
+      userId: session.expand?.visitor?.userId,
+      userName: session.expand?.visitor?.name,
+      userEmail: session.expand?.visitor?.email,
+      userPhone: session.expand?.visitor?.phone,
+      userMetadata: session.expand?.visitor?.metadata,
       startTime: session.created,
       endTime: session.updated,
       duration: `${durationMinutes}m ${durationSeconds}s`,
@@ -241,19 +255,36 @@ export async function deleteSession(req, res) {
       return res.status(403).send("You do not have permission to delete this session.");
     }
 
+    const adjustments = initializeAdjustments();
+
     const events = await pbAdmin.collection("events").getFullList({
       filter: `session.id = "${sessionId}"`,
-      fields: "id",
+      fields: "id,type,path,eventName,eventData,created",
+      sort: "created",
       $autoCancel: false,
     });
+
+    const jsErrors = await pbAdmin.collection("js_errors").getFullList({
+      filter: `session.id = "${sessionId}"`,
+      fields: "id,errorMessage,count,created,lastSeen",
+      $autoCancel: false,
+    });
+
+    accumulateSessionAdjustments(adjustments, session, events);
+    accumulateJsErrorAdjustments(adjustments, jsErrors);
 
     for (const event of events) {
       await pbAdmin.collection("events").delete(event.id);
     }
 
+    for (const jsError of jsErrors) {
+      await pbAdmin.collection("js_errors").delete(jsError.id);
+    }
+
     await pbAdmin.collection("sessions").delete(sessionId);
 
-    logger.info("Successfully deleted session: %s", sessionId);
+    await applyDashSummaryAdjustments(websiteId, adjustments);
+    logger.info("Successfully deleted session: %s and updated dashboard summaries.", sessionId);
     res.redirect(`/sessions/${websiteId}`);
   } catch (error) {
     logger.error("Error deleting session %s: %o", sessionId, error);
@@ -280,21 +311,37 @@ export async function deleteVisitorSessions(req, res) {
       return res.status(403).send("You do not have permission to delete this visitor.");
     }
 
+    const adjustments = initializeAdjustments();
+
     const sessions = await pbAdmin.collection("sessions").getFullList({
       filter: `visitor.id = "${visitorId}"`,
-      fields: "id",
+      fields: "id,website,isNewVisitor,device,browser,language,country,entryPath,exitPath,referrer,created,updated",
       $autoCancel: false,
     });
 
     for (const session of sessions) {
       const events = await pbAdmin.collection("events").getFullList({
         filter: `session.id = "${session.id}"`,
-        fields: "id",
+        fields: "id,type,path,eventName,eventData,created",
+        sort: "created",
         $autoCancel: false,
       });
 
+      const jsErrors = await pbAdmin.collection("js_errors").getFullList({
+        filter: `session.id = "${session.id}"`,
+        fields: "id,errorMessage,count,created,lastSeen",
+        $autoCancel: false,
+      });
+
+      accumulateSessionAdjustments(adjustments, session, events);
+      accumulateJsErrorAdjustments(adjustments, jsErrors);
+
       for (const event of events) {
         await pbAdmin.collection("events").delete(event.id);
+      }
+
+      for (const jsError of jsErrors) {
+        await pbAdmin.collection("js_errors").delete(jsError.id);
       }
 
       await pbAdmin.collection("sessions").delete(session.id);
@@ -302,7 +349,8 @@ export async function deleteVisitorSessions(req, res) {
 
     await pbAdmin.collection("visitors").delete(visitorId);
 
-    logger.info("Successfully deleted all sessions for visitor: %s", visitorId);
+    await applyDashSummaryAdjustments(websiteId, adjustments);
+    logger.info("Successfully deleted all sessions for visitor: %s and updated dashboard summaries.", visitorId);
     res.redirect(`/sessions/${websiteId}`);
   } catch (error) {
     logger.error("Error deleting visitor sessions %s: %o", visitorId, error);

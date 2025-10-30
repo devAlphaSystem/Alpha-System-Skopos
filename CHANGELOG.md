@@ -1,3 +1,22 @@
+# 0.21.0
+
+#### Added
+
+- Introduced a new dashboard summary adjustment service to automatically update metrics when sessions or visitors are deleted.
+- Added schema fields for enhanced user identification, including `userId`, `name`, `email`, `phone`, and `metadata`.
+- Implemented new UI components and styles for displaying user identification badges, session detail tabs, and clear indicators for 'no data' states.
+- Added support for displaying detailed identified user information (ID, name, email, phone, and custom metadata) in session details.
+- Introduced tabbed navigation within session details to organize information into 'Session Information', 'Pages Visited', 'Custom Events', and 'Event Timeline'.
+- Enhanced the main sessions list to prominently display identified user names and emails, along with a distinct 'Identified User' badge.
+
+#### Changed
+
+- Improved session and visitor deletion processes to automatically adjust dashboard summaries and delete associated JavaScript error records, ensuring data consistency.
+- Expanded session and visitor data retrieval to include `userId`, `userName`, `userEmail`, `userPhone`, and `userMetadata` for richer display in the UI.
+- Refactored the session details page to feature a tabbed interface for better organization and presentation of session information, visited pages, custom events, and event timelines.
+
+---
+
 # 0.20.0
 
 #### Added
