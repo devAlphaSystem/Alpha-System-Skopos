@@ -1,3 +1,22 @@
+# 0.22.0
+
+#### Added
+
+- Implemented a new comprehensive SEO Analytics Dashboard feature. This includes a new `seo_data` collection in the database to store detailed analysis results covering meta tags, social media tags, headings, images, links, technical SEO aspects, performance scores, and Lighthouse data. The feature also includes new backend routes and controllers, a dedicated frontend UI, client-side JavaScript for interactivity, and extensive new styling.
+- Added a new 'Analytics' link to the sidebar navigation, providing direct access to the SEO analytics dashboard for each website.
+- Integrated with Google PageSpeed Insights API to fetch and display detailed performance, accessibility, best practices, and SEO scores, along with core web vitals metrics.
+
+---
+
+# 0.21.1
+
+#### Changed
+
+- Events within session details are now sorted in reverse chronological order, displaying the most recent events first.
+- Enhanced the display format for date and time values in the session details view for improved readability.
+
+---
+
 # 0.21.0
 
 #### Added

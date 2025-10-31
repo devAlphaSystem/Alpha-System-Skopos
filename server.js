@@ -12,6 +12,7 @@ import dashboardRoutes from "./src/routes/dashboard.js";
 import websitesRoutes from "./src/routes/websites.js";
 import sessionsRoutes from "./src/routes/sessions.js";
 import settingsRoutes from "./src/routes/settings.js";
+import seoRoutes from "./src/routes/seo.js";
 import apiRoutes from "./src/routes/api.js";
 import { pb } from "./src/services/pocketbase.js";
 import { startCronJobs } from "./src/services/cron.js";
@@ -79,6 +80,7 @@ async function initializeApp() {
   app.use("/", websitesRoutes);
   app.use("/", sessionsRoutes);
   app.use("/", settingsRoutes);
+  app.use("/", seoRoutes);
 
   app.use(express.static(path.join(__dirname, "public")));
 

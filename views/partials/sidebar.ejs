@@ -49,6 +49,12 @@
               <span>Dashboard</span>
             </a>
           </li>
+          <li class="<%= (currentPage === 'seo') ? 'active' : '' %>">
+            <a href="/dashboard/seo/<%= currentWebsite.id %>">
+              <i class="fa-solid fa-magnifying-glass-chart icon"></i>
+              <span>Analytics</span>
+            </a>
+          </li>
           <li class="<%= (currentPage === 'sessions') ? 'active' : '' %>">
             <a href="/sessions/<%= currentWebsite.id %>">
               <i class="fa-solid fa-clock-rotate-left icon"></i>

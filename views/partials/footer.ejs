@@ -14,5 +14,8 @@
     <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.7.0/dist/maps/world.js"></script>
     <script src="/js/dashboard.js"></script>
   <% } %>
+  <% if (scripts && scripts.includes('seo')) { %>
+    <script src="/js/seo.js"></script>
+  <% } %>
   </body>
 </html>

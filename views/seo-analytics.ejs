@@ -1,0 +1,552 @@
+<%- include('partials/header', {title: 'SEO Analytics'}) %>
+
+<% const isArchived = currentWebsite.isArchived %>
+
+<%- include('partials/mobile-header') %>
+
+<div class="page-wrapper <%= isArchived ? 'archived-state' : '' %>" data-website-id="<%= currentWebsite.id %>" data-is-archived="<%= isArchived %>">
+  <%- include('partials/sidebar', { websites, archivedWebsites, currentWebsite, currentPage }) %>
+  <div class="main-container">
+    <header class="main-header">
+      <div class="header-content">
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle Sidebar"><i class="fa-solid fa-bars"></i></button>
+        <div class="header-title">
+          <h1><%= currentWebsite.name %> - SEO Analytics</h1>
+          <p>Comprehensive search engine optimization insights for <%= currentWebsite.domain %></p>
+        </div>
+        <div class="header-actions">
+          <button id="run-analysis-btn" class="btn btn-primary" <%= isArchived ? 'disabled' : '' %>>
+            <i class="fa-solid fa-rotate"></i> Run Analysis
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content seo-main-content">
+      <% if (isArchived) { %>
+        <div class="archived-banner">
+          <i class="fa-solid fa-box-archive"></i> This website is archived. SEO analysis is disabled.
+        </div>
+      <% } %>
+
+      <% if (!seoData) { %>
+        <div class="seo-empty-state">
+          <div class="empty-state-icon">
+            <i class="fa-solid fa-magnifying-glass-chart"></i>
+          </div>
+          <h2>No SEO Data Available</h2>
+          <p>Run your first analysis to unlock comprehensive technical, content, and performance insights for your website.</p>
+          <% if (!isArchived) { %>
+            <button id="initial-analysis-btn" class="btn btn-primary btn-large">
+              <i class="fa-solid fa-play"></i> Start First Analysis
+            </button>
+          <% } %>
+        </div>
+      <% } else { %>
+        <% const {
+          metaTags, technical, images, links, headings, social, performance,
+          metaCoverage, altCoverage, h1Count, h2Count, h3Count,
+          seoScore, clampScore, scoreDescriptor,
+          hasPerformanceScores, strategyLabel,
+          scoreRadius, scoreCircumference, gaugeDashArray, gaugeDashOffset,
+          heroIntro, recommendations, highlightItems,
+          metaStatusRows, technicalStatusRows, hasSocial,
+          summaryCards, lighthouseScores, topH2Headings
+        } = viewData; %>
+        <% const truncate = (value, length = 80) => {
+          if (!value) return value;
+          return value.length > length ? value.slice(0, length) + "..." : value;
+        }; %>
+
+        <section class="seo-hero-modern">
+          <div class="hero-backdrop">
+            <div class="hero-gradient-orb orb-1"></div>
+            <div class="hero-gradient-orb orb-2"></div>
+            <div class="hero-gradient-orb orb-3"></div>
+          </div>
+          
+          <div class="hero-main">
+            <div class="hero-content-modern">
+              <div class="hero-badge">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>SEO Health Report</span>
+              </div>
+              <h1 class="hero-title"><%= currentWebsite.name %></h1>
+              <p class="hero-domain"><%= currentWebsite.domain %></p>
+              <p class="hero-description"><%= heroIntro %></p>
+              
+              <div class="hero-meta-tags">
+                <div class="meta-tag">
+                  <i class="fa-solid fa-calendar-check"></i>
+                  <span><%= seoData.lastAnalyzed ? new Date(seoData.lastAnalyzed).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not analyzed' %></span>
+                </div>
+                <% if (strategyLabel) { %>
+                  <div class="meta-tag">
+                    <i class="fa-solid fa-mobile-screen"></i>
+                    <span><%= strategyLabel %></span>
+                  </div>
+                <% } %>
+                <% if (seoData.analysisWarnings && seoData.analysisWarnings.length) { %>
+                  <div class="meta-tag meta-tag-warning">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span><%= seoData.analysisWarnings.length %> Warning<%= seoData.analysisWarnings.length > 1 ? 's' : '' %></span>
+                  </div>
+                <% } else { %>
+                  <div class="meta-tag meta-tag-success">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>All Systems Go</span>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+
+            <div class="hero-score-modern">
+              <div class="score-circle-container">
+                <svg class="score-circle" viewBox="0 0 200 200">
+                  <defs>
+                    <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" style="stop-color:#ef4444;stop-opacity:1" />
+                      <stop offset="100%" style="stop-color:#dc2626;stop-opacity:1" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="100" cy="100" r="85" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="16" />
+                  <circle 
+                    cx="100" 
+                    cy="100" 
+                    r="85" 
+                    fill="none" 
+                    stroke="url(#scoreGradient)" 
+                    stroke-width="16" 
+                    stroke-dasharray="<%= scoreCircumference %>" 
+                    stroke-dashoffset="<%= scoreCircumference - (scoreCircumference * clampScore / 100) %>" 
+                    transform="rotate(-90 100 100)" 
+                    stroke-linecap="round"
+                    class="score-circle-progress" />
+                </svg>
+                <div class="score-value-container">
+                  <div class="score-value"><%= clampScore %></div>
+                  <div class="score-label"><%= scoreDescriptor %></div>
+                  <div class="score-max">/ 100</div>
+                </div>
+              </div>
+              <div class="score-indicator">
+                <div class="indicator-bar">
+                  <div class="indicator-fill" style="width: <%= clampScore %>%"></div>
+                </div>
+                <div class="indicator-labels">
+                  <span>0</span>
+                  <span>50</span>
+                  <span>100</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="seo-metrics-showcase">
+          <% summaryCards.forEach(function(card) { %>
+            <div class="metric-showcase-card tone-<%= card.tone %>">
+              <div class="metric-showcase-header">
+                <div class="metric-showcase-icon">
+                  <i class="fa-solid <%= card.icon %>"></i>
+                </div>
+                <div class="metric-showcase-trend">
+                  <% if (card.tone === 'positive') { %>
+                    <i class="fa-solid fa-arrow-trend-up"></i>
+                  <% } else if (card.tone === 'negative') { %>
+                    <i class="fa-solid fa-arrow-trend-down"></i>
+                  <% } else { %>
+                    <i class="fa-solid fa-minus"></i>
+                  <% } %>
+                </div>
+              </div>
+              <div class="metric-showcase-body">
+                <div class="metric-showcase-value"><%= card.value %></div>
+                <div class="metric-showcase-title"><%= card.title %></div>
+                <div class="metric-showcase-caption"><%= card.caption %></div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+
+        <% if (seoData.analysisWarnings && seoData.analysisWarnings.length) { %>
+          <section class="seo-alert-card alert-warning">
+            <div class="alert-header">
+              <div class="alert-icon">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <div class="alert-title-group">
+                <h3>Analysis Warnings</h3>
+                <p>Issues detected during SEO analysis</p>
+              </div>
+              <div class="alert-badge"><%= seoData.analysisWarnings.length %></div>
+            </div>
+            <ul class="alert-list">
+              <% seoData.analysisWarnings.forEach(function(warning) { %>
+                <li class="alert-item">
+                  <i class="fa-solid fa-circle-exclamation"></i>
+                  <span><%= warning %></span>
+                </li>
+              <% }); %>
+            </ul>
+          </section>
+        <% } %>
+
+        <% if (hasPerformanceScores) { %>
+          <section class="lighthouse-showcase-card">
+            <div class="lighthouse-showcase-header">
+              <div class="lighthouse-header-content">
+                <div class="lighthouse-icon-wrapper">
+                  <i class="fa-solid fa-gauge-high"></i>
+                </div>
+                <div>
+                  <h2>Lighthouse Performance Metrics</h2>
+                  <p class="lighthouse-subtitle">Google PageSpeed Insights • Strategy: <strong><%= strategyLabel %></strong></p>
+                </div>
+              </div>
+              <% if (performance.fetchTime) { %>
+                <div class="lighthouse-timestamp">
+                  <i class="fa-solid fa-clock"></i>
+                  <span><%= new Date(performance.fetchTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %></span>
+                </div>
+              <% } %>
+            </div>
+
+            <div class="lighthouse-scores-grid">
+              <% lighthouseScores.forEach(function(score) { %>
+                <% const tone = score.value >= 90 ? 'positive' : score.value >= 70 ? 'warning' : 'negative'; %>
+                <div class="lighthouse-score-item tone-<%= tone %>">
+                  <div class="score-item-header">
+                    <div class="score-item-icon">
+                      <i class="fa-solid <%= score.icon %>"></i>
+                    </div>
+                    <div class="score-item-value"><%= score.value %></div>
+                  </div>
+                  <div class="score-item-label"><%= score.label %></div>
+                  <div class="score-item-bar">
+                    <div class="score-item-fill" style="width: <%= Math.max(0, Math.min(score.value, 100)) %>%"></div>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+
+            <% if (performance.metrics) { %>
+              <div class="lighthouse-metrics-detailed">
+                <h3 class="metrics-detailed-title">
+                  Core Web Vitals & Key Metrics
+                </h3>
+                <div class="metrics-detailed-grid">
+                  <div class="metric-detail-card">
+                    <div class="metric-detail-label">First Contentful Paint</div>
+                    <div class="metric-detail-value"><%= performance.metrics.fcp %></div>
+                    <div class="metric-detail-abbr">FCP</div>
+                  </div>
+                  <div class="metric-detail-card">
+                    <div class="metric-detail-label">Largest Contentful Paint</div>
+                    <div class="metric-detail-value"><%= performance.metrics.lcp %></div>
+                    <div class="metric-detail-abbr">LCP</div>
+                  </div>
+                  <div class="metric-detail-card">
+                    <div class="metric-detail-label">Total Blocking Time</div>
+                    <div class="metric-detail-value"><%= performance.metrics.tbt %></div>
+                    <div class="metric-detail-abbr">TBT</div>
+                  </div>
+                  <div class="metric-detail-card">
+                    <div class="metric-detail-label">Cumulative Layout Shift</div>
+                    <div class="metric-detail-value"><%= performance.metrics.cls %></div>
+                    <div class="metric-detail-abbr">CLS</div>
+                  </div>
+                  <div class="metric-detail-card">
+                    <div class="metric-detail-label">Speed Index</div>
+                    <div class="metric-detail-value"><%= performance.metrics.si %></div>
+                    <div class="metric-detail-abbr">SI</div>
+                  </div>
+                </div>
+              </div>
+            <% } %>
+          </section>
+        <% } else { %>
+          <section class="lighthouse-unavailable-card">
+            <div class="unavailable-icon">
+              <i class="fa-solid fa-gauge-simple"></i>
+            </div>
+            <h3>Lighthouse Metrics Unavailable</h3>
+            <p>Lighthouse metrics could not be retrieved for this analysis. Ensure the domain is publicly accessible and consider adding a Google PageSpeed Insights API key for enhanced performance data.</p>
+          </section>
+        <% } %>
+
+        <div class="seo-details-grid">
+          <section class="seo-detail-card card-meta">
+            <div class="detail-card-header">
+              <div class="detail-card-icon">
+                <i class="fa-solid fa-tag"></i>
+              </div>
+              <div class="detail-card-title-group">
+                <h3>Meta Essentials</h3>
+                <p>Critical SEO meta tags</p>
+              </div>
+              <div class="detail-card-badge badge-<%= metaCoverage >= 80 ? 'success' : metaCoverage >= 50 ? 'warning' : 'danger' %>">
+                <%= metaCoverage %>%
+              </div>
+            </div>
+            <div class="detail-card-body">
+              <% metaStatusRows.forEach(function(item) { %>
+                <% const rowClass = item.ok ? 'positive' : (item.importance === 'optional' ? 'neutral' : 'negative'); %>
+                <div class="status-item status-<%= rowClass %>">
+                  <div class="status-item-indicator"></div>
+                  <div class="status-item-icon">
+                    <i class="fa-solid fa-<%= item.icon %>"></i>
+                  </div>
+                  <div class="status-item-content">
+                    <div class="status-item-title"><%= item.label %></div>
+                    <div class="status-item-detail"><%= item.detail %></div>
+                  </div>
+                  <div class="status-item-badge">
+                    <% if (item.ok) { %>
+                      <i class="fa-solid fa-circle-check"></i>
+                    <% } else if (item.importance === 'optional') { %>
+                      <i class="fa-solid fa-circle-minus"></i>
+                    <% } else { %>
+                      <i class="fa-solid fa-circle-xmark"></i>
+                    <% } %>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+          </section>
+
+          <section class="seo-detail-card card-technical">
+            <div class="detail-card-header">
+              <div class="detail-card-icon">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+              </div>
+              <div class="detail-card-title-group">
+                <h3>Technical Health</h3>
+                <p>Site configuration & setup</p>
+              </div>
+            </div>
+            <div class="detail-card-body">
+              <% technicalStatusRows.forEach(function(item) { %>
+                <% const rowClass = item.ok ? 'positive' : 'negative'; %>
+                <div class="status-item status-<%= rowClass %>">
+                  <div class="status-item-indicator"></div>
+                  <div class="status-item-icon">
+                    <i class="fa-solid fa-<%= item.icon %>"></i>
+                  </div>
+                  <div class="status-item-content">
+                    <div class="status-item-title"><%= item.label %></div>
+                    <div class="status-item-detail"><%= item.detail %></div>
+                  </div>
+                  <div class="status-item-badge">
+                    <% if (item.ok) { %>
+                      <i class="fa-solid fa-circle-check"></i>
+                    <% } else { %>
+                      <i class="fa-solid fa-circle-xmark"></i>
+                    <% } %>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+          </section>
+        </div>
+
+        <div class="seo-details-grid">
+          <section class="seo-detail-card card-content">
+            <div class="detail-card-header">
+              <div class="detail-card-icon">
+                <i class="fa-solid fa-heading"></i>
+              </div>
+              <div class="detail-card-title-group">
+                <h3>Content Structure</h3>
+                <p>Heading hierarchy analysis</p>
+              </div>
+            </div>
+            <div class="detail-card-body">
+              <div class="heading-stats-grid">
+                <div class="heading-stat-item <%= h1Count === 1 ? 'optimal' : 'warning' %>">
+                  <div class="heading-stat-label">H1</div>
+                  <div class="heading-stat-value"><%= h1Count %></div>
+                  <div class="heading-stat-status">
+                    <% if (h1Count === 1) { %>
+                      Optimal
+                    <% } else if (h1Count === 0) { %>
+                      Missing
+                    <% } else { %>
+                      Multiple
+                    <% } %>
+                  </div>
+                </div>
+                <div class="heading-stat-item">
+                  <div class="heading-stat-label">H2</div>
+                  <div class="heading-stat-value"><%= h2Count %></div>
+                  <div class="heading-stat-status">Subheadings</div>
+                </div>
+                <div class="heading-stat-item">
+                  <div class="heading-stat-label">H3</div>
+                  <div class="heading-stat-value"><%= h3Count %></div>
+                  <div class="heading-stat-status">Sections</div>
+                </div>
+              </div>
+              
+              <% if ((headings.h1 || []).length) { %>
+                <div class="heading-content-preview">
+                  <div class="preview-label">
+                    <i class="fa-solid fa-h1"></i>
+                    Primary Heading
+                  </div>
+                  <div class="preview-text"><%= (headings.h1 || [])[0] %></div>
+                </div>
+              <% } %>
+              
+              <% if (topH2Headings.length) { %>
+                <div class="heading-content-preview">
+                  <div class="preview-label">
+                    <i class="fa-solid fa-h2"></i>
+                    Top H2 Headings
+                  </div>
+                  <ul class="preview-list">
+                    <% topH2Headings.forEach(function(text) { %>
+                      <li><%= text %></li>
+                    <% }); %>
+                  </ul>
+                </div>
+              <% } %>
+            </div>
+          </section>
+
+          <section class="seo-detail-card card-media">
+            <div class="detail-card-header">
+              <div class="detail-card-icon">
+                <i class="fa-solid fa-image"></i>
+              </div>
+              <div class="detail-card-title-group">
+                <h3>Media & Links</h3>
+                <p>Images and link architecture</p>
+              </div>
+            </div>
+            <div class="detail-card-body">
+              <div class="media-stats-showcase">
+                <div class="media-stat-large">
+                  <div class="media-stat-circle <%= (images.withoutAlt || 0) === 0 ? 'success' : 'warning' %>">
+                    <svg viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="8" opacity="0.2" />
+                      <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="8" 
+                        stroke-dasharray="<%= 2 * Math.PI * 45 %>" 
+                        stroke-dashoffset="<%= 2 * Math.PI * 45 * (1 - (typeof altCoverage === 'number' ? altCoverage / 100 : 0)) %>" 
+                        transform="rotate(-90 50 50)" 
+                        stroke-linecap="round" />
+                    </svg>
+                    <div class="media-stat-center">
+                      <div class="media-stat-value"><%= typeof altCoverage === 'number' ? altCoverage + '%' : '—' %></div>
+                      <div class="media-stat-label">Alt Coverage</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="media-stat-list">
+                  <div class="media-stat-row">
+                    <div class="media-stat-icon success">
+                      <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div class="media-stat-info">
+                      <div class="media-stat-title">Images with alt text</div>
+                      <div class="media-stat-subtitle"><%= images.withAlt || 0 %> of <%= images.total || 0 %> images</div>
+                    </div>
+                  </div>
+                  
+                  <div class="media-stat-row">
+                    <div class="media-stat-icon <%= (images.withoutAlt || 0) > 0 ? 'warning' : 'success' %>">
+                      <i class="fa-solid <%= (images.withoutAlt || 0) > 0 ? 'fa-circle-exclamation' : 'fa-circle-check' %>"></i>
+                    </div>
+                    <div class="media-stat-info">
+                      <div class="media-stat-title">Missing alt text</div>
+                      <div class="media-stat-subtitle"><%= images.withoutAlt || 0 %> images need attention</div>
+                    </div>
+                  </div>
+                  
+                  <div class="media-stat-row">
+                    <div class="media-stat-icon info">
+                      <i class="fa-solid fa-link"></i>
+                    </div>
+                    <div class="media-stat-info">
+                      <div class="media-stat-title">Total links</div>
+                      <div class="media-stat-subtitle"><%= links.internal || 0 %> internal • <%= links.external || 0 %> external</div>
+                    </div>
+                  </div>
+                  
+                  <% if ((links.nofollow || 0) > 0) { %>
+                    <div class="media-stat-row">
+                      <div class="media-stat-icon neutral">
+                        <i class="fa-solid fa-ban"></i>
+                      </div>
+                      <div class="media-stat-info">
+                        <div class="media-stat-title">Nofollow links</div>
+                        <div class="media-stat-subtitle"><%= links.nofollow %> links with nofollow</div>
+                      </div>
+                    </div>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <% if (hasSocial) { %>
+          <div class="social-cards-grid">
+            <% if (Object.keys(social.openGraph || {}).length) { %>
+              <div class="social-preview-card og-preview">
+                <div class="social-preview-platform">
+                  <div class="platform-badge og-badge">
+                    <i class="fa-brands fa-facebook"></i>
+                    <span>Open Graph</span>
+                  </div>
+                  <div class="platform-desc">Facebook, LinkedIn & more</div>
+                </div>
+                <div class="social-preview-tags">
+                  <% Object.entries(social.openGraph).forEach(function(entry) { %>
+                    <% const key = entry[0]; const value = entry[1]; %>
+                    <div class="social-tag-modern">
+                      <div class="social-tag-key">og:<%= key %></div>
+                      <div class="social-tag-value"><%= truncate(value, 120) %></div>
+                    </div>
+                  <% }); %>
+                </div>
+              </div>
+            <% } %>
+            
+            <% if (Object.keys(social.twitter || {}).length) { %>
+              <div class="social-preview-card twitter-preview">
+                <div class="social-preview-platform">
+                  <div class="platform-badge twitter-badge">
+                    <i class="fa-brands fa-twitter"></i>
+                    <span>Twitter Cards</span>
+                  </div>
+                  <div class="platform-desc">Enhanced Twitter/X previews</div>
+                </div>
+                <div class="social-preview-tags">
+                  <% Object.entries(social.twitter).forEach(function(entry) { %>
+                    <% const key = entry[0]; const value = entry[1]; %>
+                    <div class="social-tag-modern">
+                      <div class="social-tag-key">twitter:<%= key %></div>
+                      <div class="social-tag-value"><%= truncate(value, 120) %></div>
+                    </div>
+                  <% }); %>
+                </div>
+              </div>
+            <% } %>
+          </div>
+        <% } %>
+      <% } %>
+    </main>
+  </div>
+</div>
+
+<div id="analysis-spinner" class="analysis-overlay" style="display: none;">
+  <div class="analysis-spinner-content">
+    <div class="spinner"></div>
+    <h2>Analyzing Website SEO...</h2>
+    <p>This may take 30-60 seconds</p>
+  </div>
+</div>
+
+<%- include('partials/footer', { scripts: ['seo'] }) %>
