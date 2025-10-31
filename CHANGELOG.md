@@ -1,3 +1,16 @@
+# 0.23.0
+
+#### Added
+
+- Implemented Gzip compression for all dashboard responses to improve performance.
+
+#### Changed
+
+- Significantly expanded and updated all project documentation, including `README.md`, the client-side script guide, dashboard guide, and SDK documentation.
+- Refined the conditional logic for displaying dashboard-specific controls in the mobile header, ensuring they only appear on relevant analytics pages.
+
+---
+
 # 0.22.0
 
 #### Added

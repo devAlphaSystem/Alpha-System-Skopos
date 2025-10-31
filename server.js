@@ -1,4 +1,5 @@
 import express from "express";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import path from "node:path";
@@ -37,6 +38,7 @@ async function initializeApp() {
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "views"));
 
+  app.use(compression());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());

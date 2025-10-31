@@ -9,7 +9,11 @@
         <span class="brand-name">Skopos</span>
       </div>
       <div class="mobile-header-actions">
-        <% if (typeof currentWebsite !== 'undefined' && currentWebsite && !currentWebsite.isArchived) { %>
+        <% 
+          const isDashboardPage = typeof currentPage !== 'undefined' && ['dashboard', 'overview', 'sessions', 'session-details', 'seo-analytics'].includes(currentPage);
+          const showDashboardControls = isDashboardPage && typeof currentWebsite !== 'undefined' && currentWebsite && !currentWebsite.isArchived;
+        %>
+        <% if (showDashboardControls) { %>
           <button id="mobile-refresh-btn" class="mobile-btn-icon" title="Refresh">
             <i class="fa-solid fa-rotate"></i>
           </button>
@@ -19,7 +23,7 @@
         <% } %>
       </div>
     </div>
-    <% if (typeof currentWebsite !== 'undefined' && currentWebsite && !currentWebsite.isArchived) { %>
+    <% if (showDashboardControls) { %>
       <div class="update-progress-container">
         <div id="mobile-update-progress-bar" class="progress-bar-update"></div>
       </div>
