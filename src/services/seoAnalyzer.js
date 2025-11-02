@@ -197,24 +197,31 @@ function analyzeTechnicalSeo(html, headers, url) {
   return technical;
 }
 
-async function fetchPageSpeedInsights(url) {
+async function fetchPageSpeedInsights(url, preferredStrategy = null) {
   const apiKey = process.env.PAGESPEED_API_KEY || process.env.GOOGLE_PAGESPEED_API_KEY || null;
   const categories = ["PERFORMANCE", "ACCESSIBILITY", "BEST_PRACTICES", "SEO"];
-  const strategiesEnv = process.env.PAGESPEED_STRATEGIES || "";
-  const strategies = strategiesEnv
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
 
-  if (strategies.length === 0) {
-    strategies.push("mobile", "desktop");
+  let strategies = [];
+
+  if (preferredStrategy && (preferredStrategy.toLowerCase() === "mobile" || preferredStrategy.toLowerCase() === "desktop")) {
+    strategies.push(preferredStrategy.toLowerCase());
+  } else {
+    const strategiesEnv = process.env.PAGESPEED_STRATEGIES || "";
+    strategies = strategiesEnv
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    if (strategies.length === 0) {
+      strategies.push("mobile", "desktop");
+    }
   }
 
   const warnings = [];
 
-  const requestPageSpeed = (apiUrl, strategy) =>
+  const requestPageSpeed = (apiUrl, strategy, retryCount = 0, maxRetries = 2) =>
     new Promise((resolve) => {
-      const req = https.get(apiUrl, { timeout: 30000 }, (res) => {
+      const req = https.get(apiUrl, { timeout: 45000 }, (res) => {
         let data = "";
 
         res.on("data", (chunk) => {
@@ -226,7 +233,7 @@ async function fetchPageSpeedInsights(url) {
             const message = `Strategy ${strategy.toUpperCase()}: HTTP ${res.statusCode}`;
             warnings.push(message);
             logger.warn("PageSpeed Insights request failed (%s)", message);
-            return resolve({ success: false });
+            return resolve({ success: false, retryable: res.statusCode >= 500 });
           }
 
           try {
@@ -236,7 +243,7 @@ async function fetchPageSpeedInsights(url) {
               const message = `Strategy ${strategy.toUpperCase()}: ${result.error.message || "API error"}`;
               warnings.push(message);
               logger.warn("PageSpeed Insights API error (%s)", message);
-              return resolve({ success: false });
+              return resolve({ success: false, retryable: false });
             }
 
             const lighthouse = result.lighthouseResult;
@@ -245,7 +252,7 @@ async function fetchPageSpeedInsights(url) {
               const message = `Strategy ${strategy.toUpperCase()}: Lighthouse data missing`;
               warnings.push(message);
               logger.warn("PageSpeed Insights response missing categories (%s)", message);
-              return resolve({ success: false });
+              return resolve({ success: false, retryable: false });
             }
 
             const toPercent = (value) => (typeof value === "number" && !Number.isNaN(value) ? Math.round(value * 100) : null);
@@ -266,29 +273,43 @@ async function fetchPageSpeedInsights(url) {
               fetchTime: lighthouse.fetchTime || result.analysisUTCTimestamp || null,
             };
 
+            logger.info("PageSpeed Insights successful for %s strategy", strategy);
             return resolve({ success: true, data: dataPayload, raw: lighthouse });
           } catch (error) {
             const message = `Strategy ${strategy.toUpperCase()}: Failed to parse response`;
             warnings.push(message);
             logger.error("Error parsing PageSpeed Insights response: %o", error);
-            return resolve({ success: false });
+            return resolve({ success: false, retryable: false });
           }
         });
       });
 
       req.on("error", (error) => {
-        const message = `Strategy ${strategy.toUpperCase()}: ${error.message}`;
-        warnings.push(message);
-        logger.error("Error fetching PageSpeed Insights (%s): %o", strategy, error);
-        resolve({ success: false });
+        const isRetryable = error.code === "ECONNRESET" || error.code === "ETIMEDOUT" || error.code === "ENOTFOUND";
+        const message = `Strategy ${strategy.toUpperCase()}: ${error.message} (code: ${error.code || "unknown"})`;
+
+        if (retryCount < maxRetries && isRetryable) {
+          logger.warn("PageSpeed Insights connection error (%s), attempt %d/%d - will retry", strategy, retryCount + 1, maxRetries + 1);
+        } else {
+          warnings.push(message);
+          logger.error("Error fetching PageSpeed Insights (%s): %o", strategy, error);
+        }
+
+        resolve({ success: false, retryable: isRetryable });
       });
 
       req.on("timeout", () => {
-        const message = `Strategy ${strategy.toUpperCase()}: request timeout`;
-        warnings.push(message);
-        logger.warn("PageSpeed Insights request timeout (%s)", strategy);
+        const message = `Strategy ${strategy.toUpperCase()}: request timeout after 45s`;
+
+        if (retryCount < maxRetries) {
+          logger.warn("PageSpeed Insights timeout (%s), attempt %d/%d - will retry", strategy, retryCount + 1, maxRetries + 1);
+        } else {
+          warnings.push(message);
+          logger.warn("PageSpeed Insights request timeout (%s) - max retries reached", strategy);
+        }
+
         req.destroy();
-        resolve({ success: false });
+        resolve({ success: false, retryable: true });
       });
     });
 
@@ -306,10 +327,24 @@ async function fetchPageSpeedInsights(url) {
     const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?${params.toString()}`;
     logger.info("Requesting PageSpeed Insights (%s) for %s", strategy, url);
 
-    const attempt = await requestPageSpeed(apiUrl, strategy);
-    if (attempt.success) {
-      attempt.warnings = warnings;
-      return attempt;
+    const maxRetries = 2;
+    for (let retryCount = 0; retryCount <= maxRetries; retryCount++) {
+      if (retryCount > 0) {
+        const backoffDelay = Math.min(1000 * 2 ** (retryCount - 1), 5000);
+        logger.info("Retrying PageSpeed request after %dms (attempt %d/%d)", backoffDelay, retryCount + 1, maxRetries + 1);
+        await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+      }
+
+      const attempt = await requestPageSpeed(apiUrl, strategy, retryCount, maxRetries);
+
+      if (attempt.success) {
+        attempt.warnings = warnings;
+        return attempt;
+      }
+
+      if (!attempt.retryable || retryCount === maxRetries) {
+        break;
+      }
     }
   }
 
@@ -340,8 +375,8 @@ async function checkSitemap(domain) {
   }
 }
 
-export async function analyzeSeo(domain) {
-  logger.info("Starting SEO analysis for: %s", domain);
+export async function analyzeSeo(domain, strategy = null) {
+  logger.info("Starting SEO analysis for: %s with strategy: %s", domain, strategy || "auto");
   const startTime = Date.now();
 
   try {
@@ -362,7 +397,7 @@ export async function analyzeSeo(domain) {
     technicalSeo.hasRobotsTxt = await checkRobotsTxt(url);
     technicalSeo.hasSitemap = await checkSitemap(url);
 
-    const pageSpeedResult = await fetchPageSpeedInsights(url);
+    const pageSpeedResult = await fetchPageSpeedInsights(url, strategy);
     const analysisWarnings = [...(pageSpeedResult.warnings || [])];
     const performanceScores = pageSpeedResult.success ? pageSpeedResult.data : null;
     const lighthouseData = pageSpeedResult.success ? pageSpeedResult.raw : null;

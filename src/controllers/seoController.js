@@ -308,7 +308,8 @@ export async function showSeoAnalytics(req, res) {
 
 export async function runSeoAnalysis(req, res) {
   const { websiteId } = req.params;
-  logger.info("Running SEO analysis for website: %s, user: %s", websiteId, res.locals.user.id);
+  const { strategy } = req.body;
+  logger.info("Running SEO analysis for website: %s, user: %s, strategy: %s", websiteId, res.locals.user.id, strategy || "auto");
 
   try {
     await ensureAdminAuth();
@@ -320,7 +321,7 @@ export async function runSeoAnalysis(req, res) {
       return res.status(404).json({ error: "Website not found" });
     }
 
-    const seoData = await analyzeSeo(website.domain);
+    const seoData = await analyzeSeo(website.domain, strategy);
 
     try {
       const existingRecord = await pbAdmin.collection("seo_data").getFirstListItem(`website.id="${websiteId}"`);

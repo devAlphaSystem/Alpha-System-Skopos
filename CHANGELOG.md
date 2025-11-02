@@ -1,3 +1,18 @@
+# 0.24.0
+
+#### Added
+
+- Implemented a new user interface for selecting the SEO analysis strategy (Mobile or Desktop) before running PageSpeed Insights.
+- Introduced new CSS styles for the strategy selection modal.
+
+#### Changed
+
+- Improved PageSpeed Insights reliability by adding retry mechanisms for network and timeout errors, and increased the request timeout to 45 seconds.
+- Modified the backend to receive and process the selected SEO analysis strategy.
+- Adjusted padding for the main content area of the SEO analytics page.
+
+---
+
 # 0.23.0
 
 #### Added

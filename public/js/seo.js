@@ -6,10 +6,65 @@ document.addEventListener("DOMContentLoaded", () => {
   const runAnalysisBtn = document.getElementById("run-analysis-btn");
   const initialAnalysisBtn = document.getElementById("initial-analysis-btn");
   const analysisSpinner = document.getElementById("analysis-spinner");
+  const strategyModal = document.getElementById("strategy-modal-overlay");
+  const cancelStrategyBtn = document.getElementById("cancel-strategy-btn");
+  const strategyOptions = document.querySelectorAll(".strategy-option");
 
   console.log("Website ID:", WEBSITE_ID);
   console.log("Run Analysis Button:", runAnalysisBtn);
   console.log("Initial Analysis Button:", initialAnalysisBtn);
+
+  function showStrategyModal() {
+    return new Promise((resolve) => {
+      if (strategyModal) {
+        strategyModal.style.display = "flex";
+
+        const handleStrategySelect = (e) => {
+          const button = e.target.closest(".strategy-option");
+          if (button) {
+            const strategy = button.dataset.strategy;
+            strategyModal.style.display = "none";
+            cleanup();
+            resolve(strategy);
+          }
+        };
+
+        const handleCancel = () => {
+          strategyModal.style.display = "none";
+          cleanup();
+          resolve(null);
+        };
+
+        const cleanup = () => {
+          for (const option of strategyOptions) {
+            option.removeEventListener("click", handleStrategySelect);
+          }
+          if (cancelStrategyBtn) {
+            cancelStrategyBtn.removeEventListener("click", handleCancel);
+          }
+          strategyModal.removeEventListener("click", handleOverlayClick);
+        };
+
+        const handleOverlayClick = (e) => {
+          if (e.target === strategyModal) {
+            handleCancel();
+          }
+        };
+
+        for (const option of strategyOptions) {
+          option.addEventListener("click", handleStrategySelect);
+        }
+
+        if (cancelStrategyBtn) {
+          cancelStrategyBtn.addEventListener("click", handleCancel);
+        }
+
+        strategyModal.addEventListener("click", handleOverlayClick);
+      } else {
+        resolve("mobile");
+      }
+    });
+  }
 
   async function runSeoAnalysis() {
     console.log("runSeoAnalysis function called");
@@ -20,7 +75,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    console.log("Starting SEO analysis for website:", WEBSITE_ID);
+    const selectedStrategy = await showStrategyModal();
+
+    if (!selectedStrategy) {
+      console.log("Analysis cancelled by user");
+      return;
+    }
+
+    console.log("Starting SEO analysis for website:", WEBSITE_ID, "with strategy:", selectedStrategy);
 
     if (analysisSpinner) {
       analysisSpinner.style.display = "flex";
@@ -38,6 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
         headers: {
           "Content-Type": "application/json",
         },
+        body: JSON.stringify({ strategy: selectedStrategy }),
       });
 
       console.log("Response status:", response.status);

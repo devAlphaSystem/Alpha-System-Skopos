@@ -541,6 +541,46 @@
   </div>
 </div>
 
+<div id="strategy-modal-overlay" class="analysis-overlay" style="display: none;">
+  <div class="strategy-modal">
+    <div class="strategy-modal-header">
+      <h2>Select Analysis Strategy</h2>
+      <p>Choose which device type to analyze for PageSpeed Insights</p>
+    </div>
+    <div class="strategy-modal-body">
+      <button class="strategy-option" data-strategy="mobile">
+        <div class="strategy-icon">
+          <i class="fa-solid fa-mobile-screen-button"></i>
+        </div>
+        <div class="strategy-content">
+          <h3>Mobile</h3>
+          <p>Analyze performance on mobile devices with slower networks</p>
+        </div>
+        <div class="strategy-badge">
+          <i class="fa-solid fa-chevron-right"></i>
+        </div>
+      </button>
+      <button class="strategy-option" data-strategy="desktop">
+        <div class="strategy-icon">
+          <i class="fa-solid fa-desktop"></i>
+        </div>
+        <div class="strategy-content">
+          <h3>Desktop</h3>
+          <p>Analyze performance on desktop devices with faster networks</p>
+        </div>
+        <div class="strategy-badge">
+          <i class="fa-solid fa-chevron-right"></i>
+        </div>
+      </button>
+    </div>
+    <div class="strategy-modal-footer">
+      <button id="cancel-strategy-btn" class="btn btn-secondary">
+        <i class="fa-solid fa-times"></i> Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="analysis-spinner" class="analysis-overlay" style="display: none;">
   <div class="analysis-spinner-content">
     <div class="spinner"></div>
@@ -548,5 +588,5 @@
     <p>This may take 30-60 seconds</p>
   </div>
 </div>
-
+  
 <%- include('partials/footer', { scripts: ['seo'] }) %>
