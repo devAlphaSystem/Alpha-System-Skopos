@@ -1,18 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("SEO Analytics page loaded");
-
   const pageWrapper = document.querySelector(".page-wrapper");
   const WEBSITE_ID = pageWrapper ? pageWrapper.dataset.websiteId : null;
   const runAnalysisBtn = document.getElementById("run-analysis-btn");
   const initialAnalysisBtn = document.getElementById("initial-analysis-btn");
-  const analysisSpinner = document.getElementById("analysis-spinner");
   const strategyModal = document.getElementById("strategy-modal-overlay");
   const cancelStrategyBtn = document.getElementById("cancel-strategy-btn");
   const strategyOptions = document.querySelectorAll(".strategy-option");
-
-  console.log("Website ID:", WEBSITE_ID);
-  console.log("Run Analysis Button:", runAnalysisBtn);
-  console.log("Initial Analysis Button:", initialAnalysisBtn);
 
   function showStrategyModal() {
     return new Promise((resolve) => {
@@ -67,8 +60,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function runSeoAnalysis() {
-    console.log("runSeoAnalysis function called");
-
     if (!WEBSITE_ID) {
       console.error("Website ID not found");
       alert("Error: Website ID not found. Please refresh the page.");
@@ -78,23 +69,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const selectedStrategy = await showStrategyModal();
 
     if (!selectedStrategy) {
-      console.log("Analysis cancelled by user");
       return;
     }
 
-    console.log("Starting SEO analysis for website:", WEBSITE_ID, "with strategy:", selectedStrategy);
-
-    if (analysisSpinner) {
-      analysisSpinner.style.display = "flex";
-      console.log("Spinner shown");
-    }
+    window.showLoadingModal("Analyzing SEO", "This may take 30-60 seconds. Please wait...");
 
     if (runAnalysisBtn) runAnalysisBtn.disabled = true;
     if (initialAnalysisBtn) initialAnalysisBtn.disabled = true;
 
     try {
-      console.log("Sending POST request to:", `/dashboard/seo/${WEBSITE_ID}/analyze`);
-
       const response = await fetch(`/dashboard/seo/${WEBSITE_ID}/analyze`, {
         method: "POST",
         headers: {
@@ -103,16 +86,14 @@ document.addEventListener("DOMContentLoaded", () => {
         body: JSON.stringify({ strategy: selectedStrategy }),
       });
 
-      console.log("Response status:", response.status);
-
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Error response:", errorData);
+        window.hideLoadingModal();
         throw new Error(errorData.error || "Failed to analyze SEO");
       }
 
       const result = await response.json();
-      console.log("SEO analysis completed:", result);
       if (Array.isArray(result.analysisWarnings) && result.analysisWarnings.length > 0) {
         console.warn("Analysis warnings:", result.analysisWarnings);
       }
@@ -120,26 +101,22 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.reload();
     } catch (error) {
       console.error("Error running SEO analysis:", error);
+      window.hideLoadingModal();
       alert(`Error: ${error.message}`);
 
-      if (analysisSpinner) analysisSpinner.style.display = "none";
       if (runAnalysisBtn) runAnalysisBtn.disabled = false;
       if (initialAnalysisBtn) initialAnalysisBtn.disabled = false;
     }
   }
 
   if (runAnalysisBtn) {
-    console.log("Adding click listener to Run Analysis button");
     runAnalysisBtn.addEventListener("click", () => {
-      console.log("Run Analysis button clicked");
       runSeoAnalysis();
     });
   }
 
   if (initialAnalysisBtn) {
-    console.log("Adding click listener to Initial Analysis button");
     initialAnalysisBtn.addEventListener("click", () => {
-      console.log("Initial Analysis button clicked");
       runSeoAnalysis();
     });
   }

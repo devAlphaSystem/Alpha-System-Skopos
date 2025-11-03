@@ -92,12 +92,12 @@ export function initializeAdjustments() {
   return new Map();
 }
 
-export function accumulateSessionAdjustments(adjustments, session, events) {
+export function accumulateSessionAdjustments(adjustments, session, events, jsErrors = []) {
   if (!session) {
     return;
   }
 
-  const orderedEvents = [...(events || [])].sort((a, b) => new Date(a.created) - new Date(b.created));
+  const orderedEvents = [...(events || [])].filter((event) => event?.created).sort((a, b) => new Date(a.created) - new Date(b.created));
   const firstEvent = orderedEvents[0];
   const firstDateKey = toDateKey(firstEvent?.created || session.created);
   const firstAdjustment = ensureAdjustment(adjustments, firstDateKey);
@@ -124,11 +124,7 @@ export function accumulateSessionAdjustments(adjustments, session, events) {
     recordMapDelta(firstAdjustment.countryBreakdown, session.country || "Unknown", -1);
   }
 
-  let eventCount = 0;
-  let engagedRecorded = false;
-
   for (const event of orderedEvents) {
-    eventCount += 1;
     const dateKey = toDateKey(event.created);
     const adjustment = ensureAdjustment(adjustments, dateKey);
     if (!adjustment) {
@@ -143,15 +139,6 @@ export function accumulateSessionAdjustments(adjustments, session, events) {
     } else if (event.type === "custom" && event.eventName) {
       recordMapDelta(adjustment.topCustomEvents, event.eventName, -1);
     }
-
-    if (!engagedRecorded) {
-      const duration = parseDuration(event.eventData?.duration);
-      const isEngagedTrigger = eventCount >= 2 || (duration !== null && duration > 10);
-      if (isEngagedTrigger) {
-        adjustment.engagedSessions -= 1;
-        engagedRecorded = true;
-      }
-    }
   }
 
   const lastEvent = orderedEvents[orderedEvents.length - 1];
@@ -160,6 +147,57 @@ export function accumulateSessionAdjustments(adjustments, session, events) {
   const exitAdjustment = ensureAdjustment(adjustments, exitDateKey);
   if (exitAdjustment && exitPath) {
     recordMapDelta(exitAdjustment.exitPages, exitPath, -1);
+  }
+
+  const engagementTimeline = [];
+
+  for (const event of orderedEvents) {
+    engagementTimeline.push({
+      created: event.created,
+      duration: parseDuration(event.eventData?.duration),
+      isSynthetic: false,
+    });
+  }
+
+  for (const errorRecord of jsErrors || []) {
+    const firstTimestamp = errorRecord?.created || errorRecord?.lastSeen;
+    if (firstTimestamp) {
+      engagementTimeline.push({
+        created: firstTimestamp,
+        duration: null,
+        isSynthetic: true,
+      });
+    }
+
+    if ((errorRecord?.count || 0) >= 2) {
+      const secondTimestamp = errorRecord.lastSeen || firstTimestamp;
+      if (secondTimestamp) {
+        engagementTimeline.push({
+          created: secondTimestamp,
+          duration: null,
+          isSynthetic: true,
+        });
+      }
+    }
+  }
+
+  engagementTimeline.sort((a, b) => new Date(a.created) - new Date(b.created));
+
+  let processedEvents = 0;
+  for (const item of engagementTimeline) {
+    processedEvents += 1;
+    const isDurationTrigger = item.duration !== null && item.duration > 10;
+    const isEngagedTrigger = processedEvents >= 2 || isDurationTrigger;
+    if (!isEngagedTrigger) {
+      continue;
+    }
+
+    const engagedDateKey = toDateKey(item.created);
+    const engagedAdjustment = ensureAdjustment(adjustments, engagedDateKey);
+    if (engagedAdjustment) {
+      engagedAdjustment.engagedSessions -= 1;
+    }
+    break;
   }
 }
 
@@ -181,12 +219,13 @@ export function accumulateJsErrorAdjustments(adjustments, jsErrors) {
   }
 }
 
-function applyListAdjustments(existingList = [], adjustmentsMap) {
+function applyListAdjustments(existingList, adjustmentsMap) {
+  const workingList = Array.isArray(existingList) ? existingList : [];
   if (!adjustmentsMap || adjustmentsMap.size === 0) {
-    return existingList;
+    return workingList;
   }
   const workingMap = new Map();
-  for (const item of existingList) {
+  for (const item of workingList) {
     if (!item || !item.key) {
       continue;
     }

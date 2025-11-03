@@ -270,7 +270,7 @@ export async function deleteSession(req, res) {
       $autoCancel: false,
     });
 
-    accumulateSessionAdjustments(adjustments, session, events);
+    accumulateSessionAdjustments(adjustments, session, events, jsErrors);
     accumulateJsErrorAdjustments(adjustments, jsErrors);
 
     for (const event of events) {
@@ -333,7 +333,7 @@ export async function deleteVisitorSessions(req, res) {
         $autoCancel: false,
       });
 
-      accumulateSessionAdjustments(adjustments, session, events);
+      accumulateSessionAdjustments(adjustments, session, events, jsErrors);
       accumulateJsErrorAdjustments(adjustments, jsErrors);
 
       for (const event of events) {

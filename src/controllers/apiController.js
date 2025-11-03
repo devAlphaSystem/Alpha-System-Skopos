@@ -5,17 +5,29 @@ import { addClient } from "../services/sseManager.js";
 import logger from "../services/logger.js";
 
 export function handleSseConnection(req, res) {
-  logger.info("New SSE client connected.");
-  const headers = {
-    "Content-Type": "text/event-stream",
-    Connection: "keep-alive",
-    "Cache-Control": "no-cache",
-  };
-  res.writeHead(200, headers);
+  logger.info("New SSE client connected from user: %s", res.locals.user?.id || "unknown");
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  req.socket.setKeepAlive(true);
+
+  if (typeof res.flushHeaders === "function") {
+    res.flushHeaders();
+  }
 
   addClient(res);
 
-  res.write('data: { "type": "connected" }\n\n');
+  res.write('data: {"type":"connected"}\n\n');
+
+  const heartbeat = setInterval(() => {
+    res.write(`:heartbeat ${Date.now()}\n\n`);
+  }, 30000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    logger.info("SSE client disconnected");
+  });
 }
 
 async function getCommonData(userId) {

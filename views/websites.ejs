@@ -112,6 +112,15 @@
       }, 2000);
     });
   }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const websiteForm = document.querySelector(".website-form");
+    if (websiteForm) {
+      websiteForm.addEventListener("submit", (e) => {
+        window.showLoadingModal("Adding Website", "Creating your new website...");
+      });
+    }
+  });
 </script>
 
 <%- include('partials/footer', { scripts: [] }) %>

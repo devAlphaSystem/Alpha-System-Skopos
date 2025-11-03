@@ -1,3 +1,21 @@
+window.showLoadingModal = (title = "Processing...", message = "Please wait") => {
+  const overlay = document.getElementById("loading-modal-overlay");
+  const titleEl = document.getElementById("loading-modal-title");
+  const messageEl = document.getElementById("loading-modal-message");
+  if (overlay && titleEl && messageEl) {
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    overlay.classList.add("active");
+  }
+};
+
+window.hideLoadingModal = () => {
+  const overlay = document.getElementById("loading-modal-overlay");
+  if (overlay) {
+    overlay.classList.remove("active");
+  }
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   const sidebarToggle = document.getElementById("sidebar-toggle");
   const mobileSidebarToggle = document.getElementById("mobile-sidebar-toggle");
@@ -204,7 +222,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const websiteName = archiveButton.dataset.websiteName;
       const confirmed = await window.customConfirm("Archive Website?", `Are you sure you want to archive <strong>${websiteName}</strong>? Tracking will be disabled.`);
       if (confirmed) {
-        console.log("Archiving website:", websiteName);
+        window.showLoadingModal("Archiving Website", `Archiving ${websiteName}...`);
         archiveButton.dataset.confirmed = "true";
         archiveButton.click();
       }
@@ -219,7 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const websiteName = restoreButton.dataset.websiteName;
       const confirmed = await window.customConfirm("Restore Website?", `Are you sure you want to restore <strong>${websiteName}</strong>? Tracking will be re-enabled.`);
       if (confirmed) {
-        console.log("Restoring website:", websiteName);
+        window.showLoadingModal("Restoring Website", `Restoring ${websiteName}...`);
         restoreButton.dataset.confirmed = "true";
         restoreButton.click();
       }
@@ -240,6 +258,7 @@ document.addEventListener("DOMContentLoaded", () => {
         deleteDataInput.name = "deleteData";
         deleteDataInput.value = deleteData;
         form.appendChild(deleteDataInput);
+        window.showLoadingModal("Deleting Website", `Permanently deleting ${websiteName}...`);
         deleteButton.dataset.confirmed = "true";
         deleteButton.click();
       }

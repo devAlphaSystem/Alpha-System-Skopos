@@ -38,7 +38,16 @@ async function initializeApp() {
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "views"));
 
-  app.use(compression());
+  app.use(
+    compression({
+      filter(req, res) {
+        if (req.headers.accept?.includes("text/event-stream") || req.path === "/dashboard/events") {
+          return false;
+        }
+        return compression.filter(req, res);
+      },
+    }),
+  );
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());

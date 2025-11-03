@@ -336,16 +336,22 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       eventSource = new EventSource("/dashboard/events");
       eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "update") {
-          if (!WEBSITE_ID || data.websiteId === WEBSITE_ID) {
-            fetchDashboardData();
-          }
+        let data;
+        try {
+          data = JSON.parse(event.data);
+        } catch (parseErr) {
+          console.warn("Ignoring non-JSON SSE payload", event.data);
+          return;
+        }
+        if (data.type === "update" && (!WEBSITE_ID || data.websiteId === WEBSITE_ID)) {
+          fetchDashboardData();
         }
       };
       eventSource.onerror = (err) => {
-        console.error("EventSource failed:", err);
-        eventSource.close();
+        console.error("EventSource error:", err);
+        if (eventSource.readyState === EventSource.CLOSED) {
+          eventSource = null;
+        }
       };
       return;
     }
