@@ -339,12 +339,63 @@ export async function applyDashSummaryAdjustments(websiteId, adjustments) {
     }
 
     if (isSummaryEmpty(summary)) {
-      await pbAdmin.collection("dash_sum").delete(summaryRecord.id);
-      logger.debug("Removed empty dash_sum record %s for website %s on %s after adjustments.", summaryRecord.id, websiteId, dateKey);
+      try {
+        await pbAdmin.collection("dash_sum").delete(summaryRecord.id);
+        logger.debug("Removed empty dash_sum record %s for website %s on %s after adjustments.", summaryRecord.id, websiteId, dateKey);
+      } catch (error) {
+        logger.warn("Failed to delete empty dash_sum record %s: %o", summaryRecord.id, error);
+      }
       continue;
     }
 
     await pbAdmin.collection("dash_sum").update(summaryRecord.id, { summary });
     logger.debug("Updated dash_sum record %s for website %s on %s after adjustments.", summaryRecord.id, websiteId, dateKey);
+  }
+}
+
+export async function cleanupOrphanedRecords(websiteId) {
+  logger.info("Running cleanup of orphaned records for website: %s", websiteId);
+  await ensureAdminAuth();
+
+  try {
+    const allVisitors = await pbAdmin.collection("visitors").getFullList({
+      filter: `website.id = "${websiteId}"`,
+      fields: "id,visitorId",
+      $autoCancel: false,
+    });
+
+    let orphanedVisitors = 0;
+    for (const visitor of allVisitors) {
+      const sessions = await pbAdmin.collection("sessions").getList(1, 1, {
+        filter: `visitor.id = "${visitor.id}"`,
+        $autoCancel: false,
+      });
+
+      if (sessions.totalItems === 0) {
+        await pbAdmin.collection("visitors").delete(visitor.id);
+        orphanedVisitors++;
+        logger.debug("Deleted orphaned visitor: %s", visitor.id);
+      }
+    }
+
+    const allDashSums = await pbAdmin.collection("dash_sum").getFullList({
+      filter: `website.id = "${websiteId}"`,
+      $autoCancel: false,
+    });
+
+    let emptyDashSums = 0;
+    for (const dashSum of allDashSums) {
+      if (isSummaryEmpty(dashSum.summary)) {
+        await pbAdmin.collection("dash_sum").delete(dashSum.id);
+        emptyDashSums++;
+        logger.debug("Deleted empty dash_sum record: %s (date: %s)", dashSum.id, dashSum.date);
+      }
+    }
+
+    logger.info("Cleanup complete for website %s: %d orphaned visitors removed, %d empty dash_sum records removed", websiteId, orphanedVisitors, emptyDashSums);
+    return { orphanedVisitors, emptyDashSums };
+  } catch (error) {
+    logger.error("Error during cleanup for website %s: %o", websiteId, error);
+    throw error;
   }
 }

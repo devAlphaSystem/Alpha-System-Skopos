@@ -284,6 +284,17 @@ export async function deleteSession(req, res) {
     await pbAdmin.collection("sessions").delete(sessionId);
 
     await applyDashSummaryAdjustments(websiteId, adjustments);
+
+    const remainingSessions = await pbAdmin.collection("sessions").getList(1, 1, {
+      filter: `visitor.id = "${session.visitor}"`,
+      $autoCancel: false,
+    });
+
+    if (remainingSessions.totalItems === 0) {
+      await pbAdmin.collection("visitors").delete(session.visitor);
+      logger.debug("Deleted visitor record %s as no sessions remain.", session.visitor);
+    }
+
     logger.info("Successfully deleted session: %s and updated dashboard summaries.", sessionId);
     res.redirect(`/sessions/${websiteId}`);
   } catch (error) {

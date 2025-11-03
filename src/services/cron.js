@@ -2,6 +2,7 @@ import cron from "node-cron";
 import { subDays, startOfYesterday } from "date-fns";
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { calculateMetrics } from "../utils/analytics.js";
+import { cleanupOrphanedRecords } from "./dashSummary.js";
 import logger from "./logger.js";
 
 async function pruneOldSummaries() {
@@ -153,6 +154,34 @@ async function pruneOldSessions() {
   }
 }
 
+async function cleanupOrphanedData() {
+  logger.info("Running cron job: Cleaning up orphaned records...");
+  try {
+    await ensureAdminAuth();
+    const websites = await pbAdmin.collection("websites").getFullList({
+      fields: "id,name",
+    });
+    logger.debug("Checking %d websites for orphaned records.", websites.length);
+
+    let totalOrphanedVisitors = 0;
+    let totalEmptyDashSums = 0;
+
+    for (const website of websites) {
+      try {
+        const result = await cleanupOrphanedRecords(website.id);
+        totalOrphanedVisitors += result.orphanedVisitors;
+        totalEmptyDashSums += result.emptyDashSums;
+      } catch (error) {
+        logger.error("Error cleaning up website %s: %o", website.id, error);
+      }
+    }
+
+    logger.info(`Cleanup complete: Removed ${totalOrphanedVisitors} orphaned visitors and ${totalEmptyDashSums} empty dash_sum records.`);
+  } catch (error) {
+    logger.error("Error during orphaned data cleanup cron job: %o", error);
+  }
+}
+
 export function startCronJobs() {
   cron.schedule("0 0 * * *", pruneOldSummaries, {
     timezone: "UTC",
@@ -167,6 +196,10 @@ export function startCronJobs() {
   });
 
   cron.schedule("0 2 * * *", pruneOldSessions, {
+    timezone: "UTC",
+  });
+
+  cron.schedule("30 2 * * *", cleanupOrphanedData, {
     timezone: "UTC",
   });
 }

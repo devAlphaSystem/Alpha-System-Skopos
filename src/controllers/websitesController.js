@@ -1,6 +1,7 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
 import logger from "../services/logger.js";
+import { cleanupOrphanedRecords } from "../services/dashSummary.js";
 
 async function getCommonData(userId) {
   logger.debug("Fetching common data for user: %s", userId);
@@ -226,5 +227,28 @@ export async function removeIpFromBlacklist(req, res) {
   } catch (error) {
     logger.error("Failed to remove IP from blacklist for website %s: %o", req.params.websiteId, error);
     res.status(500).json({ error: "Failed to remove IP from blacklist." });
+  }
+}
+
+export async function cleanupWebsiteData(req, res) {
+  const { websiteId } = req.params;
+  logger.info("User %s is running data cleanup for website: %s", res.locals.user.id, websiteId);
+  try {
+    await ensureAdminAuth();
+    const userId = res.locals.user?.id;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const website = await pbAdmin.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+
+    const result = await cleanupOrphanedRecords(website.id);
+    logger.info("Successfully cleaned up website %s: %o", websiteId, result);
+    res.status(200).json({
+      success: true,
+      orphanedVisitors: result.orphanedVisitors,
+      emptyDashSums: result.emptyDashSums,
+    });
+  } catch (error) {
+    logger.error("Failed to cleanup website %s: %o", websiteId, error);
+    res.status(500).json({ error: "Failed to cleanup website data." });
   }
 }
