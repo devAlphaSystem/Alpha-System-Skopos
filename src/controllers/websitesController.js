@@ -2,6 +2,7 @@ import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
 import logger from "../services/logger.js";
 import { cleanupOrphanedRecords } from "../services/dashSummary.js";
+import { analyzeSeo, calculateSeoScore } from "../services/seoAnalyzer.js";
 
 async function getCommonData(userId) {
   logger.debug("Fetching common data for user: %s", userId);
@@ -41,7 +42,7 @@ export async function addWebsite(req, res) {
   logger.debug("Add website payload: %o", req.body);
   try {
     await ensureAdminAuth();
-    await pbAdmin.collection("websites").create({
+    const newWebsite = await pbAdmin.collection("websites").create({
       name,
       domain,
       dataRetentionDays: Number(dataRetentionDays) || 0,
@@ -51,10 +52,44 @@ export async function addWebsite(req, res) {
       ipBlacklist: [],
       isArchived: false,
     });
+
+    logger.info("Website %s created successfully. Triggering background SEO analysis.", newWebsite.id);
+
+    runSeoAnalysisInBackground(newWebsite.id, domain);
+
     res.redirect("/websites");
   } catch (error) {
     logger.error("Error adding website %s for user %s: %o", name, res.locals.user.id, error);
     res.status(500).render("500");
+  }
+}
+
+async function runSeoAnalysisInBackground(websiteId, domain) {
+  try {
+    logger.info("Starting background SEO analysis for website %s (%s)", websiteId, domain);
+    const seoData = await analyzeSeo(domain);
+
+    await ensureAdminAuth();
+    await pbAdmin.collection("seo_data").create({
+      website: websiteId,
+      metaTags: seoData.metaTags,
+      socialMetaTags: seoData.socialMetaTags,
+      headings: seoData.headings,
+      images: seoData.images,
+      links: seoData.links,
+      technicalSeo: seoData.technicalSeo,
+      performanceScores: seoData.performanceScores,
+      lighthouseData: seoData.lighthouseData,
+      analysisWarnings: seoData.analysisWarnings,
+      recommendations: seoData.recommendations,
+      loadTime: seoData.loadTime,
+      pageSize: seoData.pageSize,
+      lastAnalyzed: seoData.lastAnalyzed,
+    });
+
+    logger.info("Background SEO analysis completed successfully for website %s", websiteId);
+  } catch (error) {
+    logger.error("Background SEO analysis failed for website %s: %o", websiteId, error);
   }
 }
 
@@ -127,6 +162,14 @@ export async function deleteWebsite(req, res) {
         } while (items.length > 0);
       }
       logger.info("Finished deleting associated data for website %s", id);
+    }
+
+    try {
+      const seoRecord = await pbAdmin.collection("seo_data").getFirstListItem(`website.id="${id}"`);
+      await pbAdmin.collection("seo_data").delete(seoRecord.id);
+      logger.info("Deleted SEO data for website %s", id);
+    } catch (e) {
+      logger.debug("No SEO data found for website %s (or already deleted)", id);
     }
 
     await pbAdmin.collection("websites").delete(id);

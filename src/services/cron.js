@@ -3,6 +3,7 @@ import { subDays, startOfYesterday } from "date-fns";
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { calculateMetrics } from "../utils/analytics.js";
 import { cleanupOrphanedRecords } from "./dashSummary.js";
+import { analyzeSeo } from "./seoAnalyzer.js";
 import logger from "./logger.js";
 
 async function pruneOldSummaries() {
@@ -182,6 +183,76 @@ async function cleanupOrphanedData() {
   }
 }
 
+async function runWeeklySeoAnalysis() {
+  logger.info("Running cron job: Weekly SEO analysis for all websites...");
+  try {
+    await ensureAdminAuth();
+    const websites = await pbAdmin.collection("websites").getFullList({
+      filter: "isArchived = false",
+      fields: "id,name,domain",
+    });
+    logger.info("Found %d active websites for SEO analysis.", websites.length);
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (const website of websites) {
+      try {
+        logger.info("Running SEO analysis for %s (%s)", website.name, website.domain);
+        const seoData = await analyzeSeo(website.domain);
+
+        try {
+          const existingRecord = await pbAdmin.collection("seo_data").getFirstListItem(`website.id="${website.id}"`);
+          await pbAdmin.collection("seo_data").update(existingRecord.id, {
+            metaTags: seoData.metaTags,
+            socialMetaTags: seoData.socialMetaTags,
+            headings: seoData.headings,
+            images: seoData.images,
+            links: seoData.links,
+            technicalSeo: seoData.technicalSeo,
+            performanceScores: seoData.performanceScores,
+            lighthouseData: seoData.lighthouseData,
+            analysisWarnings: seoData.analysisWarnings,
+            recommendations: seoData.recommendations,
+            loadTime: seoData.loadTime,
+            pageSize: seoData.pageSize,
+            lastAnalyzed: seoData.lastAnalyzed,
+          });
+        } catch (e) {
+          await pbAdmin.collection("seo_data").create({
+            website: website.id,
+            metaTags: seoData.metaTags,
+            socialMetaTags: seoData.socialMetaTags,
+            headings: seoData.headings,
+            images: seoData.images,
+            links: seoData.links,
+            technicalSeo: seoData.technicalSeo,
+            performanceScores: seoData.performanceScores,
+            lighthouseData: seoData.lighthouseData,
+            analysisWarnings: seoData.analysisWarnings,
+            recommendations: seoData.recommendations,
+            loadTime: seoData.loadTime,
+            pageSize: seoData.pageSize,
+            lastAnalyzed: seoData.lastAnalyzed,
+          });
+        }
+
+        successCount++;
+        logger.info("SEO analysis completed for %s", website.name);
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } catch (error) {
+        failureCount++;
+        logger.error("SEO analysis failed for %s (%s): %o", website.name, website.domain, error);
+      }
+    }
+
+    logger.info(`Weekly SEO analysis complete: ${successCount} successful, ${failureCount} failed.`);
+  } catch (error) {
+    logger.error("Error during weekly SEO analysis cron job: %o", error);
+  }
+}
+
 export function startCronJobs() {
   cron.schedule("0 0 * * *", pruneOldSummaries, {
     timezone: "UTC",
@@ -202,4 +273,10 @@ export function startCronJobs() {
   cron.schedule("30 2 * * *", cleanupOrphanedData, {
     timezone: "UTC",
   });
+
+  cron.schedule("0 3 * * 2", runWeeklySeoAnalysis, {
+    timezone: "UTC",
+  });
+
+  logger.info("All cron jobs started successfully (including Tuesday SEO analysis)");
 }

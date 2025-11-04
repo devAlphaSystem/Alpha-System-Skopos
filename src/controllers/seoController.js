@@ -40,6 +40,11 @@ function processSeoDataForView(seoData) {
 
   const heroIntro = metaTags.description ? truncate(metaTags.description, 140) : "Review the most important technical and content signals in one place.";
 
+  const recommendations = seoData.recommendations || [];
+  const criticalIssues = recommendations.filter((r) => r.priority === "critical");
+  const highPriorityIssues = recommendations.filter((r) => r.priority === "high");
+  const mediumPriorityIssues = recommendations.filter((r) => r.priority === "medium");
+
   const opportunities = [];
   if (!metaTags.title) opportunities.push("Add a descriptive <title> tag that includes a primary keyword.");
   if (!metaTags.description) opportunities.push("Write a compelling meta description (50-160 characters).");
@@ -52,7 +57,7 @@ function processSeoDataForView(seoData) {
   if (!technical.mobileResponsive) opportunities.push("Optimize the viewport for mobile devices.");
   if (!technical.hasSSL) opportunities.push("Serve the site over HTTPS to avoid browser warnings.");
   if (!technical.compression) opportunities.push("Enable gzip or brotli compression for faster delivery.");
-  const recommendations = [...new Set(opportunities)].slice(0, 6);
+  const legacyRecommendations = [...new Set(opportunities)].slice(0, 6);
 
   const highlightItems = [metaCoverage >= 80 ? `Meta coverage is ${metaCoverage}%` : null, typeof altCoverage === "number" ? `Image alt text coverage at ${altCoverage}%` : null, (links.total || 0) > 0 ? `${links.internal || 0} internal links and ${links.external || 0} external links detected` : null, technical.hasSSL ? "HTTPS is enabled" : null, technical.hasSitemap ? "Sitemap.xml is accessible" : null, technical.hasStructuredData ? "Structured data snippets found" : null].filter(Boolean).slice(0, 4);
 
@@ -228,6 +233,10 @@ function processSeoDataForView(seoData) {
     gaugeDashOffset,
     heroIntro,
     recommendations,
+    criticalIssues,
+    highPriorityIssues,
+    mediumPriorityIssues,
+    legacyRecommendations,
     highlightItems,
     metaStatusRows,
     technicalStatusRows,
@@ -282,6 +291,7 @@ export async function showSeoAnalytics(req, res) {
         performanceScores: seoRecord.performanceScores ?? null,
         lighthouseData: seoRecord.lighthouseData ?? null,
         analysisWarnings: seoRecord.analysisWarnings ?? [],
+        recommendations: seoRecord.recommendations ?? [],
         loadTime: seoRecord.loadTime || 0,
         pageSize: seoRecord.pageSize || 0,
         lastAnalyzed: seoRecord.lastAnalyzed,
@@ -335,6 +345,7 @@ export async function runSeoAnalysis(req, res) {
         performanceScores: seoData.performanceScores,
         lighthouseData: seoData.lighthouseData,
         analysisWarnings: seoData.analysisWarnings,
+        recommendations: seoData.recommendations,
         loadTime: seoData.loadTime,
         pageSize: seoData.pageSize,
         lastAnalyzed: seoData.lastAnalyzed,
@@ -351,6 +362,7 @@ export async function runSeoAnalysis(req, res) {
         performanceScores: seoData.performanceScores,
         lighthouseData: seoData.lighthouseData,
         analysisWarnings: seoData.analysisWarnings,
+        recommendations: seoData.recommendations,
         loadTime: seoData.loadTime,
         pageSize: seoData.pageSize,
         lastAnalyzed: seoData.lastAnalyzed,

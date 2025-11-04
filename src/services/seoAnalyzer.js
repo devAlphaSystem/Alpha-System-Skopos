@@ -121,6 +121,10 @@ function analyzeImages(html) {
     withAlt: 0,
     withoutAlt: 0,
     missingAlt: [],
+    emptyAlt: [],
+    poorQualityAlt: [],
+    withoutTitle: 0,
+    oversized: [],
   };
 
   for (const match of imgMatches) {
@@ -128,13 +132,38 @@ function analyzeImages(html) {
     const img = match[0];
     const altMatch = img.match(/alt=["']([^"']*)["']/i);
     const srcMatch = img.match(/src=["']([^"']*)["']/i);
+    const titleMatch = img.match(/title=["']([^"']*)["']/i);
+    const widthMatch = img.match(/width=["']?(\d+)["']?/i);
+    const heightMatch = img.match(/height=["']?(\d+)["']?/i);
 
-    if (altMatch?.[1]?.trim()) {
+    const src = srcMatch ? srcMatch[1] : null;
+    const altText = altMatch ? altMatch[1].trim() : "";
+
+    if (!titleMatch) {
+      images.withoutTitle++;
+    }
+
+    if (widthMatch && heightMatch) {
+      const width = Number.parseInt(widthMatch[1]);
+      const height = Number.parseInt(heightMatch[1]);
+      if (width > 2000 || height > 2000) {
+        if (src) images.oversized.push({ src, width, height });
+      }
+    }
+
+    if (altText) {
       images.withAlt++;
+
+      if (altText.length < 5 || /^(image|img|photo|picture)\d*$/i.test(altText)) {
+        images.poorQualityAlt.push({ src, alt: altText });
+      }
+    } else if (altMatch) {
+      images.emptyAlt.push(src);
+      images.withoutAlt++;
     } else {
       images.withoutAlt++;
-      if (srcMatch) {
-        images.missingAlt.push(srcMatch[1]);
+      if (src) {
+        images.missingAlt.push(src);
       }
     }
   }
@@ -150,6 +179,8 @@ function analyzeLinks(html, baseUrl) {
     external: 0,
     nofollow: 0,
     broken: [],
+    emptyAnchors: [],
+    suspiciousLinks: [],
   };
 
   const baseDomain = new URL(baseUrl).hostname;
@@ -158,6 +189,20 @@ function analyzeLinks(html, baseUrl) {
     links.total++;
     const href = match[1];
     const fullMatch = match[0];
+    const anchorText =
+      html
+        .substring(match.index, match.index + 200)
+        .match(/<a[^>]*>([^<]*)<\/a>/i)?.[1]
+        ?.trim() || "";
+
+    if (!anchorText || anchorText.length === 0) {
+      links.emptyAnchors.push(href);
+    }
+
+    if (href === "#" || href === "" || href === "javascript:void(0)") {
+      links.suspiciousLinks.push({ href, reason: "Empty or placeholder link" });
+      continue;
+    }
 
     try {
       const linkUrl = new URL(href, baseUrl);
@@ -170,10 +215,55 @@ function analyzeLinks(html, baseUrl) {
       if (fullMatch.includes('rel="nofollow"') || fullMatch.includes("rel='nofollow'")) {
         links.nofollow++;
       }
-    } catch (e) {}
+    } catch (e) {
+      links.suspiciousLinks.push({ href, reason: "Invalid URL format" });
+    }
   }
 
   return links;
+}
+
+async function checkBrokenLinks(html, baseUrl, maxLinksToCheck = 20) {
+  const linkMatches = html.matchAll(/<a[^>]*href=["']([^"']*)["'][^>]*>/gi);
+  const brokenLinks = [];
+  const checkedLinks = new Set();
+  let checkCount = 0;
+
+  const baseDomain = new URL(baseUrl).hostname;
+
+  for (const match of linkMatches) {
+    if (checkCount >= maxLinksToCheck) break;
+
+    const href = match[1];
+
+    if (href.startsWith("#") || href.startsWith("javascript:") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+      continue;
+    }
+
+    try {
+      const linkUrl = new URL(href, baseUrl);
+
+      if (linkUrl.hostname !== baseDomain) {
+        continue;
+      }
+
+      const fullUrl = linkUrl.toString();
+      if (checkedLinks.has(fullUrl)) continue;
+      checkedLinks.add(fullUrl);
+      checkCount++;
+
+      try {
+        const { statusCode } = await fetchHtml(fullUrl);
+        if (statusCode >= 400) {
+          brokenLinks.push({ url: fullUrl, statusCode });
+        }
+      } catch (error) {
+        brokenLinks.push({ url: fullUrl, error: error.message });
+      }
+    } catch (e) {}
+  }
+
+  return brokenLinks;
 }
 
 function analyzeTechnicalSeo(html, headers, url) {
@@ -197,8 +287,265 @@ function analyzeTechnicalSeo(html, headers, url) {
   return technical;
 }
 
+function generateRecommendations(seoData) {
+  const recommendations = [];
+  const { metaTags, technicalSeo, images, links, headings, performanceScores } = seoData;
+
+  const h1Count = (headings?.h1 || []).length;
+
+  if (!metaTags?.title) {
+    recommendations.push({
+      priority: "critical",
+      category: "meta",
+      issue: "Missing title tag",
+      description: "Add a descriptive <title> tag (50-60 characters) that includes your primary keyword.",
+      impact: "high",
+    });
+  } else if (metaTags.title.length < 30) {
+    recommendations.push({
+      priority: "high",
+      category: "meta",
+      issue: "Title tag too short",
+      description: `Your title is only ${metaTags.title.length} characters. Aim for 50-60 characters for optimal display in search results.`,
+      impact: "medium",
+    });
+  } else if (metaTags.title.length > 60) {
+    recommendations.push({
+      priority: "medium",
+      category: "meta",
+      issue: "Title tag too long",
+      description: `Your title is ${metaTags.title.length} characters. Consider shortening it to 50-60 characters to avoid truncation.`,
+      impact: "low",
+    });
+  }
+
+  if (!metaTags?.description) {
+    recommendations.push({
+      priority: "critical",
+      category: "meta",
+      issue: "Missing meta description",
+      description: "Write a compelling meta description (150-160 characters) that summarizes your page content.",
+      impact: "high",
+    });
+  } else if (metaTags.description.length < 120) {
+    recommendations.push({
+      priority: "high",
+      category: "meta",
+      issue: "Meta description too short",
+      description: `Your description is only ${metaTags.description.length} characters. Aim for 150-160 characters for better visibility.`,
+      impact: "medium",
+    });
+  } else if (metaTags.description.length > 160) {
+    recommendations.push({
+      priority: "medium",
+      category: "meta",
+      issue: "Meta description too long",
+      description: `Your description is ${metaTags.description.length} characters. Consider shortening it to avoid truncation in search results.`,
+      impact: "low",
+    });
+  }
+
+  if (!metaTags?.canonical) {
+    recommendations.push({
+      priority: "high",
+      category: "meta",
+      issue: "Missing canonical URL",
+      description: "Define a canonical URL to prevent duplicate content issues and consolidate page authority.",
+      impact: "medium",
+    });
+  }
+
+  if (!technicalSeo?.hasSSL) {
+    recommendations.push({
+      priority: "critical",
+      category: "security",
+      issue: "No HTTPS/SSL",
+      description: "Serve your site over HTTPS to protect user data and avoid browser security warnings. Google prioritizes HTTPS sites.",
+      impact: "high",
+    });
+  }
+
+  if (!technicalSeo?.hasSitemap) {
+    recommendations.push({
+      priority: "critical",
+      category: "technical",
+      issue: "Missing sitemap",
+      description: "Provide a sitemap.xml file to help search engines discover and index all your pages efficiently.",
+      impact: "high",
+    });
+  }
+
+  if (!technicalSeo?.hasRobotsTxt) {
+    recommendations.push({
+      priority: "high",
+      category: "technical",
+      issue: "Missing robots.txt",
+      description: "Add a robots.txt file to control crawler access and guide search engines to your sitemap.",
+      impact: "medium",
+    });
+  }
+
+  if (!technicalSeo?.mobileResponsive) {
+    recommendations.push({
+      priority: "critical",
+      category: "mobile",
+      issue: "Not mobile responsive",
+      description: "Add a viewport meta tag and ensure your site is mobile-friendly. Mobile-first indexing is now the standard.",
+      impact: "high",
+    });
+  }
+
+  if (h1Count === 0) {
+    recommendations.push({
+      priority: "critical",
+      category: "content",
+      issue: "Missing H1 heading",
+      description: "Add exactly one H1 heading to clearly define the main topic of your page.",
+      impact: "high",
+    });
+  } else if (h1Count > 1) {
+    recommendations.push({
+      priority: "high",
+      category: "content",
+      issue: "Multiple H1 headings",
+      description: `You have ${h1Count} H1 headings. Use only one H1 per page for better SEO structure.`,
+      impact: "medium",
+    });
+  }
+
+  if ((headings?.h2 || []).length === 0) {
+    recommendations.push({
+      priority: "medium",
+      category: "content",
+      issue: "No H2 headings",
+      description: "Add H2 headings to structure your content and improve readability. Use them for main sections.",
+      impact: "medium",
+    });
+  }
+
+  if (images?.total > 0) {
+    const altCoverage = (images.withAlt / images.total) * 100;
+    if (altCoverage < 100) {
+      recommendations.push({
+        priority: altCoverage < 50 ? "high" : "medium",
+        category: "images",
+        issue: `${images.withoutAlt} images missing alt text`,
+        description: `Add descriptive alt text to ${images.withoutAlt} images for accessibility and SEO. Alt coverage: ${altCoverage.toFixed(0)}%`,
+        impact: altCoverage < 50 ? "high" : "medium",
+      });
+    }
+
+    if (images.poorQualityAlt?.length > 0) {
+      recommendations.push({
+        priority: "medium",
+        category: "images",
+        issue: "Poor quality alt text",
+        description: `${images.poorQualityAlt.length} images have generic alt text (e.g., "image1", "photo"). Use descriptive, meaningful alt text.`,
+        impact: "medium",
+      });
+    }
+
+    if (images.oversized?.length > 0) {
+      recommendations.push({
+        priority: "medium",
+        category: "performance",
+        issue: "Oversized images",
+        description: `${images.oversized.length} images are larger than 2000px. Optimize image sizes for faster loading.`,
+        impact: "medium",
+      });
+    }
+  }
+
+  if (links?.emptyAnchors?.length > 0) {
+    recommendations.push({
+      priority: "medium",
+      category: "links",
+      issue: "Links with empty anchor text",
+      description: `${links.emptyAnchors.length} links have no anchor text. Add descriptive text to improve accessibility and SEO.`,
+      impact: "medium",
+    });
+  }
+
+  if (links?.suspiciousLinks?.length > 0) {
+    recommendations.push({
+      priority: "low",
+      category: "links",
+      issue: "Suspicious or placeholder links",
+      description: `${links.suspiciousLinks.length} links appear to be placeholders (e.g., "#", "javascript:void(0)"). Consider removing or replacing them.`,
+      impact: "low",
+    });
+  }
+
+  if (links?.broken?.length > 0) {
+    recommendations.push({
+      priority: "high",
+      category: "links",
+      issue: "Broken internal links detected",
+      description: `${links.broken.length} internal links are broken or returning errors. Fix these to improve user experience and SEO.`,
+      impact: "high",
+    });
+  }
+
+  if (!technicalSeo?.hasStructuredData) {
+    recommendations.push({
+      priority: "medium",
+      category: "technical",
+      issue: "No structured data",
+      description: "Implement structured data (JSON-LD) to enable rich snippets and improve search result appearance.",
+      impact: "medium",
+    });
+  }
+
+  if (!technicalSeo?.compression) {
+    recommendations.push({
+      priority: "high",
+      category: "performance",
+      issue: "No compression enabled",
+      description: "Enable gzip or brotli compression on your server to reduce file sizes and improve page load speed.",
+      impact: "medium",
+    });
+  }
+
+  if (!technicalSeo?.caching) {
+    recommendations.push({
+      priority: "medium",
+      category: "performance",
+      issue: "No cache headers",
+      description: "Configure cache-control headers to improve repeat visit performance and reduce server load.",
+      impact: "low",
+    });
+  }
+
+  if (performanceScores?.performance !== null && performanceScores?.performance !== undefined) {
+    if (performanceScores.performance < 50) {
+      recommendations.push({
+        priority: "critical",
+        category: "performance",
+        issue: "Poor performance score",
+        description: `Your Lighthouse performance score is ${performanceScores.performance}/100. Focus on optimizing images, reducing JavaScript, and improving server response times.`,
+        impact: "high",
+      });
+    } else if (performanceScores.performance < 80) {
+      recommendations.push({
+        priority: "medium",
+        category: "performance",
+        issue: "Performance could be improved",
+        description: `Your Lighthouse performance score is ${performanceScores.performance}/100. Consider optimizing assets and reducing render-blocking resources.`,
+        impact: "medium",
+      });
+    }
+  }
+
+  recommendations.sort((a, b) => {
+    const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+    return priorityOrder[a.priority] - priorityOrder[b.priority];
+  });
+
+  return recommendations;
+}
+
 async function fetchPageSpeedInsights(url, preferredStrategy = null) {
-  const apiKey = process.env.PAGESPEED_API_KEY || process.env.GOOGLE_PAGESPEED_API_KEY || null;
+  const apiKey = process.env.PAGESPEED_API_KEY || null;
   const categories = ["PERFORMANCE", "ACCESSIBILITY", "BEST_PRACTICES", "SEO"];
 
   let strategies = [];
@@ -397,6 +744,10 @@ export async function analyzeSeo(domain, strategy = null) {
     technicalSeo.hasRobotsTxt = await checkRobotsTxt(url);
     technicalSeo.hasSitemap = await checkSitemap(url);
 
+    logger.info("Checking for broken links on %s", domain);
+    const brokenLinks = await checkBrokenLinks(html, url, 20);
+    links.broken = brokenLinks;
+
     const pageSpeedResult = await fetchPageSpeedInsights(url, strategy);
     const analysisWarnings = [...(pageSpeedResult.warnings || [])];
     const performanceScores = pageSpeedResult.success ? pageSpeedResult.data : null;
@@ -412,9 +763,7 @@ export async function analyzeSeo(domain, strategy = null) {
     const loadTime = Date.now() - startTime;
     const pageSize = Buffer.byteLength(html, "utf8");
 
-    logger.info("SEO analysis completed for %s in %dms", domain, loadTime);
-
-    return {
+    const seoData = {
       metaTags,
       socialMetaTags,
       headings,
@@ -428,6 +777,13 @@ export async function analyzeSeo(domain, strategy = null) {
       pageSize,
       lastAnalyzed: new Date().toISOString(),
     };
+
+    const recommendations = generateRecommendations(seoData);
+    seoData.recommendations = recommendations;
+
+    logger.info("SEO analysis completed for %s in %dms", domain, loadTime);
+
+    return seoData;
   } catch (error) {
     logger.error("Error analyzing SEO for %s: %o", domain, error);
     throw error;

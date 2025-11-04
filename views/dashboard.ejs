@@ -116,6 +116,80 @@
         </div>
       <% } else { %>
         <div class="dashboard-grid">
+          <% if (seoInfo) { %>
+            <div class="card seo-summary-card">
+              <div class="seo-summary-content">
+                <div class="seo-score-display">
+                  <div class="seo-score-gauge">
+                    <svg width="120" height="120" viewBox="0 0 120 120">
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border-color)" stroke-width="10"></circle>
+                      <circle cx="60" cy="60" r="50" fill="none" stroke="<%= seoInfo.score >= 80 ? '#10b981' : seoInfo.score >= 60 ? '#f59e0b' : '#ef4444' %>" stroke-width="10" 
+                        stroke-dasharray="<%= 2 * Math.PI * 50 %>" 
+                        stroke-dashoffset="<%= 2 * Math.PI * 50 * (1 - seoInfo.score / 100) %>"
+                        transform="rotate(-90 60 60)"
+                        stroke-linecap="round"></circle>
+                      <text x="60" y="60" text-anchor="middle" dy=".3em" font-size="28" font-weight="bold" fill="var(--text-primary)"><%= seoInfo.score %></text>
+                    </svg>
+                  </div>
+                  <div class="seo-score-info">
+                    <h3>SEO Score</h3>
+                    <p class="seo-score-label <%= seoInfo.score >= 80 ? 'excellent' : seoInfo.score >= 60 ? 'good' : 'needs-work' %>">
+                      <%= seoInfo.score >= 90 ? 'Excellent' : seoInfo.score >= 75 ? 'Strong' : seoInfo.score >= 60 ? 'Good' : seoInfo.score >= 45 ? 'Needs Work' : 'Critical' %>
+                    </p>
+                    <p class="seo-last-analyzed">
+                      <i class="fa-solid fa-clock"></i>
+                      Last analyzed: <%= new Date(seoInfo.lastAnalyzed).toLocaleDateString() %>
+                    </p>
+                  </div>
+                </div>
+                <div class="seo-quick-stats">
+                  <div class="seo-stat-item">
+                    <i class="fa-solid fa-triangle-exclamation <%= seoInfo.criticalIssues > 0 ? 'text-danger' : 'text-muted' %>"></i>
+                    <div>
+                      <strong><%= seoInfo.criticalIssues %></strong>
+                      <span>Critical Issues</span>
+                    </div>
+                  </div>
+                  <div class="seo-stat-item">
+                    <i class="fa-solid fa-exclamation-circle <%= seoInfo.highPriorityIssues > 0 ? 'text-warning' : 'text-muted' %>"></i>
+                    <div>
+                      <strong><%= seoInfo.highPriorityIssues %></strong>
+                      <span>High Priority</span>
+                    </div>
+                  </div>
+                  <div class="seo-stat-item">
+                    <i class="fa-solid fa-bolt <%= seoInfo.performance !== null ? (seoInfo.performance >= 80 ? 'text-success' : 'text-warning') : 'text-muted' %>"></i>
+                    <div>
+                      <strong><%= seoInfo.performance !== null ? seoInfo.performance : 'N/A' %></strong>
+                      <span>Performance</span>
+                    </div>
+                  </div>
+                  <div class="seo-stat-item">
+                    <i class="fa-solid fa-<%= seoInfo.hasSSL ? 'lock text-success' : 'lock-open text-danger' %>"></i>
+                    <div>
+                      <strong><%= seoInfo.hasSSL ? 'Yes' : 'No' %></strong>
+                      <span>HTTPS</span>
+                    </div>
+                  </div>
+                  <div class="seo-stat-item">
+                    <i class="fa-solid fa-<%= seoInfo.hasSitemap ? 'sitemap text-success' : 'sitemap text-danger' %>"></i>
+                    <div>
+                      <strong><%= seoInfo.hasSitemap ? 'Yes' : 'No' %></strong>
+                      <span>Sitemap</span>
+                    </div>
+                  </div>
+                  <div class="seo-stat-item">
+                    <i class="fa-solid fa-<%= seoInfo.mobileResponsive ? 'mobile text-success' : 'mobile text-danger' %>"></i>
+                    <div>
+                      <strong><%= seoInfo.mobileResponsive ? 'Yes' : 'No' %></strong>
+                      <span>Mobile Ready</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% } %>
+
           <div class="card map-card loading">
             <div class="card-header">
               <h2>Visitors by Country</h2>

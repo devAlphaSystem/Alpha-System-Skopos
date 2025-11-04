@@ -97,7 +97,14 @@ export function accumulateSessionAdjustments(adjustments, session, events, jsErr
     return;
   }
 
-  const orderedEvents = [...(events || [])].filter((event) => event?.created).sort((a, b) => new Date(a.created) - new Date(b.created));
+  const orderedEvents = [...(events || [])].sort((a, b) => {
+    const dateA = new Date(a?.created || session.created);
+    const dateB = new Date(b?.created || session.created);
+    return dateA - dateB;
+  });
+
+  logger.debug("Processing session %s deletion: %d total events", session.id, orderedEvents.length);
+
   const firstEvent = orderedEvents[0];
   const firstDateKey = toDateKey(firstEvent?.created || session.created);
   const firstAdjustment = ensureAdjustment(adjustments, firstDateKey);
@@ -125,9 +132,14 @@ export function accumulateSessionAdjustments(adjustments, session, events, jsErr
   }
 
   for (const event of orderedEvents) {
-    const dateKey = toDateKey(event.created);
+    let dateKey = toDateKey(event.created);
+    if (!dateKey) {
+      dateKey = toDateKey(session.created);
+      logger.warn("Event with invalid created timestamp found, using session created date as fallback. Event ID: %s", event.id || "unknown");
+    }
     const adjustment = ensureAdjustment(adjustments, dateKey);
     if (!adjustment) {
+      logger.error("Failed to ensure adjustment for dateKey: %s. Event will not be processed.", dateKey);
       continue;
     }
 
@@ -138,12 +150,18 @@ export function accumulateSessionAdjustments(adjustments, session, events, jsErr
       }
     } else if (event.type === "custom" && event.eventName) {
       recordMapDelta(adjustment.topCustomEvents, event.eventName, -1);
+    } else {
+      logger.debug("Skipping event with type '%s' (event ID: %s) - not counted as pageView or custom event", event.type, event.id);
     }
   }
 
   const lastEvent = orderedEvents[orderedEvents.length - 1];
   const exitPath = lastEvent?.path || session.exitPath;
-  const exitDateKey = toDateKey(lastEvent?.created || session.updated);
+  let exitDateKey = toDateKey(lastEvent?.created || session.updated);
+  if (!exitDateKey) {
+    exitDateKey = toDateKey(session.created);
+    logger.warn("Exit event/session has invalid timestamp, using session created date as fallback.");
+  }
   const exitAdjustment = ensureAdjustment(adjustments, exitDateKey);
   if (exitAdjustment && exitPath) {
     recordMapDelta(exitAdjustment.exitPages, exitPath, -1);
@@ -192,10 +210,16 @@ export function accumulateSessionAdjustments(adjustments, session, events, jsErr
       continue;
     }
 
-    const engagedDateKey = toDateKey(item.created);
+    let engagedDateKey = toDateKey(item.created);
+    if (!engagedDateKey) {
+      engagedDateKey = toDateKey(session.created);
+      logger.warn("Engagement event has invalid timestamp, using session created date as fallback.");
+    }
     const engagedAdjustment = ensureAdjustment(adjustments, engagedDateKey);
     if (engagedAdjustment) {
       engagedAdjustment.engagedSessions -= 1;
+    } else {
+      logger.error("Failed to ensure adjustment for engaged sessions dateKey: %s", engagedDateKey);
     }
     break;
   }
@@ -204,8 +228,13 @@ export function accumulateSessionAdjustments(adjustments, session, events, jsErr
 export function accumulateJsErrorAdjustments(adjustments, jsErrors) {
   for (const errorRecord of jsErrors || []) {
     const dateKey = toDateKey(errorRecord.created || errorRecord.lastSeen);
+    if (!dateKey) {
+      logger.warn("JS error with invalid timestamp found, skipping adjustment. Error ID: %s", errorRecord.id || "unknown");
+      continue;
+    }
     const adjustment = ensureAdjustment(adjustments, dateKey);
     if (!adjustment) {
+      logger.error("Failed to ensure adjustment for JS error dateKey: %s", dateKey);
       continue;
     }
     const count = typeof errorRecord.count === "number" && !Number.isNaN(errorRecord.count) ? errorRecord.count : 1;

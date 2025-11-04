@@ -734,6 +734,26 @@
       },
       {
         "hidden": false,
+        "id": "json2661679935",
+        "maxSize": 0,
+        "name": "analysisWarnings",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "json"
+      },
+      {
+        "hidden": false,
+        "id": "json1938837207",
+        "maxSize": 0,
+        "name": "recommendations",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "json"
+      },
+      {
+        "hidden": false,
         "id": "json4782910384",
         "maxSize": 0,
         "name": "headings",

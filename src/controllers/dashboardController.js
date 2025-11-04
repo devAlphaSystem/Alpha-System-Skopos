@@ -1,6 +1,7 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { subDays } from "date-fns";
 import { aggregateSummaries, getReportsFromSummaries, calculatePercentageChange, calculateActiveUsers, getMetricTrends } from "../utils/analytics.js";
+import { calculateSeoScore } from "../services/seoAnalyzer.js";
 import logger from "../services/logger.js";
 
 async function getCommonData(userId) {
@@ -159,6 +160,41 @@ export async function showDashboard(req, res) {
     }
 
     const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
+
+    let seoInfo = null;
+    try {
+      const seoRecord = await pbAdmin.collection("seo_data").getFirstListItem(`website.id="${websiteId}"`);
+      const seoData = {
+        metaTags: seoRecord.metaTags || {},
+        socialMetaTags: seoRecord.socialMetaTags || {},
+        headings: seoRecord.headings || {},
+        images: seoRecord.images || {},
+        links: seoRecord.links || {},
+        technicalSeo: seoRecord.technicalSeo || {},
+        performanceScores: seoRecord.performanceScores ?? null,
+        recommendations: seoRecord.recommendations ?? [],
+        lastAnalyzed: seoRecord.lastAnalyzed,
+      };
+
+      const seoScore = calculateSeoScore(seoData);
+      const criticalIssues = seoData.recommendations.filter((r) => r.priority === "critical").length;
+      const highPriorityIssues = seoData.recommendations.filter((r) => r.priority === "high").length;
+
+      seoInfo = {
+        score: seoScore,
+        criticalIssues,
+        highPriorityIssues,
+        totalIssues: seoData.recommendations.length,
+        lastAnalyzed: seoRecord.lastAnalyzed,
+        performance: seoData.performanceScores?.performance ?? null,
+        hasSitemap: seoData.technicalSeo?.hasSitemap ?? false,
+        hasSSL: seoData.technicalSeo?.hasSSL ?? false,
+        mobileResponsive: seoData.technicalSeo?.mobileResponsive ?? false,
+      };
+    } catch (e) {
+      logger.debug("No SEO data found for website %s", websiteId);
+    }
+
     logger.debug("Dashboard data for website %s calculated successfully. Rendering page.", websiteId);
 
     res.render("dashboard", {
@@ -168,6 +204,7 @@ export async function showDashboard(req, res) {
       metrics,
       reports,
       activeUsers,
+      seoInfo,
       currentPage: "dashboard",
     });
   } catch (error) {
