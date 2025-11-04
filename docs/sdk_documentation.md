@@ -193,7 +193,11 @@ Use the `identify` method to associate an anonymous visitor with your internal u
 - Segment users by account properties
 - Provide personalized support based on user history
 
-**When to Call `identify()`:**
+**Note on SEO Data:** When you add a new website through the dashboard, Skopos automatically triggers a background SEO analysis. This initial scan provides baseline SEO metrics, including recommendations, performance scores, and technical health checks. Additionally, weekly automated SEO scans run every Tuesday at 3:00 AM UTC for all active websites. You don't need to configure anything in the SDK - the dashboard handles this automatically.
+
+**Note on IP Address Storage:** Version 0.28.0 introduces optional IP address storage. By default, Skopos only stores hashed visitor IDs for privacy. If you enable "Store Raw IP Addresses" in Settings → Privacy & Data Collection, full IP addresses will be stored and displayed in session details. The SDK automatically detects this setting and stores IPs accordingly. No SDK configuration changes are needed.
+
+**When to Call `identify()`:
 - After successful user login
 - After user registration
 - When a user updates their profile
@@ -281,6 +285,31 @@ app.patch("/api/user/profile", authenticate, async (req, res) => {
 - All fields in `userData` are optional
 - The `metadata` field can store any JSON-serializable data (max 8KB)
 - Email addresses are automatically validated and normalized
+
+## SDK Version Tracking
+
+Starting with version 0.28.0, the dashboard displays which SDK version is connected to each website:
+
+**Automatic Detection:**
+- The SDK reports its version number during initialization
+- No manual configuration required
+- Updates automatically when you restart with a new SDK version
+
+**Dashboard Display:**
+- Visible on website cards in the "Manage Websites" page
+- Shows "Not connected" if the SDK hasn't reported yet
+- Useful for tracking which sites need SDK updates
+
+**How it works:**
+1. SDK sends version information when connecting to the dashboard
+2. Dashboard stores and displays this information per website
+3. Updates persist until the next SDK connection
+
+**Benefits:**
+- Identify outdated SDK versions at a glance
+- Plan SDK upgrades across multiple websites
+- Troubleshoot version-specific issues
+- Monitor deployment status
 
 ## Graceful Shutdown
 

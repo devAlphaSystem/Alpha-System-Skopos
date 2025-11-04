@@ -107,6 +107,12 @@
                           <i class="fa-solid fa-globe"></i>
                           <span><%= session.country || 'Unknown' %></span>
                         </div>
+                        <% if (session.ipAddress) { %>
+                        <div class="session-detail">
+                          <i class="fa-solid fa-network-wired"></i>
+                          <span><%= session.ipAddress %></span>
+                        </div>
+                        <% } %>
                       </div>
                       <div class="session-actions">
                         <form action="/sessions/<%= currentWebsite.id %>/session/<%= session.sessionId %>/delete" method="POST">

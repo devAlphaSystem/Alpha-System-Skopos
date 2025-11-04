@@ -1034,6 +1034,20 @@
         "type": "text"
       },
       {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text3842390946",
+        "max": 0,
+        "min": 0,
+        "name": "ipAddress",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
         "hidden": false,
         "id": "bool29935624",
         "name": "isNewVisitor",
@@ -1286,6 +1300,20 @@
         "type": "text"
       },
       {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text2671185801",
+        "max": 0,
+        "min": 0,
+        "name": "sdkVersion",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
         "hidden": false,
         "id": "number1953238800",
         "max": null,
@@ -1301,6 +1329,15 @@
         "hidden": false,
         "id": "bool4206062621",
         "name": "isArchived",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "bool2566381216",
+        "name": "storeRawIp",
         "presentable": false,
         "required": false,
         "system": false,

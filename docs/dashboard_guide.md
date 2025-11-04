@@ -31,6 +31,30 @@ This grid displays key performance indicators (KPIs). Each card shows the total 
 -   **Engagement:** The percentage of sessions with more than one event or lasting longer than 10 seconds.
 -   **Avg. Session:** The average duration of a visitor's session from their first to last activity.
 
+### SEO Summary Card (Website Dashboard Only)
+
+When viewing a specific website's dashboard, an SEO Summary Card appears at the top if SEO data is available. This provides at-a-glance insights into your site's search engine optimization health:
+
+#### SEO Score Gauge
+- **Visual Score**: Circular gauge displaying your overall SEO score (0-100)
+- **Score Label**: 
+  - Excellent (90+): Green badge
+  - Strong (75-89): Green badge
+  - Good (60-74): Yellow badge
+  - Needs Work (45-59): Yellow badge
+  - Critical (<45): Red badge
+- **Last Analyzed**: Timestamp of the most recent SEO scan
+
+#### Quick Stats
+- **Critical Issues**: Count of critical-priority problems requiring immediate attention
+- **High Priority Issues**: Count of high-priority optimization opportunities
+- **Performance Score**: Lighthouse performance score (0-100) if available
+- **HTTPS Status**: Whether SSL/HTTPS is enabled (Yes/No)
+- **Sitemap Status**: Whether sitemap.xml is accessible (Yes/No)
+- **Mobile Responsive**: Whether the site has proper viewport configuration (Yes/No)
+
+**Note:** Click the website name in the sidebar to access the full SEO Analytics page with detailed recommendations and analysis.
+
 ### Report Cards
 
 The dashboard is populated with various report cards that break down your data into specific categories.
@@ -68,6 +92,18 @@ Click the **Websites** link in the sidebar to add, view, and manage your sites.
    - **Description** (optional): Additional notes about this website
 
 **Important Security Note:** The `domain` field is critical for security. The SDK will reject any events that don't originate from this domain or its subdomains. This prevents data spoofing and ensures only legitimate traffic is tracked.
+
+### Website Cards
+
+Each website card displays key information:
+- **Website Name**: The friendly name you assigned
+- **Domain**: The primary domain being tracked
+- **Retention Policy**: How long data is kept (or "Forever" if no limit)
+- **SDK Version**: The version of the SDK currently connected
+  - Shows "Not connected" if the SDK hasn't reported in yet
+  - Updates automatically when the SDK connects
+  - Useful for tracking which sites need SDK updates
+- **Tracking ID**: Unique identifier needed for SDK initialization
 
 ### Website Settings
 
@@ -137,6 +173,21 @@ Click the **Settings** button in the main sidebar to customize your dashboard ex
 
 **Note:** Time frame and results limit settings apply to all websites. The active users counter always shows the last 5 minutes regardless of the selected time frame.
 
+#### Privacy & Data Collection
+- **Store Raw IP Addresses**: Toggle to enable/disable IP address storage
+  - **Disabled (Default)**: Only hashed visitor IDs are stored for privacy
+  - **Enabled**: Full IP addresses are stored and displayed in session details
+  - Applies to all websites globally
+  - Changes take effect immediately for new sessions
+  - Existing sessions retain their current IP storage state
+
+**Privacy Considerations:**
+- IP addresses are considered personal data under GDPR and similar regulations
+- Enabling IP storage requires disclosure in your privacy policy
+- Use only if you have a legitimate business need (security, fraud prevention, compliance)
+- Consider implementing data retention policies for stored IPs
+- When disabled, visitor tracking relies on hashed identifiers only
+
 ### Website-Specific Settings (Header)
 
 When viewing a specific website, click the **Website Settings** button in the header to access configuration options.
@@ -180,6 +231,10 @@ Click on any session to view comprehensive information:
 - **OS**: Operating system
 - **Device**: Device type (Desktop, Mobile, Tablet)
 - **Country**: Detected from IP address via GeoIP
+- **IP Address**: Raw IP address (only visible if IP storage is enabled)
+  - Click to copy the IP address to your clipboard
+  - Visual confirmation appears when copied
+  - Not shown if IP storage is disabled for privacy
 - **Entry Page**: First page viewed in the session
 - **Exit Page**: Last page viewed before the session ended
 - **Referrer**: Source that brought the user to your site (or "Direct" if they typed the URL)
@@ -205,13 +260,163 @@ You can delete individual sessions or all sessions for a visitor:
 - **Delete Single Session**: Click the delete button on the session details page
 - **Delete All Visitor Sessions**: Click the delete button on the sessions list for a visitor
 
-**Important:** Deleting sessions also updates the dashboard summaries to reflect the removed data accurately.
+**Important:** Deleting sessions also updates the dashboard summaries to reflect the removed data accurately. The system uses enhanced deletion logic that:
+- Properly handles events with invalid timestamps by using session creation date as fallback
+- Maintains accurate event ordering for correct metric adjustments
+- Validates all date keys to prevent processing errors
+- Logs detailed information for troubleshooting if issues occur
+- Ensures all metrics (page views, custom events, engagement, etc.) are correctly decremented
 
 ## SEO Analytics
 
-The SEO Analytics page provides insights into your website's search engine optimization and discoverability. Access it from the sidebar when viewing a specific website.
+The SEO Analytics page provides comprehensive insights into your website's search engine optimization with actionable recommendations. Access it from the sidebar when viewing a specific website.
 
-**Note:** This feature analyzes your website's public pages to provide SEO recommendations. It does not track user behavior but rather evaluates your site's technical SEO health.
+### Automated SEO Monitoring
+
+#### Background Analysis on Website Creation
+When you add a new website to Skopos, an SEO analysis is automatically triggered in the background. This initial scan provides baseline SEO metrics without any manual intervention.
+
+#### Weekly Automated Scans
+Skopos runs automatic SEO analysis for all active websites every Tuesday at 3:00 AM UTC. This ensures your SEO data stays current and you're notified of any new issues that emerge over time.
+
+**Automated Scan Features:**
+- Runs for all non-archived websites
+- Updates existing SEO records with fresh data
+- Logs success/failure for monitoring
+- 2-second delay between websites to prevent rate limiting
+
+#### Manual Analysis
+You can trigger an on-demand SEO scan anytime by clicking the "Run SEO Analysis" button on the SEO Analytics page. This is useful:
+- After making SEO improvements to verify changes
+- Before launching a new website version
+- When investigating specific issues
+- To get fresh data between weekly scans
+
+### SEO Score
+
+The overall SEO score (0-100) is calculated based on multiple factors:
+
+**Scoring Breakdown:**
+- **Meta Tags** (25 points): Title, description, canonical URL
+- **Social Meta Tags** (10 points): Open Graph and Twitter Card tags
+- **Headings** (15 points): Proper H1-H6 structure
+- **Images** (15 points): Alt text coverage and quality
+- **Technical SEO** (25 points): HTTPS, sitemap, robots.txt, mobile responsiveness, structured data
+- **Performance** (10 points): Lighthouse performance score
+
+**Score Ranges:**
+- **90-100**: Excellent - Outstanding SEO health
+- **75-89**: Strong - Good SEO with minor improvements possible
+- **60-74**: Good - Solid foundation with some optimization needed
+- **45-59**: Needs Work - Multiple issues requiring attention
+- **0-44**: Critical - Significant problems affecting search visibility
+
+### Recommendations System
+
+The SEO analyzer generates intelligent, priority-based recommendations:
+
+#### Priority Levels
+- **Critical** (Red): Issues severely impacting SEO that require immediate attention
+  - Missing title tag or meta description
+  - No HTTPS/SSL
+  - Missing sitemap
+  - Not mobile responsive
+  - Missing H1 heading
+  - Performance score below 50
+
+- **High** (Orange): Important issues affecting search rankings
+  - Title or description too short
+  - Missing canonical URL
+  - Missing robots.txt
+  - Multiple H1 headings
+  - Broken internal links
+  - More than 50% images missing alt text
+
+- **Medium** (Yellow): Moderate issues worth addressing
+  - Title or description too long
+  - No H2 headings
+  - Poor quality alt text
+  - Oversized images
+  - Links with empty anchor text
+  - Missing structured data
+  - No compression enabled
+  - Performance score 50-79
+
+- **Low** (Gray): Minor improvements for optimization
+  - Suspicious/placeholder links
+  - Missing cache headers
+
+#### Recommendation Categories
+- **Meta**: Title tags, descriptions, canonical URLs
+- **Security**: HTTPS, SSL certificates
+- **Technical**: Sitemap, robots.txt, structured data
+- **Mobile**: Viewport configuration, responsiveness
+- **Content**: Heading structure, text optimization
+- **Images**: Alt text, titles, size optimization
+- **Links**: Broken links, anchor text, link quality
+- **Performance**: Compression, caching, load speed
+
+### Detailed Analysis Components
+
+#### Meta Tags Analysis
+- Title tag presence, length (50-60 characters optimal)
+- Meta description presence, length (150-160 characters optimal)
+- Canonical URL configuration
+- Viewport meta tag for mobile
+- Character set declaration
+
+#### Social Media Tags
+- Open Graph tags (og:title, og:description, og:image, og:url)
+- Twitter Card tags (twitter:card, twitter:title, twitter:description, twitter:image)
+
+#### Content Analysis
+- **Heading Structure**: H1-H6 distribution and hierarchy
+- **Image Optimization**: 
+  - Alt text coverage percentage
+  - Missing alt text (list of images)
+  - Empty alt attributes
+  - Poor quality alt text (generic terms like "image1")
+  - Images without title attributes
+  - Oversized images (>2000px width or height)
+- **Link Health**:
+  - Internal vs. external link ratio
+  - Nofollow link detection
+  - Broken internal links (checks up to 20 links)
+  - Empty anchor text detection
+  - Suspicious links (# or javascript:void(0))
+
+#### Technical SEO
+- **HTTPS/SSL**: Secure connection verification
+- **Sitemap.xml**: Accessibility check
+- **Robots.txt**: Presence verification
+- **Structured Data**: JSON-LD detection
+- **Mobile Responsive**: Viewport meta tag validation
+- **Compression**: Gzip/Brotli detection
+- **Caching**: Cache-Control header verification
+
+#### Performance Scores (via Google PageSpeed Insights)
+- **Performance**: Load speed and optimization (0-100)
+- **Accessibility**: WCAG compliance and usability (0-100)
+- **Best Practices**: Web development standards (0-100)
+- **SEO**: Search engine optimization basics (0-100)
+
+**Note:** PageSpeed Insights requires a Google API key (set via `PAGESPEED_API_KEY` environment variable). If not configured, performance scores will show as "N/A" but all other SEO analysis will function normally.
+
+#### Analysis Warnings
+If any issues occur during the SEO scan (e.g., network timeouts, API failures), they're logged as warnings and displayed on the SEO Analytics page. This helps you understand if the analysis is complete or partial.
+
+### Using SEO Recommendations
+
+1. **Review by Priority**: Start with critical and high-priority issues first
+2. **Check Impact Level**: Focus on high-impact recommendations for maximum benefit
+3. **Read Descriptions**: Each recommendation includes specific guidance on how to fix the issue
+4. **Implement Changes**: Make the suggested improvements to your website
+5. **Re-analyze**: Run a manual SEO scan to verify your fixes
+6. **Monitor Progress**: Check the weekly automated scans to ensure improvements persist
+
+### SEO Data Retention
+
+SEO data is stored separately from analytics data and is not affected by data retention policies. When you delete a website, its SEO data is automatically deleted as well.
 
 ## User Identification
 

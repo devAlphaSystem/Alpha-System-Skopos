@@ -61,15 +61,19 @@
       <div class="session-tabs-container">
         <div class="session-tabs">
           <button class="session-tab active" data-tab="session-info" data-tooltip="Session Information">
+            <i class="fa-solid fa-circle-info"></i>
             <span>Session Information</span>
           </button>
           <button class="session-tab" data-tab="pages-visited" data-tooltip="Pages Visited">
+            <i class="fa-solid fa-file-lines"></i>
             <span>Pages Visited</span>
           </button>
           <button class="session-tab" data-tab="custom-events" data-tooltip="Custom Events">
+            <i class="fa-solid fa-bolt"></i>
             <span>Custom Events</span>
           </button>
           <button class="session-tab" data-tab="event-timeline" data-tooltip="Event Timeline">
+            <i class="fa-solid fa-timeline"></i>
             <span>Event Timeline</span>
           </button>
         </div>
@@ -148,6 +152,12 @@
               <span class="detail-label">Country:</span>
               <span class="detail-value"><%= sessionInfo.country || 'Unknown' %></span>
             </div>
+            <% if (sessionInfo.ipAddress) { %>
+            <div class="session-detail-item">
+              <span class="detail-label">IP Address:</span>
+              <span class="detail-value"><code class="ip-address-copyable" data-ip="<%= sessionInfo.ipAddress %>" style="cursor: pointer;" title="Click to copy"><%= sessionInfo.ipAddress %></code></span>
+            </div>
+            <% } %>
             <div class="session-detail-item">
               <span class="detail-label">Language:</span>
               <span class="detail-value"><%= sessionInfo.language || 'Unknown' %></span>

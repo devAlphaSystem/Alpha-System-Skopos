@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function runSeoAnalysis() {
     if (!WEBSITE_ID) {
       console.error("Website ID not found");
-      alert("Error: Website ID not found. Please refresh the page.");
+      window.customAlert("Error", "Website ID not found. Please refresh the page.");
       return;
     }
 
@@ -102,7 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       console.error("Error running SEO analysis:", error);
       window.hideLoadingModal();
-      alert(`Error: ${error.message}`);
+      window.customAlert("Error", error.message);
 
       if (runAnalysisBtn) runAnalysisBtn.disabled = false;
       if (initialAnalysisBtn) initialAnalysisBtn.disabled = false;

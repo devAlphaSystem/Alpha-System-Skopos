@@ -60,8 +60,14 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 -   **Interactive Report Drawers**: Click on any report card to explore the full, searchable, and sortable dataset.
 -   **JavaScript Error Analysis**: View detailed stack traces for frontend errors.
 -   **Custom Event Data Inspector**: Analyze the custom JSON data sent with your events.
+-   **Comprehensive SEO Analytics**: Automated SEO analysis with actionable recommendations, performance scoring, and technical health monitoring.
+-   **SEO Dashboard Integration**: Real-time SEO score and critical metrics displayed directly on your main dashboard.
+-   **Automated SEO Monitoring**: Weekly automatic SEO scans for all active websites with background analysis on website creation.
+-   **Privacy-First IP Management**: Optional raw IP address storage with GDPR-compliant defaults (hashed IDs only).
+-   **SDK Version Tracking**: Monitor connected SDK versions for each website directly from the dashboard.
+-   **Enhanced Session Analytics**: Detailed session information including optional IP address display and click-to-copy functionality.
 -   **Website Management**: Easily add, remove, restore, and archive your tracked websites; adding a new website keeps you on the management page.
--   **Configurable Settings**: Customize the dashboard experience, including theme, data period, and refresh rates (now including "Instant").
+-   **Configurable Settings**: Customize the dashboard experience, including theme, data period, refresh rates, and privacy settings.
 -   **Light & Dark Mode**: Automatic theme detection and manual toggle for your preference.
 
 ## Tech Stack
@@ -120,6 +126,9 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 
     # A secret string used for hashing visitor IDs. Make this a long, random string.
     SECRET_SALT="your-super-secret-random-string-for-hashing"
+
+    # Optional: Google PageSpeed Insights API key for enhanced performance analysis
+    PAGESPEED_API_KEY="your-pagespeed-api-key"
     ```
 
 ### Running the Application
@@ -175,6 +184,8 @@ skopos-dashboard/
 │   ├── controllers/        # Request handlers
 │   ├── routes/             # Express route definitions
 │   ├── services/           # Business logic
+│   │   ├── seoAnalyzer.js # SEO analysis engine with recommendations
+│   │   └── cron.js        # Scheduled jobs (SEO, cleanup, aggregation)
 │   └── utils/              # Utility functions
 └── views/                   # EJS templates
     ├── partials/           # Reusable template components
@@ -225,11 +236,38 @@ Track business-specific actions:
 
 ### SEO Analytics
 
-Analyze your website's search engine optimization:
-- Page-by-page SEO scores
-- Technical recommendations
-- Meta tag analysis
-- Performance insights
+Comprehensive search engine optimization analysis with intelligent recommendations:
+
+#### Automated Analysis
+- **Background Analysis on Creation**: New websites are automatically analyzed upon creation
+- **Weekly Automated Scans**: Scheduled SEO analysis runs every Tuesday at 3:00 AM UTC for all active websites
+- **On-Demand Analysis**: Manually trigger SEO scans anytime from the SEO Analytics page
+
+#### SEO Dashboard Integration
+- **Real-time SEO Score**: 0-100 score displayed on the main dashboard with visual gauge
+- **Critical Issues Counter**: Immediate visibility of high-priority problems
+- **Quick Stats**: HTTPS status, sitemap availability, mobile responsiveness at a glance
+- **Performance Metrics**: Lighthouse performance scores integrated into dashboard view
+
+#### Detailed SEO Reports
+- **Priority-based Recommendations**: Critical, high, medium, and low priority issues with actionable guidance
+- **Meta Tag Analysis**: Title, description, canonical, and Open Graph validation
+- **Technical SEO Checks**: SSL, sitemap, robots.txt, structured data, and compression
+- **Content Analysis**: Heading structure, image optimization, and link quality
+- **Performance Scoring**: Lighthouse-powered performance, accessibility, and best practices metrics
+- **Link Health**: Broken link detection for internal links (up to 20 links checked per scan)
+- **Image Optimization**: Alt text quality, oversized images, and title attribute monitoring
+
+#### Smart Recommendations Engine
+The system generates context-aware recommendations including:
+- Missing or poorly optimized meta tags
+- Security issues (missing HTTPS/SSL)
+- Mobile responsiveness problems
+- Heading structure issues (missing H1, multiple H1s)
+- Image accessibility problems (missing/poor alt text, oversized images)
+- Link quality issues (broken links, empty anchors, suspicious links)
+- Performance bottlenecks (no compression, poor caching)
+- Missing technical elements (sitemap, robots.txt, structured data)
 
 ### User Identification
 
@@ -282,6 +320,7 @@ Per-website configuration (click the settings icon on a website card):
 | `POCKETBASE_ADMIN_EMAIL` | Admin account email | `admin@example.com` |
 | `POCKETBASE_ADMIN_PASSWORD` | Admin account password | `your_secure_password` |
 | `SECRET_SALT` | Salt for visitor ID hashing | `random-string-here` |
+| `PAGESPEED_API_KEY` | Google PageSpeed Insights API key (optional) | `your_api_key` |
 
 **Security Notes:**
 - Use strong passwords for admin accounts
@@ -340,6 +379,25 @@ Uses `nodemon` to automatically restart on file changes. Debug logging is enable
 2. Add route in `src/routes/`
 3. Create controller in `src/controllers/`
 4. Add navigation link in `views/partials/header.ejs`
+
+### Automated Background Processes
+
+Skopos runs several automated cron jobs to maintain data quality and provide continuous monitoring:
+
+#### Daily Jobs (Midnight UTC)
+- **Data Aggregation** (00:00 UTC): Calculates daily dashboard summaries from raw events
+- **Session Pruning** (00:00 UTC): Removes old session data based on retention policies
+
+#### Cleanup Jobs
+- **Orphaned Records Cleanup** (02:30 UTC): Removes analytics data for deleted websites
+
+#### Weekly SEO Analysis (Tuesday 03:00 UTC)
+- **Automated SEO Scans**: Analyzes all active (non-archived) websites
+- **Updates SEO Scores**: Refreshes recommendations and performance metrics
+- **2-second delay between sites**: Prevents API rate limiting
+- **Logs results**: Success/failure tracking for monitoring
+
+All cron jobs run automatically when the dashboard application starts. No additional configuration is required.
 
 ## Deployment
 
@@ -442,6 +500,22 @@ Uses `nodemon` to automatically restart on file changes. Debug logging is enable
 - **Slow queries**: Ensure PocketBase indexes are properly configured
 - **Memory leaks**: Restart the application and check for error logs
 
+### Session Deletion Issues
+
+If you encounter problems when deleting sessions:
+
+- **Check server logs**: Enable debug mode to see detailed deletion processing
+- **Invalid timestamps**: The system automatically handles events with invalid timestamps by using session creation date as fallback
+- **Metric accuracy**: Dashboard summaries are automatically updated to reflect deleted data
+- **Orphaned data**: The cleanup cron job (02:30 UTC) handles any orphaned records
+
+### SEO Analysis Not Running
+
+- **API Key Missing**: Set `PAGESPEED_API_KEY` environment variable for performance scores (optional but recommended)
+- **Network Issues**: Ensure the server can reach external websites and Google's PageSpeed API
+- **Weekly Scans**: Verify cron jobs are running (check server logs on Tuesday mornings)
+- **Manual Analysis**: Click "Run SEO Analysis" button on the SEO Analytics page to trigger on-demand scan
+
 ## Documentation
 
 For detailed documentation:
@@ -479,7 +553,28 @@ Skopos is designed with privacy as a core principle:
 
 - ✅ **No cookies** - Fully cookie-free tracking
 - ✅ **No external requests** - All data stays on your server
-- ✅ **Visitor anonymization** - IPs are hashed, not stored
-- ✅ **GDPR compliant** - No PII collected by default
+- ✅ **Visitor anonymization** - IPs are hashed by default, raw storage is optional
+- ✅ **GDPR compliant** - No PII collected by default, opt-in IP storage
+- ✅ **Flexible privacy controls** - Choose between complete anonymization or IP tracking based on your needs
 - ✅ **Self-hosted** - You own and control all data
 - ✅ **Open source** - Fully auditable code
+
+### IP Address Storage Options
+
+By default, Skopos prioritizes privacy:
+- **Disabled (Default)**: Only hashed visitor IDs are stored, no raw IP addresses
+- **Enabled (Optional)**: Store full IP addresses for debugging, security analysis, or compliance requirements
+- **Per-Website Control**: Configure IP storage globally or per website
+- **Easy Toggle**: Enable/disable in Settings → Privacy & Data Collection
+
+**When to enable IP storage:**
+- Security monitoring and threat detection
+- Fraud prevention and abuse detection
+- Legal compliance requirements
+- Detailed user support and debugging
+
+**Privacy considerations:**
+- IP addresses are personal data under GDPR
+- Ensure your privacy policy discloses IP collection if enabled
+- Consider data retention policies for stored IPs
+- Enable only if you have a legitimate business need

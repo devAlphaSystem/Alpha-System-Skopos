@@ -146,6 +146,31 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const storeRawIpToggle = document.getElementById("store-raw-ip-toggle");
+  if (storeRawIpToggle) {
+    storeRawIpToggle.addEventListener("change", async (e) => {
+      const isEnabled = e.target.checked;
+
+      try {
+        const response = await fetch("/settings/app", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ storeRawIp: isEnabled }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update setting");
+        }
+      } catch (error) {
+        console.error("Error updating IP storage setting:", error);
+        e.target.checked = !isEnabled;
+        window.customAlert("Error", "Failed to update IP storage setting. Please try again.");
+      }
+    });
+  }
+
   const modalOverlay = document.getElementById("custom-modal-overlay");
   const modalTitle = document.getElementById("custom-modal-title");
   const modalBody = document.getElementById("custom-modal-body");
@@ -209,6 +234,35 @@ document.addEventListener("DOMContentLoaded", () => {
     ];
     return showModal(title, body, buttons);
   };
+
+  window.customAlert = (title, body) => {
+    const buttons = [{ text: "OK", class: "btn", value: true }];
+    return showModal(title, body, buttons);
+  };
+
+  document.body.addEventListener("click", (e) => {
+    const ipElement = e.target.closest(".ip-address-copyable");
+    if (ipElement) {
+      e.stopPropagation();
+      const ip = ipElement.dataset.ip;
+
+      navigator.clipboard
+        .writeText(ip)
+        .then(() => {
+          const tooltip = document.createElement("div");
+          tooltip.className = "ip-copy-tooltip";
+          tooltip.textContent = "IP copied!";
+          tooltip.style.left = `${e.clientX}px`;
+          tooltip.style.top = `${e.clientY - 40}px`;
+          document.body.appendChild(tooltip);
+
+          setTimeout(() => tooltip.remove(), 900);
+        })
+        .catch((err) => {
+          console.error("Failed to copy IP:", err);
+        });
+    }
+  });
 
   document.body.addEventListener("click", async (e) => {
     const archiveButton = e.target.closest(".archive-website-btn");

@@ -1,5 +1,7 @@
 The Skopos client-side script is a lightweight, privacy-focused utility that you add to your website. It automatically captures essential analytics data and provides simple tools for tracking custom user interactions.
 
+**Note:** The client-side script focuses purely on analytics tracking. SEO analysis is handled entirely by the dashboard - no additional configuration or scripts are needed on your website. When you add a site to Skopos, it automatically analyzes your public pages and provides recommendations.
+
 ## Setup
 
 To get started, add the following script tag to the `<head>` section of your HTML pages.

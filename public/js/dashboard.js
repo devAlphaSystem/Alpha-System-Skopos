@@ -1031,10 +1031,10 @@ document.addEventListener("DOMContentLoaded", () => {
           fetchAndRenderIpBlacklist();
         } else {
           const errorData = await response.json();
-          alert(`Error: ${errorData.error}`);
+          window.customAlert("Error", errorData.error);
         }
       } catch (error) {
-        alert("Failed to add IP address.");
+        window.customAlert("Error", "Failed to add IP address.");
       }
     });
   }
@@ -1053,10 +1053,10 @@ document.addEventListener("DOMContentLoaded", () => {
           fetchAndRenderIpBlacklist();
         } else {
           const errorData = await response.json();
-          alert(`Error: ${errorData.error}`);
+          window.customAlert("Error", errorData.error);
         }
       } catch (error) {
-        alert("Failed to add your IP address to blocklist.");
+        window.customAlert("Error", "Failed to add your IP address to blocklist.");
       }
     });
   }
@@ -1074,10 +1074,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (response.ok) {
           fetchAndRenderIpBlacklist();
         } else {
-          alert("Failed to remove your IP address from blocklist.");
+          window.customAlert("Error", "Failed to remove your IP address from blocklist.");
         }
       } catch (error) {
-        alert("Failed to remove your IP address from blocklist.");
+        window.customAlert("Error", "Failed to remove your IP address from blocklist.");
       }
     });
   }
@@ -1097,10 +1097,10 @@ document.addEventListener("DOMContentLoaded", () => {
           if (response.ok) {
             fetchAndRenderIpBlacklist();
           } else {
-            alert("Failed to remove IP address.");
+            window.customAlert("Error", "Failed to remove IP address.");
           }
         } catch (error) {
-          alert("Failed to remove IP address.");
+          window.customAlert("Error", "Failed to remove IP address.");
         }
       }
     });

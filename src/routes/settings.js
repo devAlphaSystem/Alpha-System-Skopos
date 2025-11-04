@@ -1,5 +1,5 @@
 import express from "express";
-import { showSettings } from "../controllers/settingsController.js";
+import { showSettings, updateAppSettings } from "../controllers/settingsController.js";
 
 const router = express.Router();
 
@@ -11,5 +11,6 @@ function requireAuth(req, res, next) {
 }
 
 router.get("/settings", requireAuth, showSettings);
+router.post("/settings/app", requireAuth, updateAppSettings);
 
 export default router;
