@@ -2,7 +2,7 @@ import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
 import logger from "../services/logger.js";
 import { cleanupOrphanedRecords } from "../services/dashSummary.js";
-import { analyzeSeo, calculateSeoScore } from "../services/seoAnalyzer.js";
+import { analyzeSeo } from "../services/seoAnalyzer.js";
 
 async function getCommonData(userId) {
   logger.debug("Fetching common data for user: %s", userId);

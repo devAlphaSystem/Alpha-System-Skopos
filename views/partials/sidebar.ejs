@@ -67,10 +67,15 @@
   </nav>
   <div class="sidebar-footer">
     <% if (typeof appVersion !== 'undefined') { %>
-      <a href="https://github.com/devAlphaSystem/Alpha-System-Skopos" target="_blank" rel="noopener noreferrer" class="app-version" title="View on GitHub">
-        <i class="fa-brands fa-github"></i>
-        <span>v<%= appVersion %></span>
-      </a>
+      <div class="footer-buttons">
+        <a href="https://github.com/devAlphaSystem/Alpha-System-Skopos" target="_blank" rel="noopener noreferrer" class="footer-button github-button" title="View on GitHub">
+          <i class="fa-brands fa-github"></i>
+          <span>GitHub</span>
+        </a>
+        <a href="https://docs.alphasystem.dev/view/if9fgsgzo3ew5b4" target="_blank" rel="noopener noreferrer" class="footer-button version-button" title="View Changelog">
+          <span>v<%= appVersion %></span>
+        </a>
+      </div>
     <% } %>
     <% if (user) { %>
       <div class="user-info">

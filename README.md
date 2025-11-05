@@ -86,7 +86,7 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 
 1.  **Node.js**: Version 18.x or higher.
 2.  **npm**: Should be included with your Node.js installation.
-3.  **A running PocketBase instance**: The dashboard requires a live PocketBase server to connect to. Ensure you have followed the main Skopos setup instructions to deploy PocketBase and create the necessary collections.
+3.  **A running PocketBase instance**: The dashboard requires a live PocketBase server to connect to. You must configure your PocketBase instance and import the required database collections from the `pb_schema.json` file included in this repository.
 
 ### Installation & Setup
 
@@ -101,13 +101,26 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
     npm install
     ```
 
-3.  **Create an environment file:**
+3.  **Configure PocketBase:**
+    Before proceeding, you must set up your PocketBase instance with the required database schema.
+    
+    a. Start your PocketBase instance if it's not already running
+    
+    b. Access the PocketBase Admin UI (typically at `http://localhost:8090/_/`)
+    
+    c. Navigate to **Settings** → **Import collections**
+    
+    d. Import the `pb_schema.json` file located in the root of this repository
+    
+    This will create all the necessary collections and their schemas for Skopos to function properly.
+
+4.  **Create an environment file:**
     Copy the example environment file to create your own local configuration.
     ```bash
     cp .env.example .env
     ```
 
-4.  **Configure environment variables:**
+5.  **Configure environment variables:**
     Open the newly created `.env` file and fill in the values specific to your setup.
 
     ```ini
@@ -117,15 +130,9 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
     # The internal URL to your PocketBase instance (accessible from the dashboard server)
     POCKETBASE_URL="http://127.0.0.1:8090"
 
-    # The public-facing URL for your PocketBase instance. This may be the same as POCKETBASE_URL in local development.
-    PUBLIC_POCKETBASE_URL="http://localhost:8090"
-
     # Credentials for a PocketBase admin or superuser account
     POCKETBASE_ADMIN_EMAIL="admin@example.com"
     POCKETBASE_ADMIN_PASSWORD="your_admin_password"
-
-    # A secret string used for hashing visitor IDs. Make this a long, random string.
-    SECRET_SALT="your-super-secret-random-string-for-hashing"
 
     # Optional: Google PageSpeed Insights API key for enhanced performance analysis
     PAGESPEED_API_KEY="your-pagespeed-api-key"
@@ -313,18 +320,15 @@ Per-website configuration (click the settings icon on a website card):
 ## Environment Variables
 
 | Variable | Description | Example |
-|----------|-------------|---------|
+|----------|-------------|---------||
 | `PORT` | Dashboard application port | `3000` |
 | `POCKETBASE_URL` | Internal PocketBase URL | `http://127.0.0.1:8090` |
-| `PUBLIC_POCKETBASE_URL` | Public-facing PocketBase URL | `http://localhost:8090` |
 | `POCKETBASE_ADMIN_EMAIL` | Admin account email | `admin@example.com` |
 | `POCKETBASE_ADMIN_PASSWORD` | Admin account password | `your_secure_password` |
-| `SECRET_SALT` | Salt for visitor ID hashing | `random-string-here` |
 | `PAGESPEED_API_KEY` | Google PageSpeed Insights API key (optional) | `your_api_key` |
 
 **Security Notes:**
 - Use strong passwords for admin accounts
-- Keep `SECRET_SALT` secure and never commit it to version control
 - In production, use HTTPS for both dashboard and PocketBase URLs
 - Consider using a secrets manager for sensitive values
 

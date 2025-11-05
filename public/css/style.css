@@ -264,6 +264,40 @@ body {
   border-top: 1px solid var(--border-color);
 }
 
+.footer-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.footer-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background-color: var(--background-color);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  flex: 1;
+}
+
+.footer-button:hover {
+  color: var(--text-primary);
+  background-color: var(--surface-color);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.footer-button i {
+  font-size: 0.875rem;
+}
+
 .app-version {
   display: flex;
   align-items: center;
@@ -1671,6 +1705,10 @@ input:checked + .toggle-slider:before {
     background-color: var(--sidebar-bg);
     position: relative;
     z-index: 1;
+  }
+
+  .footer-buttons {
+    display: none;
   }
 
   .main-container {
