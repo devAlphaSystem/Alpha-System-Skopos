@@ -15,114 +15,163 @@
     </div>
     
     <main class="main-content" style="padding-top: 1rem;">
-      <div class="settings-card">
-        <div class="settings-card-body">
-          <section class="settings-group">
-            <header class="settings-group-header">
-              <div class="group-title">
-                <span>Appearance</span>
-              </div>
-              <p>Personalize the look and feel.</p>
-            </header>
+      <div class="tabs-card">
+        <div class="tabs-header">
+          <button class="tab-button active" data-tab="appearance">
+            <i class="fa-solid fa-palette"></i>
+            <span>Appearance</span>
+          </button>
+          <button class="tab-button" data-tab="dashboard">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>Dashboard</span>
+          </button>
+          <button class="tab-button" data-tab="privacy">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Privacy</span>
+          </button>
+          <button class="tab-button" data-tab="api-keys">
+            <i class="fa-solid fa-key"></i>
+            <span>API Keys</span>
+          </button>
+        </div>
 
-            <div class="settings-option">
-              <div class="settings-option-info">
-                <div class="settings-option-label">Dark Mode</div>
-                <div class="settings-option-description">Switch between light and dark themes.</div>
+        <div class="tabs-body">
+          <section class="tab-panel active" id="appearance-panel">
+            <div class="settings-group">
+              <div class="settings-option">
+                <div class="settings-option-info">
+                  <div class="settings-option-label">Dark Mode</div>
+                  <div class="settings-option-description">Switch between light and dark themes.</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="theme-toggle">
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="theme-toggle">
-                <span class="toggle-slider"></span>
-              </label>
             </div>
           </section>
 
-          <section class="settings-group">
-            <header class="settings-group-header">
-              <div class="group-title">
-                <span>Dashboard Updates</span>
+          <section class="tab-panel" id="dashboard-panel">
+            <div class="settings-group">
+              <div class="settings-option">
+                <div class="settings-option-info">
+                  <div class="settings-option-label">Auto Refresh</div>
+                  <div class="settings-option-description">Automatically pull the latest dashboard metrics.</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="auto-refresh-toggle">
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
-              <p>Stay in sync with live data.</p>
-            </header>
 
-            <div class="settings-option">
-              <div class="settings-option-info">
-                <div class="settings-option-label">Auto Refresh</div>
-                <div class="settings-option-description">Automatically pull the latest dashboard metrics.</div>
+              <div class="settings-option">
+                <div class="settings-option-info">
+                  <div class="settings-option-label">Refresh Interval</div>
+                  <div class="settings-option-description">Choose how often we refresh the data.</div>
+                </div>
+                <select id="refresh-rate-select" class="settings-select">
+                  <option value="0">Instant</option>
+                  <option value="10000">10 seconds</option>
+                  <option value="30000">30 seconds</option>
+                  <option value="60000">1 minute</option>
+                  <option value="300000">5 minutes</option>
+                  <option value="900000">15 minutes</option>
+                  <option value="1800000">30 minutes</option>
+                </select>
               </div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="auto-refresh-toggle">
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
+              
+              <div class="settings-option">
+                <div class="settings-option-info">
+                  <div class="settings-option-label">Data Period</div>
+                  <div class="settings-option-description">Number of trailing days included in reports.</div>
+                </div>
+                <select id="data-period-select" class="settings-select">
+                  <option value="7">7 days</option>
+                  <option value="15">15 days</option>
+                  <option value="30">30 days</option>
+                </select>
+              </div>
 
-            <div class="settings-option">
-              <div class="settings-option-info">
-                <div class="settings-option-label">Refresh Interval</div>
-                <div class="settings-option-description">Choose how often we refresh the data.</div>
+              <div class="settings-option">
+                <div class="settings-option-info">
+                  <div class="settings-option-label">Results Per Card</div>
+                  <div class="settings-option-description">How many entries to surface inside each report card.</div>
+                </div>
+                <select id="results-limit-select" class="settings-select">
+                  <option value="5">5 results</option>
+                  <option value="10">10 results</option>
+                  <option value="25">25 results</option>
+                </select>
               </div>
-              <select id="refresh-rate-select" class="settings-select">
-                <option value="0">Instant</option>
-                <option value="10000">10 seconds</option>
-                <option value="30000">30 seconds</option>
-                <option value="60000">1 minute</option>
-                <option value="300000">5 minutes</option>
-                <option value="900000">15 minutes</option>
-                <option value="1800000">30 minutes</option>
-              </select>
-            </div>
-          </section>
-
-          <section class="settings-group">
-            <header class="settings-group-header">
-              <div class="group-title">
-                <span>Data Display</span>
-              </div>
-              <p>Control how reports summarise insights.</p>
-            </header>
-
-            <div class="settings-option">
-              <div class="settings-option-info">
-                <div class="settings-option-label">Data Period</div>
-                <div class="settings-option-description">Number of trailing days included in reports.</div>
-              </div>
-              <select id="data-period-select" class="settings-select">
-                <option value="7">7 days</option>
-                <option value="15">15 days</option>
-                <option value="30">30 days</option>
-              </select>
-            </div>
-
-            <div class="settings-option">
-              <div class="settings-option-info">
-                <div class="settings-option-label">Results Per Card</div>
-                <div class="settings-option-description">How many entries to surface inside each report card.</div>
-              </div>
-              <select id="results-limit-select" class="settings-select">
-                <option value="5">5 results</option>
-                <option value="10">10 results</option>
-                <option value="25">25 results</option>
-              </select>
             </div>
           </section>
 
-          <section class="settings-group">
-            <header class="settings-group-header">
-              <div class="group-title">
-                <span>Privacy & Data Collection</span>
+          <section class="tab-panel" id="privacy-panel">
+            <div class="settings-group">
+              <div class="settings-option">
+                <div class="settings-option-info">
+                  <div class="settings-option-label">Store Raw IP Addresses</div>
+                  <div class="settings-option-description">Enable to store and display full IP addresses. When disabled, only hashed visitor IDs are stored for privacy.</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="store-raw-ip-toggle" <%= appSettings?.storeRawIp ? 'checked' : '' %>>
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
-              <p>Configure data storage and privacy settings.</p>
-            </header>
+            </div>
+          </section>
 
-            <div class="settings-option">
-              <div class="settings-option-info">
-                <div class="settings-option-label">Store Raw IP Addresses</div>
-                <div class="settings-option-description">Enable to store and display full IP addresses. When disabled, only hashed visitor IDs are stored for privacy.</div>
+          <section class="tab-panel" id="api-keys-panel">
+            <div class="settings-group">
+              <div class="api-key-section" style="padding: 1rem 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                  <h4 style="margin: 0; color: var(--text-primary);">
+                    <i class="fa-brands fa-google" style="margin-right: 0.5rem; color: #4285f4;"></i>
+                    Google PageSpeed Insights
+                  </h4>
+                  <% 
+                    const pagespeedKey = apiKeys?.find(k => k.service === 'google_pagespeed' && k.isActive);
+                  %>
+                  <% if (pagespeedKey) { %>
+                    <span style="color: var(--success); font-size: 0.875rem;">
+                      <i class="fa-solid fa-circle-check"></i> Configured
+                    </span>
+                  <% } else { %>
+                    <span style="color: var(--text-muted); font-size: 0.875rem;">
+                      <i class="fa-solid fa-circle-xmark"></i> Not configured
+                    </span>
+                  <% } %>
+                </div>
+                
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                  Required for comprehensive SEO and performance analysis. 
+                  <a href="https://developers.google.com/speed/docs/insights/v5/get-started" target="_blank" rel="noopener noreferrer" style="color: var(--primary);">Get your API key</a>
+                </p>
+
+                <% if (pagespeedKey) { %>
+                  <div style="padding: 1rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                      <span style="font-size: 0.875rem; color: var(--text-secondary);">Key ID: <%= pagespeedKey.id.substring(0, 8) %>...</span>
+                      <button class="btn btn-danger btn-sm" onclick="deleteApiKey('<%= pagespeedKey.id %>', 'google_pagespeed')">
+                        <i class="fa-solid fa-trash"></i> Remove
+                      </button>
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                      <span>Used <%= pagespeedKey.usageCount || 0 %> times</span>
+                      <% if (pagespeedKey.lastUsed) { %>
+                        <span style="margin-left: 1rem;">Last used: <%= new Date(pagespeedKey.lastUsed).toLocaleDateString() %></span>
+                      <% } %>
+                    </div>
+                  </div>
+                <% } else { %>
+                  <form id="pagespeed-form" onsubmit="addApiKey(event, 'google_pagespeed')" style="display: flex; gap: 0.5rem;">
+                    <input type="text" name="apiKey" class="settings-input" placeholder="AIza..." required style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); color: var(--text-primary);">
+                    <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                      <i class="fa-solid fa-save"></i> Save Key
+                    </button>
+                  </form>
+                <% } %>
               </div>
-              <label class="toggle-switch">
-                <input type="checkbox" id="store-raw-ip-toggle" <%= appSettings?.storeRawIp ? 'checked' : '' %>>
-                <span class="toggle-slider"></span>
-              </label>
             </div>
           </section>
         </div>
@@ -131,4 +180,4 @@
   </div>
 </div>
 
-<%- include('partials/footer', { scripts: [] }) %>
+<%- include('partials/footer', { scripts: ['settings'] }) %>

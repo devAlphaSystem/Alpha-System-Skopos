@@ -1,5 +1,5 @@
 import express from "express";
-import { handleSseConnection, getOverviewData, getDashboardData, getDetailedReport, getCustomEventDetails, getUserIp } from "../controllers/apiController.js";
+import { handleSseConnection, getOverviewData, getDashboardData, getDetailedReport, getCustomEventDetails, getUserIp, getStateBreakdown } from "../controllers/apiController.js";
 
 const router = express.Router();
 
@@ -15,6 +15,7 @@ router.get("/dashboard/events", requireAuth, handleSseConnection);
 router.get("/overview/data", requireAuth, getOverviewData);
 router.get("/dashboard/data/:websiteId", requireAuth, getDashboardData);
 router.get("/dashboard/report/:websiteId/custom-event-details", requireAuth, getCustomEventDetails);
+router.get("/dashboard/report/:websiteId/state-breakdown", requireAuth, getStateBreakdown);
 router.get("/dashboard/report/:websiteId/:reportType", requireAuth, getDetailedReport);
 
 router.get("/api/user-ip", requireAuth, getUserIp);

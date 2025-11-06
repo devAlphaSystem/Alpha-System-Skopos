@@ -59,7 +59,7 @@ When viewing a specific website's dashboard, an SEO Summary Card appears at the 
 
 The dashboard is populated with various report cards that break down your data into specific categories.
 
--   **Visitors by Country:** A world map and a list showing the geographic distribution of your visitors.
+-   **Visitors by Country:** A world map and a list showing the geographic distribution of your visitors. Click any country to drill into its top states or provinces when that data is available.
 -   **Top Pages:** The most frequently viewed pages.
 -   **Entry/Exit Pages:** The first and last pages visitors see in their sessions.
 -   **Top Referrers:** The external websites sending you the most traffic. "Direct" means the user typed your URL or used a bookmark.
@@ -73,11 +73,12 @@ The dashboard is populated with various report cards that break down your data i
 
 On a website-specific dashboard, **click on any report card** (e.g., "Top Pages") to open a "Detail Drawer." This provides a complete, searchable, and sortable list of all items in that category.
 
-### Viewing Item Details (Errors & Events)
+### Viewing Item Details (Errors, Events & Geo)
 
-When viewing the detail drawer for "Top JS Errors" or "Custom Events," you can go one level deeper.
+When viewing the detail drawer for "Top JS Errors," "Custom Events," or "Visitors by Country," you can go one level deeper.
 -   **JS Errors:** Click an error row to open a second drawer displaying the full **stack trace** for debugging.
 -   **Custom Events:** If an event has custom data (indicated by an info icon), click the row to see the unique `eventData` payloads that were sent for that event.
+-   **Geo Drilldown:** Selecting a country opens a second drawer with detailed state/province counts and percentages.
 
 ## Managing Websites
 
@@ -172,6 +173,11 @@ Click the **Settings** button in the main sidebar to customize your dashboard ex
 - **Results Limit**: Control how many items appear on dashboard report cards (5, 10, 15, 20, 25, 50)
 
 **Note:** Time frame and results limit settings apply to all websites. The active users counter always shows the last 5 minutes regardless of the selected time frame.
+
+#### API Keys
+- **Per-User Storage**: Keys are private to the currently signed-in user and can be rotated or removed at any time.
+- **Encryption**: Requires the server to be configured with a 64-character `ENCRYPTION_KEY` so keys are encrypted at rest.
+- **Fallback Support**: If no dashboard key is configured, the system will try the `PAGESPEED_API_KEY` environment variable instead.
 
 #### Privacy & Data Collection
 - **Store Raw IP Addresses**: Toggle to enable/disable IP address storage
@@ -271,26 +277,20 @@ You can delete individual sessions or all sessions for a visitor:
 
 The SEO Analytics page provides comprehensive insights into your website's search engine optimization with actionable recommendations. Access it from the sidebar when viewing a specific website.
 
-### Automated SEO Monitoring
+### SEO Analysis Workflow
 
 #### Background Analysis on Website Creation
 When you add a new website to Skopos, an SEO analysis is automatically triggered in the background. This initial scan provides baseline SEO metrics without any manual intervention.
-
-#### Weekly Automated Scans
-Skopos runs automatic SEO analysis for all active websites every Tuesday at 3:00 AM UTC. This ensures your SEO data stays current and you're notified of any new issues that emerge over time.
-
-**Automated Scan Features:**
-- Runs for all non-archived websites
-- Updates existing SEO records with fresh data
-- Logs success/failure for monitoring
-- 2-second delay between websites to prevent rate limiting
 
 #### Manual Analysis
 You can trigger an on-demand SEO scan anytime by clicking the "Run SEO Analysis" button on the SEO Analytics page. This is useful:
 - After making SEO improvements to verify changes
 - Before launching a new website version
 - When investigating specific issues
-- To get fresh data between weekly scans
+- Whenever you want up-to-date Lighthouse scores or recommendations
+
+#### PageSpeed Credentials
+Performance scoring requires a Google PageSpeed Insights API key. Add yours under **Settings → API Keys** (keys are stored per-user and encrypted) or configure the `PAGESPEED_API_KEY` environment variable as a fallback. Without a key, SEO analyses still run, but Lighthouse metrics will display as "N/A".
 
 ### SEO Score
 
@@ -400,7 +400,7 @@ The SEO analyzer generates intelligent, priority-based recommendations:
 - **Best Practices**: Web development standards (0-100)
 - **SEO**: Search engine optimization basics (0-100)
 
-**Note:** PageSpeed Insights requires a Google API key (set via `PAGESPEED_API_KEY` environment variable). If not configured, performance scores will show as "N/A" but all other SEO analysis will function normally.
+**Note:** PageSpeed Insights requires a Google API key. Add it in Settings → API Keys (encrypted at rest) or set the `PAGESPEED_API_KEY` environment variable. Without a key, performance scores will show as "N/A" but all other SEO analysis will function normally.
 
 #### Analysis Warnings
 If any issues occur during the SEO scan (e.g., network timeouts, API failures), they're logged as warnings and displayed on the SEO Analytics page. This helps you understand if the analysis is complete or partial.
@@ -412,7 +412,7 @@ If any issues occur during the SEO scan (e.g., network timeouts, API failures), 
 3. **Read Descriptions**: Each recommendation includes specific guidance on how to fix the issue
 4. **Implement Changes**: Make the suggested improvements to your website
 5. **Re-analyze**: Run a manual SEO scan to verify your fixes
-6. **Monitor Progress**: Check the weekly automated scans to ensure improvements persist
+6. **Monitor Progress**: Schedule periodic manual scans to ensure improvements persist and catch regressions early
 
 ### SEO Data Retention
 

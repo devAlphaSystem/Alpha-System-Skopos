@@ -10,7 +10,7 @@
       </div>
       <div class="mobile-header-actions">
         <% 
-          const isDashboardPage = typeof currentPage !== 'undefined' && ['dashboard', 'overview', 'sessions', 'session-details', 'seo-analytics'].includes(currentPage);
+          const isDashboardPage = typeof currentPage !== 'undefined' && ['dashboard'].includes(currentPage);
           const showDashboardControls = isDashboardPage && typeof currentWebsite !== 'undefined' && currentWebsite && !currentWebsite.isArchived;
         %>
         <% if (showDashboardControls) { %>

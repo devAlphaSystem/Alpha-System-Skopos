@@ -67,7 +67,7 @@ export async function addWebsite(req, res) {
 async function runSeoAnalysisInBackground(websiteId, domain) {
   try {
     logger.info("Starting background SEO analysis for website %s (%s)", websiteId, domain);
-    const seoData = await analyzeSeo(domain);
+    const seoData = await analyzeSeo(domain, null, res.locals.user?.id);
 
     await ensureAdminAuth();
     await pbAdmin.collection("seo_data").create({

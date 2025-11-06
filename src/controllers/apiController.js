@@ -353,3 +353,69 @@ export async function getUserIp(req, res) {
     res.status(500).json({ error: "Failed to get user IP.", ip: "Unknown" });
   }
 }
+
+export async function getStateBreakdown(req, res) {
+  const { websiteId } = req.params;
+  const { country } = req.query;
+  logger.debug("API call for state breakdown for country '%s' on website %s", country, websiteId);
+  try {
+    await ensureAdminAuth();
+    const userId = res.locals.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+      await pbAdmin.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
+    } catch (error) {
+      logger.warn("Forbidden access attempt for state breakdown on website %s by user %s", websiteId, userId);
+      return res.status(403).json({ error: "Forbidden: You do not have access to this website." });
+    }
+
+    const dataPeriod = Number.parseInt(req.query.period) || 7;
+    const today = new Date();
+    const currentStartDate = subDays(today, dataPeriod - 1);
+
+    const startYear = currentStartDate.getUTCFullYear();
+    const startMonth = String(currentStartDate.getUTCMonth() + 1).padStart(2, "0");
+    const startDay = String(currentStartDate.getUTCDate()).padStart(2, "0");
+    const startDateString = `${startYear}-${startMonth}-${startDay}`;
+
+    const endYear = today.getUTCFullYear();
+    const endMonth = String(today.getUTCMonth() + 1).padStart(2, "0");
+    const endDay = String(today.getUTCDate()).padStart(2, "0");
+    const endDateString = `${endYear}-${endMonth}-${endDay}`;
+
+    const dateFilter = `created >= "${startDateString} 00:00:00.000Z" && created <= "${endDateString} 23:59:59.999Z"`;
+
+    const sessions = await pbAdmin.collection("sessions").getFullList({
+      filter: `website.id = "${websiteId}" && country = "${country}" && ${dateFilter}`,
+      fields: "state",
+      $autoCancel: false,
+    });
+
+    logger.debug("Found %d sessions for country %s", sessions.length, country);
+
+    const stateMap = new Map();
+    for (const session of sessions) {
+      const state = session.state || "Unknown";
+      stateMap.set(state, (stateMap.get(state) || 0) + 1);
+    }
+
+    const totalSessions = sessions.length;
+    const stateData = Array.from(stateMap.entries())
+      .map(([key, count]) => ({
+        key,
+        count,
+        percentage: totalSessions > 0 ? Math.round((count / totalSessions) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    logger.debug("Found %d unique states for country %s", stateData.length, country);
+    res.status(200).json({ data: stateData });
+  } catch (error) {
+    logger.error("[API ERROR] Failed to fetch state breakdown for country %s: %o", country, error);
+    res.status(500).json({ error: "Failed to fetch state breakdown." });
+  }
+}

@@ -62,7 +62,9 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 -   **Custom Event Data Inspector**: Analyze the custom JSON data sent with your events.
 -   **Comprehensive SEO Analytics**: Automated SEO analysis with actionable recommendations, performance scoring, and technical health monitoring.
 -   **SEO Dashboard Integration**: Real-time SEO score and critical metrics displayed directly on your main dashboard.
--   **Automated SEO Monitoring**: Weekly automatic SEO scans for all active websites with background analysis on website creation.
+-   **On-Demand SEO Monitoring**: Automatic baseline analysis when a site is added, plus manual re-scans right from the dashboard whenever you need fresh data.
+-   **State-Level Geo Insights**: Drill into a country's visitors to see top states and provinces directly from the dashboard reports.
+-   **Secure API Key Vault**: Store third-party API keys per user with AES-256 encryption and fine-grained usage tracking.
 -   **Privacy-First IP Management**: Optional raw IP address storage with GDPR-compliant defaults (hashed IDs only).
 -   **SDK Version Tracking**: Monitor connected SDK versions for each website directly from the dashboard.
 -   **Enhanced Session Analytics**: Detailed session information including optional IP address display and click-to-copy functionality.
@@ -134,8 +136,8 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
     POCKETBASE_ADMIN_EMAIL="admin@example.com"
     POCKETBASE_ADMIN_PASSWORD="your_admin_password"
 
-    # Optional: Google PageSpeed Insights API key for enhanced performance analysis
-    PAGESPEED_API_KEY="your-pagespeed-api-key"
+    # Master encryption key for securing user API keys (NEVER commit this to version control!)
+    ENCRYPTION_KEY="your_master_encryption_key_here"
     ```
 
 ### Running the Application
@@ -215,7 +217,7 @@ Click any report card to open a detailed drawer with:
 - Full, searchable data
 - Sortable columns
 - Percentage breakdowns
-- Drill-down capabilities (for errors and custom events)
+- Drill-down capabilities (for errors, custom events, and geo breakdowns)
 
 ### Session Analytics
 
@@ -247,8 +249,8 @@ Comprehensive search engine optimization analysis with intelligent recommendatio
 
 #### Automated Analysis
 - **Background Analysis on Creation**: New websites are automatically analyzed upon creation
-- **Weekly Automated Scans**: Scheduled SEO analysis runs every Tuesday at 3:00 AM UTC for all active websites
 - **On-Demand Analysis**: Manually trigger SEO scans anytime from the SEO Analytics page
+- **Credential Management**: Securely store API keys inside the dashboard (with environment variable fallback) to unlock performance scoring.
 
 #### SEO Dashboard Integration
 - **Real-time SEO Score**: 0-100 score displayed on the main dashboard with visual gauge
@@ -303,6 +305,12 @@ Accessible via the Settings button in the sidebar:
 - **Time Frame**: Last 7, 14, 30, 90 days, or all time
 - **Results Limit**: Items per report card (5-50)
 
+#### API Keys
+- **Google PageSpeed Insights**: Add or rotate API keys directly from the Settings → API Keys tab for richer SEO performance data.
+- **Per-User Storage**: Keys are stored on a per-user basis and are never exposed to other accounts.
+- **AES-256 Encryption**: Requires an `ENCRYPTION_KEY` environment variable (see below) so keys are encrypted at rest.
+- **Environment Fallback**: If no dashboard key is present, the application falls back to the `PAGESPEED_API_KEY` environment variable when available.
+
 ### Website Settings
 
 Per-website configuration (click the settings icon on a website card):
@@ -320,17 +328,19 @@ Per-website configuration (click the settings icon on a website card):
 ## Environment Variables
 
 | Variable | Description | Example |
-|----------|-------------|---------||
+|----------|-------------|---------|
 | `PORT` | Dashboard application port | `3000` |
 | `POCKETBASE_URL` | Internal PocketBase URL | `http://127.0.0.1:8090` |
 | `POCKETBASE_ADMIN_EMAIL` | Admin account email | `admin@example.com` |
 | `POCKETBASE_ADMIN_PASSWORD` | Admin account password | `your_secure_password` |
-| `PAGESPEED_API_KEY` | Google PageSpeed Insights API key (optional) | `your_api_key` |
+| `ENCRYPTION_KEY` | 64-character hex string used to encrypt stored API keys | `d4f1...` |
+| `PAGESPEED_API_KEY` | Optional fallback Google PageSpeed Insights API key | `AIza...` |
 
 **Security Notes:**
 - Use strong passwords for admin accounts
 - In production, use HTTPS for both dashboard and PocketBase URLs
 - Consider using a secrets manager for sensitive values
+- Generate a secure `ENCRYPTION_KEY` with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 
 ## API Endpoints
 
@@ -395,11 +405,9 @@ Skopos runs several automated cron jobs to maintain data quality and provide con
 #### Cleanup Jobs
 - **Orphaned Records Cleanup** (02:30 UTC): Removes analytics data for deleted websites
 
-#### Weekly SEO Analysis (Tuesday 03:00 UTC)
-- **Automated SEO Scans**: Analyzes all active (non-archived) websites
-- **Updates SEO Scores**: Refreshes recommendations and performance metrics
-- **2-second delay between sites**: Prevents API rate limiting
-- **Logs results**: Success/failure tracking for monitoring
+#### SEO Analysis Triggers
+- **Background Baseline**: Automatically runs once when you add a new website.
+- **Manual Re-Scans**: Launch on-demand analyses from the SEO Analytics page whenever you need updated insights.
 
 All cron jobs run automatically when the dashboard application starts. No additional configuration is required.
 
@@ -515,10 +523,9 @@ If you encounter problems when deleting sessions:
 
 ### SEO Analysis Not Running
 
-- **API Key Missing**: Set `PAGESPEED_API_KEY` environment variable for performance scores (optional but recommended)
-- **Network Issues**: Ensure the server can reach external websites and Google's PageSpeed API
-- **Weekly Scans**: Verify cron jobs are running (check server logs on Tuesday mornings)
-- **Manual Analysis**: Click "Run SEO Analysis" button on the SEO Analytics page to trigger on-demand scan
+- **API Key Missing**: Add a Google PageSpeed key via Settings → API Keys or set the `PAGESPEED_API_KEY` environment variable for performance scoring.
+- **Network Issues**: Ensure the server can reach external websites and Google's PageSpeed API.
+- **Manual Analysis**: Click "Run SEO Analysis" on the SEO Analytics page to trigger an on-demand scan.
 
 ## Documentation
 

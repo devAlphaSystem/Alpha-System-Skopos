@@ -58,188 +58,182 @@
         </div>
       </div>
 
-      <div class="session-tabs-container">
-        <div class="session-tabs">
-          <button class="session-tab active" data-tab="session-info" data-tooltip="Session Information">
+      <div class="tabs-card">
+        <div class="tabs-header">
+          <button class="tab-button active" data-tab="session-info" data-tooltip="Session Information">
             <i class="fa-solid fa-circle-info"></i>
             <span>Session Information</span>
           </button>
-          <button class="session-tab" data-tab="pages-visited" data-tooltip="Pages Visited">
+          <button class="tab-button" data-tab="pages-visited" data-tooltip="Pages Visited">
             <i class="fa-solid fa-file-lines"></i>
             <span>Pages Visited</span>
           </button>
-          <button class="session-tab" data-tab="custom-events" data-tooltip="Custom Events">
+          <button class="tab-button" data-tab="custom-events" data-tooltip="Custom Events">
             <i class="fa-solid fa-bolt"></i>
             <span>Custom Events</span>
           </button>
-          <button class="session-tab" data-tab="event-timeline" data-tooltip="Event Timeline">
+          <button class="tab-button" data-tab="event-timeline" data-tooltip="Event Timeline">
             <i class="fa-solid fa-timeline"></i>
             <span>Event Timeline</span>
           </button>
         </div>
-      </div>
 
-      <div class="session-tab-content active" id="session-info">
-        <div class="card">
-          <div class="session-details-list">
-            <% if (sessionInfo.userId) { %>
-              <div class="session-detail-item">
-                <span class="detail-label">User ID:</span>
-                <span class="detail-value"><code><%= sessionInfo.userId %></code></span>
-              </div>
-            <% } %>
-            <% if (sessionInfo.userName) { %>
-              <div class="session-detail-item">
-                <span class="detail-label">Name:</span>
-                <span class="detail-value"><%= sessionInfo.userName %></span>
-              </div>
-            <% } %>
-            <% if (sessionInfo.userEmail) { %>
-              <div class="session-detail-item">
-                <span class="detail-label">Email:</span>
-                <span class="detail-value"><%= sessionInfo.userEmail %></span>
-              </div>
-            <% } %>
-            <% if (sessionInfo.userPhone) { %>
-              <div class="session-detail-item">
-                <span class="detail-label">Phone:</span>
-                <span class="detail-value"><%= sessionInfo.userPhone %></span>
-              </div>
-            <% } %>
-            <% if (sessionInfo.userMetadata && Object.keys(sessionInfo.userMetadata).length > 0) { %>
-              <% Object.entries(sessionInfo.userMetadata).forEach(([key, value]) => { %>
+        <div class="tabs-body">
+          <div class="tab-panel active" id="session-info">
+            <div class="session-details-list">
+              <% if (sessionInfo.userId) { %>
                 <div class="session-detail-item">
-                  <span class="detail-label"><%= key.charAt(0).toUpperCase() + key.slice(1) %>:</span>
-                  <span class="detail-value">
-                    <% if (typeof value === 'object' && value !== null) { %>
-                      <%= JSON.stringify(value) %>
-                    <% } else if (typeof value === 'boolean') { %>
-                      <span class="<%= value ? 'badge-success' : 'badge-default' %>"><%= value ? 'Yes' : 'No' %></span>
-                    <% } else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) { %>
-                      <%= new Date(value).toLocaleString() %>
-                    <% } else { %>
-                      <%= value %>
-                    <% } %>
-                  </span>
+                  <span class="detail-label">User ID:</span>
+                  <span class="detail-value"><code><%= sessionInfo.userId %></code></span>
                 </div>
-              <% }); %>
-            <% } %>
-            <div class="session-detail-item">
-              <span class="detail-label">Entry Page:</span>
-              <span class="detail-value"><%= sessionInfo.entryPath %></span>
-            </div>
-            <div class="session-detail-item">
-              <span class="detail-label">Exit Page:</span>
-              <span class="detail-value"><%= sessionInfo.exitPath %></span>
-            </div>
-            <div class="session-detail-item">
-              <span class="detail-label">Referrer:</span>
-              <span class="detail-value"><%= sessionInfo.referrer %></span>
-            </div>
-            <div class="session-detail-item">
-              <span class="detail-label">Device:</span>
-              <span class="detail-value"><%= sessionInfo.device || 'Unknown' %></span>
-            </div>
-            <div class="session-detail-item">
-              <span class="detail-label">Browser:</span>
-              <span class="detail-value"><%= sessionInfo.browser || 'Unknown' %></span>
-            </div>
-            <div class="session-detail-item">
-              <span class="detail-label">Operating System:</span>
-              <span class="detail-value"><%= sessionInfo.os || 'Unknown' %></span>
-            </div>
-            <div class="session-detail-item">
-              <span class="detail-label">Country:</span>
-              <span class="detail-value"><%= sessionInfo.country || 'Unknown' %></span>
-            </div>
-            <% if (sessionInfo.ipAddress) { %>
-            <div class="session-detail-item">
-              <span class="detail-label">IP Address:</span>
-              <span class="detail-value"><code class="ip-address-copyable" data-ip="<%= sessionInfo.ipAddress %>" style="cursor: pointer;" title="Click to copy"><%= sessionInfo.ipAddress %></code></span>
-            </div>
-            <% } %>
-            <div class="session-detail-item">
-              <span class="detail-label">Language:</span>
-              <span class="detail-value"><%= sessionInfo.language || 'Unknown' %></span>
-            </div>
-            <% if (sessionInfo.screenWidth && sessionInfo.screenHeight) { %>
-              <div class="session-detail-item">
-                <span class="detail-label">Screen Resolution:</span>
-                <span class="detail-value"><%= sessionInfo.screenWidth %> x <%= sessionInfo.screenHeight %></span>
-              </div>
-            <% } %>
-            <div class="session-detail-item">
-              <span class="detail-label">Visitor Type:</span>
-              <span class="detail-value"><%= sessionInfo.isNewVisitor ? 'New Visitor' : 'Returning Visitor' %></span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="session-tab-content" id="pages-visited">
-        <% if (reports.topPages.length > 0) { %>
-          <div class="card">
-            <div class="report-content">
-              <%- include('partials/report-table', { data: reports.topPages }) %>
-            </div>
-          </div>
-        <% } else { %>
-          <div class="card no-data-card">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            <h2>No Pages Visited</h2>
-            <p>No page views were recorded for this session.</p>
-          </div>
-        <% } %>
-      </div>
-
-      <div class="session-tab-content" id="custom-events">
-        <% if (reports.topCustomEvents.length > 0) { %>
-          <div class="card">
-            <div class="report-content">
-              <%- include('partials/report-table', { data: reports.topCustomEvents }) %>
-            </div>
-          </div>
-        <% } else { %>
-          <div class="card no-data-card">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            <h2>No Custom Events</h2>
-            <p>No custom events were recorded for this session.</p>
-          </div>
-        <% } %>
-      </div>
-
-      <div class="session-tab-content" id="event-timeline">
-        <div class="card">
-        <div class="timeline-container">
-          <% if (events.length === 0) { %>
-            <p class="no-data">No events recorded for this session.</p>
-          <% } else { %>
-            <% for (const event of events) { %>
-              <div class="timeline-item">
-                <div class="timeline-icon <%= event.type === 'pageView' ? 'timeline-pageview' : 'timeline-custom' %>">
-                  <i class="fa-solid <%= event.type === 'pageView' ? 'fa-file' : 'fa-bolt' %>"></i>
+              <% } %>
+              <% if (sessionInfo.userName) { %>
+                <div class="session-detail-item">
+                  <span class="detail-label">Name:</span>
+                  <span class="detail-value"><%= sessionInfo.userName %></span>
                 </div>
-                <div class="timeline-content">
-                  <div class="timeline-header">
-                    <span class="timeline-type"><%= event.type === 'pageView' ? 'Page View' : 'Custom Event' %></span>
-                    <span class="timeline-time"><%= new Date(event.created).toLocaleTimeString() %></span>
-                  </div>
-                  <div class="timeline-details">
-                    <% if (event.type === 'pageView') { %>
-                      <strong><%= event.path %></strong>
-                    <% } else if (event.eventName) { %>
-                      <strong><%= event.eventName %></strong>
-                      <% if (event.eventData) { %>
-                        <pre class="event-data"><%= JSON.stringify(event.eventData, null, 2) %></pre>
+              <% } %>
+              <% if (sessionInfo.userEmail) { %>
+                <div class="session-detail-item">
+                  <span class="detail-label">Email:</span>
+                  <span class="detail-value"><%= sessionInfo.userEmail %></span>
+                </div>
+              <% } %>
+              <% if (sessionInfo.userPhone) { %>
+                <div class="session-detail-item">
+                  <span class="detail-label">Phone:</span>
+                  <span class="detail-value"><%= sessionInfo.userPhone %></span>
+                </div>
+              <% } %>
+              <% if (sessionInfo.userMetadata && Object.keys(sessionInfo.userMetadata).length > 0) { %>
+                <% Object.entries(sessionInfo.userMetadata).forEach(([key, value]) => { %>
+                  <div class="session-detail-item">
+                    <span class="detail-label"><%= key.charAt(0).toUpperCase() + key.slice(1) %>:</span>
+                    <span class="detail-value">
+                      <% if (typeof value === 'object' && value !== null) { %>
+                        <%= JSON.stringify(value) %>
+                      <% } else if (typeof value === 'boolean') { %>
+                        <span class="<%= value ? 'badge-success' : 'badge-default' %>"><%= value ? 'Yes' : 'No' %></span>
+                      <% } else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) { %>
+                        <%= new Date(value).toLocaleString() %>
+                      <% } else { %>
+                        <%= value %>
                       <% } %>
-                    <% } %>
+                    </span>
                   </div>
+                <% }); %>
+              <% } %>
+              <div class="session-detail-item">
+                <span class="detail-label">Entry Page:</span>
+                <span class="detail-value"><%= sessionInfo.entryPath %></span>
+              </div>
+              <div class="session-detail-item">
+                <span class="detail-label">Exit Page:</span>
+                <span class="detail-value"><%= sessionInfo.exitPath %></span>
+              </div>
+              <div class="session-detail-item">
+                <span class="detail-label">Referrer:</span>
+                <span class="detail-value"><%= sessionInfo.referrer %></span>
+              </div>
+              <div class="session-detail-item">
+                <span class="detail-label">Device:</span>
+                <span class="detail-value"><%= sessionInfo.device || 'Unknown' %></span>
+              </div>
+              <div class="session-detail-item">
+                <span class="detail-label">Browser:</span>
+                <span class="detail-value"><%= sessionInfo.browser || 'Unknown' %></span>
+              </div>
+              <div class="session-detail-item">
+                <span class="detail-label">Operating System:</span>
+                <span class="detail-value"><%= sessionInfo.os || 'Unknown' %></span>
+              </div>
+              <div class="session-detail-item">
+                <span class="detail-label">Country:</span>
+                <span class="detail-value"><%= sessionInfo.country || 'Unknown' %></span>
+              </div>
+              <% if (sessionInfo.ipAddress) { %>
+              <div class="session-detail-item">
+                <span class="detail-label">IP Address:</span>
+                <span class="detail-value"><code class="ip-address-copyable" data-ip="<%= sessionInfo.ipAddress %>" style="cursor: pointer;" title="Click to copy"><%= sessionInfo.ipAddress %></code></span>
+              </div>
+              <% } %>
+              <div class="session-detail-item">
+                <span class="detail-label">Language:</span>
+                <span class="detail-value"><%= sessionInfo.language || 'Unknown' %></span>
+              </div>
+              <% if (sessionInfo.screenWidth && sessionInfo.screenHeight) { %>
+                <div class="session-detail-item">
+                  <span class="detail-label">Screen Resolution:</span>
+                  <span class="detail-value"><%= sessionInfo.screenWidth %> x <%= sessionInfo.screenHeight %></span>
                 </div>
+              <% } %>
+              <div class="session-detail-item">
+                <span class="detail-label">Visitor Type:</span>
+                <span class="detail-value"><%= sessionInfo.isNewVisitor ? 'New Visitor' : 'Returning Visitor' %></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-panel" id="pages-visited">
+            <% if (reports.topPages.length > 0) { %>
+              <div class="report-content">
+                <%- include('partials/report-table', { data: reports.topPages }) %>
+              </div>
+            <% } else { %>
+              <div class="no-data-card">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <h2>No Pages Visited</h2>
+                <p>No page views were recorded for this session.</p>
               </div>
             <% } %>
-          <% } %>
+          </div>
+
+          <div class="tab-panel" id="custom-events">
+            <% if (reports.topCustomEvents.length > 0) { %>
+              <div class="report-content">
+                <%- include('partials/report-table', { data: reports.topCustomEvents }) %>
+              </div>
+            <% } else { %>
+              <div class="no-data-card">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <h2>No Custom Events</h2>
+                <p>No custom events were recorded for this session.</p>
+              </div>
+            <% } %>
+          </div>
+
+          <div class="tab-panel" id="event-timeline">
+            <div class="timeline-container">
+              <% if (events.length === 0) { %>
+                <p class="no-data">No events recorded for this session.</p>
+              <% } else { %>
+                <% for (const event of events) { %>
+                  <div class="timeline-item">
+                    <div class="timeline-icon <%= event.type === 'pageView' ? 'timeline-pageview' : 'timeline-custom' %>">
+                      <i class="fa-solid <%= event.type === 'pageView' ? 'fa-file' : 'fa-bolt' %>"></i>
+                    </div>
+                    <div class="timeline-content">
+                      <div class="timeline-header">
+                        <span class="timeline-type"><%= event.type === 'pageView' ? 'Page View' : 'Custom Event' %></span>
+                        <span class="timeline-time"><%= new Date(event.created).toLocaleTimeString() %></span>
+                      </div>
+                      <div class="timeline-details">
+                        <% if (event.type === 'pageView') { %>
+                          <strong><%= event.path %></strong>
+                        <% } else if (event.eventName) { %>
+                          <strong><%= event.eventName %></strong>
+                          <% if (event.eventData) { %>
+                            <pre class="event-data"><%= JSON.stringify(event.eventData, null, 2) %></pre>
+                          <% } %>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                <% } %>
+              <% } %>
+            </div>
+          </div>
         </div>
-      </div>
       </div>
     </main>
   </div>
@@ -247,8 +241,8 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const tabs = document.querySelectorAll('.session-tab');
-    const tabContents = document.querySelectorAll('.session-tab-content');
+    const tabs = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-panel');
 
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {

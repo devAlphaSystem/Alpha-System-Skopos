@@ -731,6 +731,37 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  async function fetchStateBreakdown(countryCode, countryName) {
+    if (!WEBSITE_ID) return;
+    const loadingHTML = '<div class="spinner-container" style="opacity: 1; visibility: visible; position: relative;"><div class="spinner"></div></div>';
+    openItemDetailDrawer(`States in ${countryName}`, loadingHTML);
+
+    try {
+      const url = `/dashboard/report/${WEBSITE_ID}/state-breakdown?country=${encodeURIComponent(countryCode)}&period=${settings.dataPeriod}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+
+      let content = "";
+      if (result.data && result.data.length > 0) {
+        content = '<div class="detail-table-container"><table class="detail-table"><thead><tr><th>State</th><th>Count</th><th>Percentage</th></tr></thead><tbody>';
+        for (const state of result.data) {
+          content += `<tr><td>${state.key}</td><td>${state.count}</td><td>${state.percentage}%</td></tr>`;
+        }
+        content += "</tbody></table></div>";
+      } else {
+        content = "<p>No state data available for this country.</p>";
+      }
+
+      const drawerContent = document.getElementById("item-detail-content");
+      drawerContent.innerHTML = content;
+    } catch (error) {
+      console.error("[Detail Drawer ERROR] Failed to fetch state breakdown:", error);
+      const drawerContent = document.getElementById("item-detail-content");
+      drawerContent.innerHTML = '<div class="no-data-message">Failed to load state data.</div>';
+    }
+  }
+
   let detailTableData = [];
   let filteredData = [];
   let currentPage = 1;
@@ -770,6 +801,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const reportType = detailDrawer.dataset.reportType;
     const isErrorLog = reportType === "topJsErrors";
     const isCustomEvents = reportType === "topCustomEvents";
+    const isCountryBreakdown = reportType === "countryBreakdown";
 
     const tableContainer = document.getElementById("detail-table-container");
     const paginationInfo = document.getElementById("detail-pagination-info");
@@ -786,13 +818,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const pageData = filteredData.slice(startIndex, endIndex);
     let tableHTML = `<table class="detail-table"><thead><tr><th data-column="key">Item ${sortColumn === "key" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="count">Count ${sortColumn === "count" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="percentage">Percentage ${sortColumn === "percentage" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th></tr></thead><tbody>`;
     for (const item of pageData) {
-      const isClickable = isErrorLog || (isCustomEvents && item.hasData);
+      const isClickable = isErrorLog || (isCustomEvents && item.hasData) || isCountryBreakdown;
       const rowClass = isClickable ? "clickable" : "";
       const dataAttr = isErrorLog ? `data-stacktrace="${item.stackTrace.replace(/"/g, "&quot;")}"` : "";
       const eventNameAttr = isCustomEvents ? `data-event-name="${item.key}"` : "";
+      const countryCodeAttr = isCountryBreakdown ? `data-country-code="${item.key}"` : "";
       const keyDisplay = countryNames[item.key] || item.key;
       const icon = isCustomEvents && item.hasData ? ' <i class="fa-solid fa-circle-info"></i>' : "";
-      tableHTML += `<tr class="${rowClass}" ${dataAttr} ${eventNameAttr}><td>${keyDisplay}${icon}</td><td>${item.count}</td><td>${item.percentage}%</td></tr>`;
+      tableHTML += `<tr class="${rowClass}" ${dataAttr} ${eventNameAttr} ${countryCodeAttr}><td>${keyDisplay}${icon}</td><td>${item.count}</td><td>${item.percentage}%</td></tr>`;
     }
     tableHTML += "</tbody></table>";
     tableContainer.innerHTML = tableHTML;
@@ -809,6 +842,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isCustomEvents) {
           const eventName = row.dataset.eventName;
           fetchCustomEventDetails(eventName);
+        }
+        if (isCountryBreakdown) {
+          const countryCode = row.dataset.countryCode;
+          const countryName = countryNames[countryCode] || countryCode;
+          fetchStateBreakdown(countryCode, countryName);
         }
       });
     }

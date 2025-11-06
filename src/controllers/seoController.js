@@ -331,7 +331,7 @@ export async function runSeoAnalysis(req, res) {
       return res.status(404).json({ error: "Website not found" });
     }
 
-    const seoData = await analyzeSeo(website.domain, strategy);
+    const seoData = await analyzeSeo(website.domain, strategy, userId);
 
     try {
       const existingRecord = await pbAdmin.collection("seo_data").getFirstListItem(`website.id="${websiteId}"`);

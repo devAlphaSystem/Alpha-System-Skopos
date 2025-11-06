@@ -193,7 +193,7 @@ Use the `identify` method to associate an anonymous visitor with your internal u
 - Segment users by account properties
 - Provide personalized support based on user history
 
-**Note on SEO Data:** When you add a new website through the dashboard, Skopos automatically triggers a background SEO analysis. This initial scan provides baseline SEO metrics, including recommendations, performance scores, and technical health checks. Additionally, weekly automated SEO scans run every Tuesday at 3:00 AM UTC for all active websites. You don't need to configure anything in the SDK - the dashboard handles this automatically.
+**Note on SEO Data:** When you add a new website through the dashboard, Skopos automatically triggers a background SEO analysis. This initial scan provides baseline SEO metrics, including recommendations, performance scores, and technical health checks. You can re-run analyses manually from the dashboard at any time, and performance scoring is enabled when a Google PageSpeed key is configured either via Settings → API Keys or the `PAGESPEED_API_KEY` environment variable.
 
 **Note on IP Address Storage:** Version 0.28.0 introduces optional IP address storage. By default, Skopos only stores hashed visitor IDs for privacy. If you enable "Store Raw IP Addresses" in Settings → Privacy & Data Collection, full IP addresses will be stored and displayed in session details. The SDK automatically detects this setting and stores IPs accordingly. No SDK configuration changes are needed.
 

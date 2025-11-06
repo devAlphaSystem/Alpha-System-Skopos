@@ -76,6 +76,7 @@ export async function showSessions(req, res) {
           os: session.os,
           device: session.device,
           country: session.country,
+          state: session.state,
           isNewVisitor: session.isNewVisitor,
         });
       }
@@ -199,6 +200,7 @@ export async function showSessionDetails(req, res) {
       os: session.os,
       device: session.device,
       country: session.country,
+      state: session.state,
       entryPath: session.entryPath,
       exitPath: session.exitPath,
       referrer: session.referrer || "Direct",
@@ -328,7 +330,7 @@ export async function deleteVisitorSessions(req, res) {
 
     const sessions = await pbAdmin.collection("sessions").getFullList({
       filter: `visitor.id = "${visitorId}"`,
-      fields: "id,website,isNewVisitor,device,browser,language,country,entryPath,exitPath,referrer,created,updated",
+      fields: "id,website,isNewVisitor,device,browser,language,country,state,entryPath,exitPath,referrer,created,updated",
       $autoCancel: false,
     });
 

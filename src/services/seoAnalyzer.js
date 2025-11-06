@@ -2,6 +2,7 @@ import https from "node:https";
 import http from "node:http";
 import { URL } from "node:url";
 import logger from "./logger.js";
+import { getApiKeyWithFallback } from "./apiKeyManager.js";
 
 async function fetchHtml(url) {
   return new Promise((resolve, reject) => {
@@ -544,8 +545,12 @@ function generateRecommendations(seoData) {
   return recommendations;
 }
 
-async function fetchPageSpeedInsights(url, preferredStrategy = null) {
-  const apiKey = process.env.PAGESPEED_API_KEY || null;
+async function fetchPageSpeedInsights(url, preferredStrategy = null, userId = null) {
+  let apiKey = null;
+  if (userId) {
+    apiKey = await getApiKeyWithFallback(userId, "google_pagespeed", "PAGESPEED_API_KEY");
+  }
+
   const categories = ["PERFORMANCE", "ACCESSIBILITY", "BEST_PRACTICES", "SEO"];
 
   let strategies = [];
@@ -722,7 +727,7 @@ async function checkSitemap(domain) {
   }
 }
 
-export async function analyzeSeo(domain, strategy = null) {
+export async function analyzeSeo(domain, strategy = null, userId = null) {
   logger.info("Starting SEO analysis for: %s with strategy: %s", domain, strategy || "auto");
   const startTime = Date.now();
 
@@ -748,7 +753,7 @@ export async function analyzeSeo(domain, strategy = null) {
     const brokenLinks = await checkBrokenLinks(html, url, 20);
     links.broken = brokenLinks;
 
-    const pageSpeedResult = await fetchPageSpeedInsights(url, strategy);
+    const pageSpeedResult = await fetchPageSpeedInsights(url, strategy, userId);
     const analysisWarnings = [...(pageSpeedResult.warnings || [])];
     const performanceScores = pageSpeedResult.success ? pageSpeedResult.data : null;
     const lighthouseData = pageSpeedResult.success ? pageSpeedResult.raw : null;

@@ -92,6 +92,7 @@ export function getReportsFromSummaries(summaries, limit) {
     browserBreakdown: mergeAndSortReports(summaries, "browserBreakdown", limit),
     languageBreakdown: mergeAndSortReports(summaries, "languageBreakdown", limit),
     countryBreakdown: mergeAndSortReports(summaries, "countryBreakdown", 1000),
+    stateBreakdown: mergeAndSortReports(summaries, "stateBreakdown", 10000),
     topCustomEvents: mergeAndSortReports(summaries, "topCustomEvents", limit),
     topJsErrors: mergeAndSortReports(summaries, "topJsErrors", limit),
   };
@@ -107,6 +108,7 @@ export function getAllData(summaries, reportType) {
     browserBreakdown: "browserBreakdown",
     languageBreakdown: "languageBreakdown",
     countryBreakdown: "countryBreakdown",
+    stateBreakdown: "stateBreakdown",
     topCustomEvents: "topCustomEvents",
     topJsErrors: "topJsErrors",
   };

@@ -29,6 +29,7 @@ function createEmptyAdjustment() {
     browserBreakdown: new Map(),
     languageBreakdown: new Map(),
     countryBreakdown: new Map(),
+    stateBreakdown: new Map(),
     topCustomEvents: new Map(),
     topJsErrors: new Map(),
   };
@@ -129,6 +130,7 @@ export function accumulateSessionAdjustments(adjustments, session, events, jsErr
     recordMapDelta(firstAdjustment.browserBreakdown, session.browser || "Unknown", -1);
     recordMapDelta(firstAdjustment.languageBreakdown, session.language || "Unknown", -1);
     recordMapDelta(firstAdjustment.countryBreakdown, session.country || "Unknown", -1);
+    recordMapDelta(firstAdjustment.stateBreakdown, `${session.country || "Unknown"}|${session.state || "Unknown"}`, -1);
   }
 
   for (const event of orderedEvents) {
@@ -284,7 +286,7 @@ function isSummaryEmpty(summary) {
     return false;
   }
 
-  const listFields = ["topPages", "entryPages", "exitPages", "topReferrers", "deviceBreakdown", "browserBreakdown", "languageBreakdown", "countryBreakdown", "topCustomEvents", "topJsErrors"];
+  const listFields = ["topPages", "entryPages", "exitPages", "topReferrers", "deviceBreakdown", "browserBreakdown", "languageBreakdown", "countryBreakdown", "stateBreakdown", "topCustomEvents", "topJsErrors"];
   return !listFields.some((field) => Array.isArray(summary[field]) && summary[field].length > 0);
 }
 
@@ -356,6 +358,7 @@ export async function applyDashSummaryAdjustments(websiteId, adjustments) {
     summary.browserBreakdown = applyListAdjustments(summary.browserBreakdown, adjustment.browserBreakdown);
     summary.languageBreakdown = applyListAdjustments(summary.languageBreakdown, adjustment.languageBreakdown);
     summary.countryBreakdown = applyListAdjustments(summary.countryBreakdown, adjustment.countryBreakdown);
+    summary.stateBreakdown = applyListAdjustments(summary.stateBreakdown, adjustment.stateBreakdown);
     summary.topCustomEvents = applyListAdjustments(summary.topCustomEvents, adjustment.topCustomEvents);
     summary.topJsErrors = applyListAdjustments(summary.topJsErrors, adjustment.topJsErrors);
 
