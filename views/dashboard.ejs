@@ -423,8 +423,8 @@
 <% } %>
 
 <script>
-  const initialMetrics = <%- JSON.stringify(metrics) %>;
-  const initialReportData = <%- JSON.stringify(reports) %>;
+  window.__INITIAL_METRICS__ = <%- JSON.stringify(metrics) %>;
+  window.__INITIAL_REPORT_DATA__ = <%- JSON.stringify(reports) %>;
 </script>
 
 <%- include('partials/footer', { scripts: ['dashboard'] }) %>

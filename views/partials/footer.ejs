@@ -20,13 +20,22 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@5.3.5/dist/apexcharts.min.js"></script>
     <script src="/js/vendors/jsVectorMap-min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.7.0/dist/maps/world.js"></script>
-    <script src="/js/dashboard.js"></script>
+    <script src="/js/pages/dashboard.js"></script>
   <% } %>
   <% if (scripts && scripts.includes('seo')) { %>
-    <script src="/js/seo.js"></script>
+    <script src="/js/pages/seo-analytics.js"></script>
   <% } %>
   <% if (scripts && scripts.includes('settings')) { %>
-    <script src="/js/settings.js"></script>
+    <script src="/js/pages/settings.js"></script>
+  <% } %>
+  <% if (scripts && scripts.includes('sessions')) { %>
+    <script src="/js/pages/sessions.js"></script>
+  <% } %>
+  <% if (scripts && scripts.includes('session-details')) { %>
+    <script src="/js/pages/session-details.js"></script>
+  <% } %>
+  <% if (scripts && scripts.includes('websites')) { %>
+    <script src="/js/pages/websites.js"></script>
   <% } %>
   </body>
 </html>

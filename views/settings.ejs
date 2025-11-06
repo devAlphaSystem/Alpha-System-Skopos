@@ -172,6 +172,58 @@
                   </form>
                 <% } %>
               </div>
+
+              <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1rem 0;">
+
+              <div class="api-key-section" style="padding: 1rem 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                  <h4 style="margin: 0; color: var(--text-primary);">
+                    <img src="/img/vendors/chapybara.png" alt="Chapybara" style="width: 24px; height: 24px; margin-right: 0.5rem; vertical-align: middle; border-radius: 4px;">
+                    Chapybara IP Intelligence
+                  </h4>
+                  <% 
+                    const chapybaraKey = apiKeys?.find(k => k.service === 'chapybara' && k.isActive);
+                  %>
+                  <% if (chapybaraKey) { %>
+                    <span style="color: var(--success); font-size: 0.875rem;">
+                      <i class="fa-solid fa-circle-check"></i> Configured
+                    </span>
+                  <% } else { %>
+                    <span style="color: var(--text-muted); font-size: 0.875rem;">
+                      <i class="fa-solid fa-circle-xmark"></i> Not configured
+                    </span>
+                  <% } %>
+                </div>
+                
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                  Get detailed IP intelligence including geolocation, ISP, security threat detection, and more. 
+                  <a href="https://chapyapi.com" target="_blank" rel="noopener noreferrer" style="color: var(--primary);">Get your API key</a>
+                </p>
+
+                <% if (chapybaraKey) { %>
+                  <div style="padding: 1rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                      <span style="font-size: 0.875rem; color: var(--text-secondary);">Key ID: <%= chapybaraKey.id.substring(0, 8) %>...</span>
+                      <button class="btn btn-danger btn-sm" onclick="deleteApiKey('<%= chapybaraKey.id %>', 'chapybara')">
+                        <i class="fa-solid fa-trash"></i> Remove
+                      </button>
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                      <span>Used <%= chapybaraKey.usageCount || 0 %> times</span>
+                      <% if (chapybaraKey.lastUsed) { %>
+                        <span style="margin-left: 1rem;">Last used: <%= new Date(chapybaraKey.lastUsed).toLocaleDateString() %></span>
+                      <% } %>
+                    </div>
+                  </div>
+                <% } else { %>
+                  <form id="chapybara-form" onsubmit="addApiKey(event, 'chapybara')" style="display: flex; gap: 0.5rem;">
+                    <input type="text" name="apiKey" class="settings-input" placeholder="ck_..." required style="flex: 1; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); color: var(--text-primary);">
+                    <button type="submit" class="btn btn-primary" style="white-space: nowrap;">
+                      <i class="fa-solid fa-save"></i> Save Key
+                    </button>
+                  </form>
+                <% } %>
+              </div>
             </div>
           </section>
         </div>

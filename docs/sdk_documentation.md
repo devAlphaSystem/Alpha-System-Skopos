@@ -193,9 +193,9 @@ Use the `identify` method to associate an anonymous visitor with your internal u
 - Segment users by account properties
 - Provide personalized support based on user history
 
-**Note on SEO Data:** When you add a new website through the dashboard, Skopos automatically triggers a background SEO analysis. This initial scan provides baseline SEO metrics, including recommendations, performance scores, and technical health checks. You can re-run analyses manually from the dashboard at any time, and performance scoring is enabled when a Google PageSpeed key is configured either via Settings → API Keys or the `PAGESPEED_API_KEY` environment variable.
+**Note on SEO Data:** When you add a new website through the dashboard, Skopos automatically triggers a background SEO analysis. This initial scan provides baseline SEO metrics, including recommendations, performance scores, and technical health checks. You can re-run analyses manually from the dashboard at any time. Performance scoring requires a Google PageSpeed Insights API key, which can be securely stored in the dashboard's encrypted API Key Vault (Settings → API Keys) or via the `PAGESPEED_API_KEY` environment variable.
 
-**Note on IP Address Storage:** Version 0.28.0 introduces optional IP address storage. By default, Skopos only stores hashed visitor IDs for privacy. If you enable "Store Raw IP Addresses" in Settings → Privacy & Data Collection, full IP addresses will be stored and displayed in session details. The SDK automatically detects this setting and stores IPs accordingly. No SDK configuration changes are needed.
+**Note on IP Address Storage:** By default, Skopos only stores hashed visitor IDs for privacy. If you enable "Store Raw IP Addresses" in Settings → Privacy & Data Collection, full IP addresses will be stored and displayed in session details. The SDK automatically detects this setting and stores IPs accordingly. No SDK configuration changes are needed.
 
 **When to Call `identify()`:
 - After successful user login
@@ -288,7 +288,7 @@ app.patch("/api/user/profile", authenticate, async (req, res) => {
 
 ## SDK Version Tracking
 
-Starting with version 0.28.0, the dashboard displays which SDK version is connected to each website:
+The dashboard displays which SDK version is connected to each website.
 
 **Automatic Detection:**
 - The SDK reports its version number during initialization

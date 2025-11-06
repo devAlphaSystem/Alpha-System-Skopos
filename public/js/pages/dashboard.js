@@ -566,6 +566,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const initialMetrics = window.__INITIAL_METRICS__;
+  const initialReportData = window.__INITIAL_REPORT_DATA__;
+
   if (typeof initialMetrics !== "undefined") {
     initializeMetricCharts(initialMetrics);
   }

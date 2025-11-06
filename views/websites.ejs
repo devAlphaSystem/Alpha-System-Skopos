@@ -107,25 +107,4 @@
   </div>
 </div>
 
-<script>
-  function copyToClipboard(text, button) {
-    navigator.clipboard.writeText(text).then(() => {
-      const originalIcon = button.innerHTML;
-      button.innerHTML = '<i class="fa-solid fa-check"></i>';
-      setTimeout(() => {
-        button.innerHTML = originalIcon;
-      }, 2000);
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const websiteForm = document.querySelector(".website-form");
-    if (websiteForm) {
-      websiteForm.addEventListener("submit", (e) => {
-        window.showLoadingModal("Adding Website", "Creating your new website...");
-      });
-    }
-  });
-</script>
-
-<%- include('partials/footer', { scripts: [] }) %>
+<%- include('partials/footer', { scripts: ['websites'] }) %>

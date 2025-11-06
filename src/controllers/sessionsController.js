@@ -1,6 +1,7 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import logger from "../services/logger.js";
 import { initializeAdjustments, accumulateSessionAdjustments, accumulateJsErrorAdjustments, applyDashSummaryAdjustments } from "../services/dashSummary.js";
+import { getApiKey, listApiKeys } from "../services/apiKeyManager.js";
 
 async function getCommonData(userId) {
   logger.debug("Fetching common data for user: %s", userId);
@@ -222,6 +223,9 @@ export async function showSessionDetails(req, res) {
       topCustomEvents,
     };
 
+    const apiKeys = await listApiKeys(res.locals.user.id);
+    const hasChapybaraKey = apiKeys.some((k) => k.service === "chapybara" && k.isActive);
+
     logger.debug("Session details for session %s calculated successfully. Rendering page.", sessionId);
 
     res.render("session-details", {
@@ -232,6 +236,7 @@ export async function showSessionDetails(req, res) {
       metrics,
       reports,
       events,
+      hasChapybaraKey,
       currentPage: "sessions",
     });
   } catch (error) {
@@ -370,5 +375,66 @@ export async function deleteVisitorSessions(req, res) {
   } catch (error) {
     logger.error("Error deleting visitor sessions %s: %o", visitorId, error);
     res.status(500).render("500");
+  }
+}
+
+export async function getIpIntelligence(req, res) {
+  const { websiteId, sessionId } = req.params;
+  logger.info("Fetching IP intelligence for session: %s, website: %s, user: %s", sessionId, websiteId, res.locals.user.id);
+
+  try {
+    await ensureAdminAuth();
+
+    const website = await pbAdmin.collection("websites").getOne(websiteId);
+    if (website.user !== res.locals.user.id) {
+      logger.warn("User %s attempted to access unauthorized website %s", res.locals.user.id, websiteId);
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    const session = await pbAdmin.collection("sessions").getOne(sessionId, {
+      $autoCancel: false,
+    });
+
+    if (session.website !== websiteId) {
+      logger.warn("Session %s does not belong to website %s", sessionId, websiteId);
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    if (!session.ipAddress) {
+      logger.warn("Session %s has no IP address stored", sessionId);
+      return res.status(400).json({ error: "No IP address available for this session" });
+    }
+
+    const apiKey = await getApiKey(res.locals.user.id, "chapybara");
+    if (!apiKey) {
+      logger.warn("User %s has no Chapybara API key configured", res.locals.user.id);
+      return res.status(400).json({ error: "Chapybara API key not configured" });
+    }
+
+    const chapybaraUrl = `https://api.chapyapi.com/api/v1/ip/${session.ipAddress}`;
+    logger.debug("Calling Chapybara API: %s", chapybaraUrl);
+
+    const response = await fetch(chapybaraUrl, {
+      headers: {
+        "X-API-Key": apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error("Chapybara API error: %s - %s", response.status, errorText);
+      return res.status(response.status).json({
+        error: "Failed to fetch IP intelligence",
+        details: errorText,
+      });
+    }
+
+    const ipData = await response.json();
+    logger.info("Successfully fetched IP intelligence for %s", session.ipAddress);
+
+    res.json(ipData);
+  } catch (error) {
+    logger.error("Error fetching IP intelligence for session %s: %o", sessionId, error);
+    res.status(500).json({ error: "Internal server error" });
   }
 }

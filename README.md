@@ -66,11 +66,15 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 -   **State-Level Geo Insights**: Drill into a country's visitors to see top states and provinces directly from the dashboard reports.
 -   **Secure API Key Vault**: Store third-party API keys per user with AES-256 encryption and fine-grained usage tracking.
 -   **Privacy-First IP Management**: Optional raw IP address storage with GDPR-compliant defaults (hashed IDs only).
+-   **Chapybara IP Intelligence**: Advanced IP analysis with threat detection, proxy/VPN identification, and geolocation enrichment (requires API key).
 -   **SDK Version Tracking**: Monitor connected SDK versions for each website directly from the dashboard.
 -   **Enhanced Session Analytics**: Detailed session information including optional IP address display and click-to-copy functionality.
+-   **Encrypted API Key Vault**: Securely store and manage third-party API keys with AES-256-GCM encryption, per-user isolation, and usage analytics.
 -   **Website Management**: Easily add, remove, restore, and archive your tracked websites; adding a new website keeps you on the management page.
 -   **Configurable Settings**: Customize the dashboard experience, including theme, data period, refresh rates, and privacy settings.
 -   **Light & Dark Mode**: Automatic theme detection and manual toggle for your preference.
+-   **Interactive Modals**: Custom confirmation dialogs and loading indicators for user actions.
+-   **Responsive Design**: Optimized for desktop, tablet, and mobile devices.
 
 ## Tech Stack
 
@@ -129,6 +133,12 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
     # The port the dashboard application will run on
     PORT=3000
 
+    # The environment the application is running in
+    NODE_ENV="development"
+
+    # The log level for the application
+    LOG_LEVEL="info"
+
     # The internal URL to your PocketBase instance (accessible from the dashboard server)
     POCKETBASE_URL="http://127.0.0.1:8090"
 
@@ -186,16 +196,25 @@ skopos-dashboard/
 │   ├── css/                # Stylesheets
 │   ├── img/                # Images and icons
 │   └── js/                 # Client-side JavaScript
-│       ├── dashboard.js    # Main dashboard logic
-│       ├── main.js         # Common utilities
-│       └── seo.js          # SEO analyzer
+│       ├── main.js         # Common utilities and shared functions
+│       └── pages/          # Page-specific JavaScript modules
+│           ├── dashboard.js      # Dashboard page logic
+│           ├── seo-analytics.js  # SEO analytics page
+│           ├── sessions.js       # Sessions list page
+│           ├── session-details.js # Session details page
+│           ├── settings.js       # Settings page
+│           └── websites.js       # Website management page
 ├── src/                     # Server-side source code
 │   ├── controllers/        # Request handlers
 │   ├── routes/             # Express route definitions
 │   ├── services/           # Business logic
 │   │   ├── seoAnalyzer.js # SEO analysis engine with recommendations
+│   │   ├── apiKeyManager.js # Encrypted API key storage
 │   │   └── cron.js        # Scheduled jobs (SEO, cleanup, aggregation)
 │   └── utils/              # Utility functions
+│       ├── analytics.js   # Analytics calculation utilities
+│       ├── encryption.js  # AES-256-GCM encryption for API keys
+│       └── anonymize.js   # Visitor ID hashing
 └── views/                   # EJS templates
     ├── partials/           # Reusable template components
     └── *.ejs               # Page templates
@@ -226,6 +245,9 @@ Track individual user journeys:
 - See page flow and event timeline
 - Identify users with the SDK's `identify()` method
 - Delete individual sessions or all sessions for a visitor
+- **Confirmation Dialogs**: Safety prompts before deleting session data
+- **Loading Indicators**: Visual feedback during deletion operations
+- **Accurate Metric Updates**: Automatically recalculates dashboard metrics after deletions
 
 ### JavaScript Error Tracking
 
@@ -250,6 +272,10 @@ Comprehensive search engine optimization analysis with intelligent recommendatio
 #### Automated Analysis
 - **Background Analysis on Creation**: New websites are automatically analyzed upon creation
 - **On-Demand Analysis**: Manually trigger SEO scans anytime from the SEO Analytics page
+- **Strategy Selection**: Choose between Mobile or Desktop analysis for PageSpeed Insights
+  - Mobile strategy simulates slower networks and mobile devices (default)
+  - Desktop strategy optimizes for faster networks and desktop browsers
+  - Strategy is displayed with results for clarity
 - **Credential Management**: Securely store API keys inside the dashboard (with environment variable fallback) to unlock performance scoring.
 
 #### SEO Dashboard Integration
@@ -286,6 +312,43 @@ Link anonymous visitors to known users:
 - Connect to your CRM data
 - View complete user history
 
+### Chapybara IP Intelligence
+
+Advanced IP address analysis powered by Chapybara's comprehensive IP intelligence database:
+
+#### What You Get
+- **Geolocation Data**: Detailed location information including continent, country, region, city, and coordinates
+- **Network Information**: ASN, ISP, organization, and network type identification
+- **Security Analysis**: 
+  - Threat level assessment (none, low, medium, high)
+  - Proxy/VPN detection with proxy type identification
+  - Tor exit node detection
+  - Datacenter IP identification
+  - Spam/abuse source detection
+- **Additional Insights**:
+  - Reverse DNS hostnames
+  - Mobile network detection and carrier identification
+  - Time zone information
+  - Ad targeting categories
+
+#### How to Use
+1. **Get an API Key**: Sign up at [Chapybara](https://chapyapi.com) and obtain your API key
+2. **Add to Dashboard**: Go to Settings → API Keys and add your Chapybara key
+3. **View Intelligence**: On any session details page with a stored IP address, click the "IP Intelligence" tab
+4. **Analyze Threats**: Review security indicators to identify suspicious traffic
+
+#### Use Cases
+- **Fraud Prevention**: Identify proxy/VPN usage and datacenter IPs for payment fraud detection
+- **Security Monitoring**: Detect Tor users and known threat sources
+- **Geo-Targeting**: Verify user locations for content personalization and compliance
+- **Traffic Analysis**: Understand your audience's network characteristics
+- **Spam Detection**: Filter out known spam sources and abusive IPs
+
+**Requirements**: 
+- IP storage must be enabled (Settings → Privacy & Data Collection)
+- Chapybara API key must be configured
+- Available only for sessions with stored IP addresses
+
 ## Configuration
 
 ### Dashboard Settings
@@ -307,8 +370,11 @@ Accessible via the Settings button in the sidebar:
 
 #### API Keys
 - **Google PageSpeed Insights**: Add or rotate API keys directly from the Settings → API Keys tab for richer SEO performance data.
+- **Chapybara IP Intelligence**: Add your Chapybara API key to unlock advanced IP analysis with threat detection and geolocation data.
 - **Per-User Storage**: Keys are stored on a per-user basis and are never exposed to other accounts.
-- **AES-256 Encryption**: Requires an `ENCRYPTION_KEY` environment variable (see below) so keys are encrypted at rest.
+- **AES-256-GCM Encryption**: All keys are encrypted at rest using AES-256-GCM with authentication tags for maximum security. Requires an `ENCRYPTION_KEY` environment variable (64-character hex string).
+- **Usage Tracking**: Monitor when keys were last used and how many times they've been called.
+- **Secure Rotation**: Easily rotate or deactivate keys without affecting other users.
 - **Environment Fallback**: If no dashboard key is present, the application falls back to the `PAGESPEED_API_KEY` environment variable when available.
 
 ### Website Settings
@@ -330,17 +396,22 @@ Per-website configuration (click the settings icon on a website card):
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `PORT` | Dashboard application port | `3000` |
+| `NODE_ENV` | Application environment (development, production) | `development` |
+| `LOG_LEVEL` | Logging verbosity level (error, warn, info, http, verbose, debug, silly) | `info` |
 | `POCKETBASE_URL` | Internal PocketBase URL | `http://127.0.0.1:8090` |
 | `POCKETBASE_ADMIN_EMAIL` | Admin account email | `admin@example.com` |
 | `POCKETBASE_ADMIN_PASSWORD` | Admin account password | `your_secure_password` |
-| `ENCRYPTION_KEY` | 64-character hex string used to encrypt stored API keys | `d4f1...` |
-| `PAGESPEED_API_KEY` | Optional fallback Google PageSpeed Insights API key | `AIza...` |
+| `ENCRYPTION_KEY` | 64-character hex string (32 bytes) used to encrypt stored API keys with AES-256-GCM | `d4f1e2a3b4c5...` (64 chars) |
+| `PAGESPEED_API_KEY` | Optional fallback Google PageSpeed Insights API key (used if no dashboard key is configured) | `AIza...` |
+| `PAGESPEED_STRATEGIES` | Optional comma-separated list of strategies for automated SEO scans (manual scans always prompt for selection) | `mobile,desktop` or `mobile` |
 
 **Security Notes:**
 - Use strong passwords for admin accounts
 - In production, use HTTPS for both dashboard and PocketBase URLs
 - Consider using a secrets manager for sensitive values
 - Generate a secure `ENCRYPTION_KEY` with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+- Never commit `.env` file to version control
+- Rotating the `ENCRYPTION_KEY` will invalidate all stored API keys (they will need to be re-entered)
 
 ## API Endpoints
 
@@ -376,13 +447,19 @@ Uses `nodemon` to automatically restart on file changes. Debug logging is enable
 
 - **Backend**: ES modules (import/export)
 - **Frontend**: Vanilla JavaScript (no framework)
+  - Modular page-specific scripts in `public/js/pages/`
+  - Shared utilities in `public/js/main.js`
+  - Each page loads only its required JavaScript
+  - Global utility functions: `customConfirm()`, `customAlert()`, `customAction()`, `showLoadingModal()`, `hideLoadingModal()`
 - **Templates**: EJS with partials for reusability
 - **Styling**: Custom CSS with CSS variables for theming
 
 ### Making Changes
 
 1. **Backend changes**: Edit files in `src/`
-2. **Frontend changes**: Edit files in `public/js/` or `views/`
+2. **Frontend changes**: 
+   - Edit page-specific logic in `public/js/pages/`
+   - Edit shared utilities in `public/js/main.js`
 3. **Styling**: Edit `public/css/style.css`
 4. **Routes**: Add/modify routes in `src/routes/`
 5. **Controllers**: Add/modify logic in `src/controllers/`
@@ -392,7 +469,14 @@ Uses `nodemon` to automatically restart on file changes. Debug logging is enable
 1. Create EJS template in `views/`
 2. Add route in `src/routes/`
 3. Create controller in `src/controllers/`
-4. Add navigation link in `views/partials/header.ejs`
+4. (Optional) Create page-specific JavaScript in `public/js/pages/`
+5. Add navigation link in `views/partials/header.ejs`
+
+**Page JavaScript Architecture:**
+- Each page can have its own JavaScript module in `public/js/pages/`
+- Modules are loaded via the footer partial only for the pages that need them
+- Shared functions go in `public/js/main.js`
+- This keeps page load times fast and code organized
 
 ### Automated Background Processes
 
@@ -526,6 +610,15 @@ If you encounter problems when deleting sessions:
 - **API Key Missing**: Add a Google PageSpeed key via Settings → API Keys or set the `PAGESPEED_API_KEY` environment variable for performance scoring.
 - **Network Issues**: Ensure the server can reach external websites and Google's PageSpeed API.
 - **Manual Analysis**: Click "Run SEO Analysis" on the SEO Analytics page to trigger an on-demand scan.
+
+### IP Intelligence Not Loading
+
+- **No API Key**: Add your Chapybara API key via Settings → API Keys
+- **IP Storage Disabled**: Enable "Store Raw IP Addresses" in Settings → Privacy & Data Collection
+- **No IP Address**: Session must have a stored IP address (only available when IP storage is enabled)
+- **API Quota Exceeded**: Check your Chapybara account for daily quota limits
+- **Rate Limiting**: Wait a moment and retry if you see a rate limit error
+- **Invalid API Key**: Verify your Chapybara API key is correct and active
 
 ## Documentation
 

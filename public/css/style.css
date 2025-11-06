@@ -1416,7 +1416,8 @@ input:checked + .toggle-slider:before {
 
 .website-card-body {
   padding: 1.25rem;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 2rem;
   font-size: 0.875rem;
 }
@@ -1805,7 +1806,7 @@ input:checked + .toggle-slider:before {
     width: 100%;
   }
   .website-card-body {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 0.5rem;
   }
   .tracking-id-container code {

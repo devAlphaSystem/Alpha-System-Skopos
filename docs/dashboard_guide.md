@@ -176,8 +176,33 @@ Click the **Settings** button in the main sidebar to customize your dashboard ex
 
 #### API Keys
 - **Per-User Storage**: Keys are private to the currently signed-in user and can be rotated or removed at any time.
-- **Encryption**: Requires the server to be configured with a 64-character `ENCRYPTION_KEY` so keys are encrypted at rest.
+- **AES-256-GCM Encryption**: All API keys are encrypted at rest using industry-standard AES-256-GCM encryption with authentication tags.
+  - Requires the server to be configured with a 64-character hex `ENCRYPTION_KEY` environment variable
+  - Generate a secure key with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+- **Supported Services**:
+  - **Google PageSpeed Insights**: Required for Lighthouse performance scores in SEO analysis
+  - **Chapybara IP Intelligence**: Provides advanced IP analysis, threat detection, and geolocation data
+  - Future services can be added as needed
+- **Usage Analytics**: Track when each key was last used and total usage count
+- **Key Management**:
+  - Add new keys through the Settings → API Keys interface
+  - Update existing keys (overwrites encrypted value)
+  - Deactivate keys without deleting them
+  - View usage statistics for each key
 - **Fallback Support**: If no dashboard key is configured, the system will try the `PAGESPEED_API_KEY` environment variable instead.
+- **Security Features**:
+  - Keys never appear in logs or error messages
+  - Each user's keys are isolated from other users
+  - Encryption uses authenticated encryption (AEAD) to prevent tampering
+  - Keys are only decrypted when actively used by services
+  - Initialization vectors (IV) are unique for each encryption operation
+  - Authentication tags verify data integrity
+
+**Using API Keys:**
+When you run an SEO analysis, the system automatically retrieves your stored Google PageSpeed Insights key and uses it for Lighthouse performance scoring. When you view session details with stored IP addresses, the system uses your Chapybara key to fetch IP intelligence data on-demand. No additional configuration needed after adding the keys.
+
+**Chapybara Integration:**
+The IP Intelligence feature is seamlessly integrated into the session details page. When a Chapybara API key is detected and IP storage is enabled, you'll see a dedicated tab with the Chapybara logo for accessing IP intelligence data. The tab only appears for sessions that have stored IP addresses.
 
 #### Privacy & Data Collection
 - **Store Raw IP Addresses**: Toggle to enable/disable IP address storage
@@ -239,8 +264,9 @@ Click on any session to view comprehensive information:
 - **Country**: Detected from IP address via GeoIP
 - **IP Address**: Raw IP address (only visible if IP storage is enabled)
   - Click to copy the IP address to your clipboard
-  - Visual confirmation appears when copied
-  - Not shown if IP storage is disabled for privacy
+  - Visual confirmation appears when copied successfully
+  - Shows as "Not stored (privacy mode)" if IP storage is disabled
+  - Privacy-first default: IP storage is disabled unless explicitly enabled in Settings
 - **Entry Page**: First page viewed in the session
 - **Exit Page**: Last page viewed before the session ended
 - **Referrer**: Source that brought the user to your site (or "Direct" if they typed the URL)
@@ -260,11 +286,57 @@ A chronological list of all events in the session, showing:
 - Timestamp
 - Custom event data (if available)
 
+#### IP Intelligence Tab (Premium Feature)
+When you have a Chapybara API key configured and IP storage enabled, an additional "IP Intelligence" tab appears on the session details page. This tab provides:
+
+**Geolocation Information:**
+- Continent, country, region, and city
+- Geographic coordinates (latitude/longitude)
+- Time zone information
+
+**Network Details:**
+- Autonomous System Number (ASN)
+- Internet Service Provider (ISP)
+- Organization name
+- Network usage type (residential, business, hosting, etc.)
+- Mobile network detection and carrier brand
+
+**Security Analysis:**
+- **Threat Level**: Categorized as none, low, medium, or high
+- **Proxy Detection**: Identifies proxy usage and proxy type
+- **VPN Detection**: Flags VPN connections
+- **Tor Detection**: Identifies Tor exit nodes
+- **Datacenter IPs**: Detects hosting/datacenter IP addresses
+- **Spam Detection**: Flags known spam sources
+
+**Additional Data:**
+- Reverse DNS hostnames
+- Ad targeting categories
+
+The data is presented with color-coded badges for quick threat assessment. All information is loaded on-demand when you click the IP Intelligence tab.
+
+**Error Handling:**
+- Clear error messages for API key issues
+- Quota and rate limit notifications
+- Retry functionality if loading fails
+
 ### Deleting Sessions
 
 You can delete individual sessions or all sessions for a visitor:
-- **Delete Single Session**: Click the delete button on the session details page
-- **Delete All Visitor Sessions**: Click the delete button on the sessions list for a visitor
+
+**Delete Single Session**
+- Click the delete button on the session details page
+- Confirm the action in the dialog prompt
+- Session data is permanently removed
+- Dashboard metrics are automatically updated
+- Loading indicator shows deletion progress
+
+**Delete All Visitor Sessions**
+- Click the delete button on the sessions list for a visitor
+- Confirm deletion of all sessions in the dialog
+- All sessions for that visitor are permanently removed
+- Dashboard summaries reflect the changes
+- Visual feedback during the deletion process
 
 **Important:** Deleting sessions also updates the dashboard summaries to reflect the removed data accurately. The system uses enhanced deletion logic that:
 - Properly handles events with invalid timestamps by using session creation date as fallback
@@ -273,24 +345,51 @@ You can delete individual sessions or all sessions for a visitor:
 - Logs detailed information for troubleshooting if issues occur
 - Ensures all metrics (page views, custom events, engagement, etc.) are correctly decremented
 
+**Safety Features:**
+- Confirmation dialogs prevent accidental deletions
+- Clear indication of which data will be deleted
+- Loading modals provide visual feedback
+- Cannot be undone - deleted data is permanently removed
+
 ## SEO Analytics
 
 The SEO Analytics page provides comprehensive insights into your website's search engine optimization with actionable recommendations. Access it from the sidebar when viewing a specific website.
 
 ### SEO Analysis Workflow
 
-#### Background Analysis on Website Creation
-When you add a new website to Skopos, an SEO analysis is automatically triggered in the background. This initial scan provides baseline SEO metrics without any manual intervention.
+#### Automated Analysis
+When you add a new website through the dashboard, Skopos automatically triggers a background SEO analysis. This initial scan provides baseline SEO metrics without any manual intervention.
 
-#### Manual Analysis
-You can trigger an on-demand SEO scan anytime by clicking the "Run SEO Analysis" button on the SEO Analytics page. This is useful:
+#### Manual Analysis with Strategy Selection
+You can trigger an on-demand SEO scan anytime by clicking the "Run SEO Analysis" button on the SEO Analytics page. When you start an analysis, you'll be prompted to select a strategy:
+
+**Mobile Strategy (Default)**
+- Simulates mobile devices with slower 4G networks
+- Throttled CPU and network conditions
+- Optimized for mobile-first indexing
+- Recommended for most websites
+
+**Desktop Strategy**
+- Simulates desktop browsers with faster connections
+- Higher performance expectations
+- Useful for desktop-focused applications
+- Tests different optimization scenarios
+
+The selected strategy is displayed alongside the results, so you always know which conditions were tested. This is useful:
 - After making SEO improvements to verify changes
 - Before launching a new website version
 - When investigating specific issues
-- Whenever you want up-to-date Lighthouse scores or recommendations
+- To compare mobile vs desktop performance
 
 #### PageSpeed Credentials
 Performance scoring requires a Google PageSpeed Insights API key. Add yours under **Settings → API Keys** (keys are stored per-user and encrypted) or configure the `PAGESPEED_API_KEY` environment variable as a fallback. Without a key, SEO analyses still run, but Lighthouse metrics will display as "N/A".
+
+**Reliability Features:**
+- Automatic retry logic for failed PageSpeed API requests (up to 2 retries per strategy)
+- 45-second timeout per request to prevent hanging
+- Detailed error messages and warnings when issues occur
+- Fallback to partial results if one strategy fails
+- All errors are logged for troubleshooting
 
 ### SEO Score
 
@@ -439,6 +538,21 @@ When you use the SDK's `identify()` method to link anonymous visitors to known u
 - Provide better customer support with full activity history
 
 ## Understanding Metrics
+
+### User Interface Features
+
+**Custom Modals and Dialogs:**
+The dashboard uses custom-built modal dialogs for a consistent user experience:
+- **Confirmation Dialogs**: Safety prompts before destructive actions (deletions, resets)
+- **Loading Modals**: Visual feedback during long-running operations
+- **Alert Modals**: Important notifications and error messages
+- **Custom Styling**: Themed to match the dashboard's light/dark mode
+
+**Interactive Elements:**
+- Click-to-copy functionality for IPs, tracking IDs, and other identifiers
+- Visual feedback on hover and interaction
+- Smooth transitions and animations
+- Responsive design for all screen sizes
 
 ### Page Views
 The total count of times any page was loaded or viewed on your site. In SPAs, this includes both initial loads and client-side navigation events.
