@@ -20,7 +20,28 @@ document.addEventListener("DOMContentLoaded", () => {
   const sidebarToggle = document.getElementById("sidebar-toggle");
   const mobileSidebarToggle = document.getElementById("mobile-sidebar-toggle");
   const sidebar = document.getElementById("sidebar");
+  const sidebarCollapseBtn = document.getElementById("sidebar-collapse-btn");
   const websiteSelector = document.getElementById("website-selector");
+
+  if (window.__SKOPOS_SETTINGS__?.sidebarCollapsed) {
+    sidebar?.classList.add("collapsed");
+  }
+
+  setTimeout(() => {
+    document.documentElement.classList.remove("sidebar-collapsed-init");
+  }, 50);
+
+  if (sidebarCollapseBtn && sidebar) {
+    sidebarCollapseBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      sidebar.classList.toggle("collapsed");
+
+      const settings = window.__SKOPOS_SETTINGS__ || {};
+      settings.sidebarCollapsed = sidebar.classList.contains("collapsed");
+      localStorage.setItem("skopos-settings", JSON.stringify(settings));
+      window.__SKOPOS_SETTINGS__ = settings;
+    });
+  }
 
   if (sidebarToggle && sidebar) {
     sidebarToggle.addEventListener("click", () => {

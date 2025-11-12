@@ -10,6 +10,20 @@ Access your dashboard by navigating to its URL and logging in with the user cred
 
 After logging in, you will land on the **Global Overview**, which aggregates data from all your active websites. You can view a specific website's dashboard by selecting it from the "Websites" list in the left-hand sidebar.
 
+### Sidebar Management
+
+**Collapsible Sidebar:**
+The dashboard sidebar can be collapsed to maximize your workspace:
+- Click the collapse button (←) in the sidebar header to toggle between full and collapsed view
+- In collapsed mode, only icons are visible with the sidebar narrowing to 70px
+- Hover tooltips help identify menu items when collapsed
+- Your preference is saved automatically in browser localStorage
+- On mobile devices (screens ≤992px), the sidebar always displays at full width when opened
+- The sidebar slides in from the left on mobile and can be dismissed by tapping outside
+
+**Mobile Behavior:**
+On smaller screens, the sidebar is hidden by default. Tap the hamburger menu icon to open it.
+
 ## The Dashboard View
 
 Whether on the Global Overview or a specific website's dashboard, the main view gives you an at-a-glance summary of performance.
@@ -182,6 +196,7 @@ Click the **Settings** button in the main sidebar to customize your dashboard ex
 - **Supported Services**:
   - **Google PageSpeed Insights**: Required for Lighthouse performance scores in SEO analysis
   - **Chapybara IP Intelligence**: Provides advanced IP analysis, threat detection, and geolocation data
+  - **Resend Email Service**: Required for email notification features (needs API key + verified sender email)
   - Future services can be added as needed
 - **Usage Analytics**: Track when each key was last used and total usage count
 - **Key Management**:
@@ -218,6 +233,57 @@ The IP Intelligence feature is seamlessly integrated into the session details pa
 - Use only if you have a legitimate business need (security, fraud prevention, compliance)
 - Consider implementing data retention policies for stored IPs
 - When disabled, visitor tracking relies on hashed identifiers only
+
+#### Email Notifications
+
+**Note:** The Notifications tab appears in Settings only when you have configured a Resend API key.
+
+Receive real-time email alerts for important events happening on your websites.
+
+**Setup Requirements:**
+1. Create a Resend account at [resend.com](https://resend.com)
+2. Verify your sending domain (or use Resend's test domain for development)
+3. Generate an API key from your Resend dashboard
+4. Add the API key in Settings → API Keys → Resend Email Service
+5. Provide a verified "from" email address (e.g., `notifications@yourdomain.com`)
+
+**Creating Notification Rules:**
+Click the "Add Rule" button to configure a new notification:
+
+- **Rule Name**: Descriptive name (e.g., "New Visitor Alert", "Purchase Event")
+- **Event Type**: Choose what triggers the notification:
+  - **New Visitor**: First-time visitors to your site
+  - **New Session**: Any new session starts
+  - **Custom Event**: A specific custom event you're tracking (requires event name)
+  - **Daily Summary**: Daily analytics report (future feature)
+  - **Error Threshold**: When errors exceed a limit (future feature)
+  - **Traffic Spike**: Unusual traffic increases (future feature)
+- **Custom Event Name**: Required when monitoring a specific custom event
+- **Recipient Email**: Where to send the notification
+- **Website**: Apply to all websites or filter to a specific one
+
+**Managing Rules:**
+- **Toggle On/Off**: Use the switch to activate or deactivate rules without deleting them
+- **View Triggers**: See how many times each rule has fired
+- **Delete Rules**: Permanently remove rules you no longer need
+
+**Email Templates:**
+Notifications include beautifully formatted HTML emails with:
+- Event-specific styling and color-coding
+- Detailed information about the event
+- Timestamps and location data
+- Structured data tables for easy reading
+- Device, browser, and OS information
+- For custom events: full event data payloads
+
+**Real-Time Delivery:**
+Notifications are triggered instantly when events occur via PocketBase real-time subscriptions. Email delivery depends on Resend's service (typically within seconds).
+
+**Troubleshooting:**
+- If the Notifications tab doesn't appear, verify your Resend API key is configured
+- Check Resend dashboard for delivery status and errors
+- Ensure your "from" email domain is verified in Resend
+- Review trigger counts to confirm rules are firing
 
 ### Website-Specific Settings (Header)
 

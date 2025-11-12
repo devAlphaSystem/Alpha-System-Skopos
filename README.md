@@ -1,5 +1,7 @@
 # Skopos Analytics - Dashboard
 
+**Version 0.31.0**
+
 This repository contains the source code for the Skopos Dashboard, the self-hosted web interface for the Skopos open-source, privacy-first analytics platform.
 
 The dashboard provides a user-friendly interface to view aggregated and detailed analytics data, manage your websites, and configure tracking settings. It is a Node.js/Express application that uses EJS for server-side rendering and communicates with a PocketBase backend for all data storage and retrieval.
@@ -57,6 +59,7 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 -   **Per-Website Detailed Analytics**: Dive deep into the data for each of your sites.
 -   **Live Active User Count**: See how many users are on your site in real-time.
 -   **Instant Real-time Updates**: Utilize Server-Sent Events (SSE) for immediate dashboard refreshes when new data is collected, providing an "Instant" refresh rate option.
+-   **Collapsible Sidebar**: Maximize your workspace with a collapsible sidebar that remembers your preference across sessions.
 -   **Interactive Report Drawers**: Click on any report card to explore the full, searchable, and sortable dataset.
 -   **JavaScript Error Analysis**: View detailed stack traces for frontend errors.
 -   **Custom Event Data Inspector**: Analyze the custom JSON data sent with your events.
@@ -70,11 +73,12 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 -   **SDK Version Tracking**: Monitor connected SDK versions for each website directly from the dashboard.
 -   **Enhanced Session Analytics**: Detailed session information including optional IP address display and click-to-copy functionality.
 -   **Encrypted API Key Vault**: Securely store and manage third-party API keys with AES-256-GCM encryption, per-user isolation, and usage analytics.
+-   **Email Notifications**: Receive real-time email alerts for important events using Resend integration with customizable notification rules.
 -   **Website Management**: Easily add, remove, restore, and archive your tracked websites; adding a new website keeps you on the management page.
--   **Configurable Settings**: Customize the dashboard experience, including theme, data period, refresh rates, and privacy settings.
+-   **Configurable Settings**: Customize the dashboard experience, including theme, data period, refresh rates, privacy settings, and notification preferences.
 -   **Light & Dark Mode**: Automatic theme detection and manual toggle for your preference.
 -   **Interactive Modals**: Custom confirmation dialogs and loading indicators for user actions.
--   **Responsive Design**: Optimized for desktop, tablet, and mobile devices.
+-   **Responsive Design**: Optimized for desktop, tablet, and mobile devices with smart sidebar behavior.
 
 ## Tech Stack
 
@@ -358,6 +362,10 @@ Accessible via the Settings button in the sidebar:
 #### Appearance
 - **Theme**: Light or Dark mode
 - **Auto-detect**: Uses system preference
+- **Collapsible Sidebar**: Toggle the sidebar width to maximize workspace
+  - Click the collapse button in the sidebar header to toggle
+  - Preference is saved across sessions in browser localStorage
+  - On mobile devices, sidebar always displays at full width when open
 
 #### Dashboard Updates
 - **Auto-refresh**: Enable/disable automatic updates
@@ -371,11 +379,13 @@ Accessible via the Settings button in the sidebar:
 #### API Keys
 - **Google PageSpeed Insights**: Add or rotate API keys directly from the Settings → API Keys tab for richer SEO performance data.
 - **Chapybara IP Intelligence**: Add your Chapybara API key to unlock advanced IP analysis with threat detection and geolocation data.
+- **Resend Email Service**: Configure Resend API key and sender email to enable notification features.
 - **Per-User Storage**: Keys are stored on a per-user basis and are never exposed to other accounts.
 - **AES-256-GCM Encryption**: All keys are encrypted at rest using AES-256-GCM with authentication tags for maximum security. Requires an `ENCRYPTION_KEY` environment variable (64-character hex string).
 - **Usage Tracking**: Monitor when keys were last used and how many times they've been called.
 - **Secure Rotation**: Easily rotate or deactivate keys without affecting other users.
 - **Environment Fallback**: If no dashboard key is present, the application falls back to the `PAGESPEED_API_KEY` environment variable when available.
+- **Service-Specific Metadata**: Store additional configuration like sender email addresses for email services.
 
 ### Website Settings
 
@@ -390,6 +400,61 @@ Per-website configuration (click the settings icon on a website card):
 - **Data Retention**: Automatic cleanup after 30, 60, 90, 365 days, or never
 - **Archive**: Temporarily disable tracking while preserving data
 - **Delete**: Permanently remove website and optionally all data
+
+#### Email Notifications
+
+Stay informed about important events on your websites with real-time email notifications powered by Resend.
+
+**Prerequisites:**
+1. Sign up for a free Resend account at [resend.com](https://resend.com)
+2. Verify your domain or use Resend's test domain
+3. Generate an API key from your Resend dashboard
+4. Add the API key in Settings → API Keys → Resend Email Service
+5. Provide a verified "from" email address (e.g., `notifications@yourdomain.com`)
+
+**Notification Rules:**
+Configure custom notification rules to receive emails when specific events occur:
+
+- **New Visitor**: Get notified when a first-time visitor arrives
+  - Includes location, device, browser, entry page, and referrer
+- **New Session**: Alert when any session starts
+  - Shows device, browser, OS, and location details
+- **Custom Event**: Trigger on specific custom events you're tracking
+  - Must specify the exact event name to monitor
+  - Includes event data payloads in the notification
+- **Daily Summary**: Receive daily analytics reports
+  - Page views, unique visitors, new visitors, and sessions
+- **Error Threshold**: Alert when errors exceed a threshold
+  - Error counts and most common error details
+- **Traffic Spike**: Notify when traffic significantly increases
+  - Current vs. average visitor comparison
+
+**Rule Configuration:**
+- **Rule Name**: Descriptive name for the notification (e.g., "New Visitor Alert")
+- **Event Type**: Choose from the available event types
+- **Recipient Email**: Email address to receive notifications (supports multiple rules to different recipients)
+- **Website Filter**: Apply to all websites or a specific one
+- **Active/Inactive**: Toggle rules on/off without deleting them
+
+**Features:**
+- Beautiful HTML email templates with color-coded priorities
+- Automatic trigger tracking (see how many times each rule has fired)
+- Last triggered timestamp for monitoring
+- Toggle rules on/off without losing configuration
+- Delete rules you no longer need
+- Per-user isolation (rules are private to your account)
+- Real-time event detection via PocketBase subscriptions
+
+**Email Template Details:**
+All notification emails include:
+- Event-specific styling and icons
+- Formatted data tables for easy reading
+- Timestamps in your local format
+- Structured information for quick scanning
+- Brand-consistent design matching the dashboard theme
+
+**Notifications Tab:**
+The Notifications settings tab appears automatically when you have configured a Resend API key. If you remove your Resend key, the tab is hidden but your notification rules are preserved.
 
 ## Environment Variables
 

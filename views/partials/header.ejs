@@ -23,7 +23,8 @@
           refreshRate: 60000,
           autoRefresh: true,
           dataPeriod: 7,
-          resultsLimit: 10
+          resultsLimit: 10,
+          sidebarCollapsed: false
         };
         let settings = { ...DEFAULT_SETTINGS };
         try {
@@ -36,6 +37,10 @@
         }
         document.documentElement.setAttribute('data-theme', settings.theme);
         window.__SKOPOS_SETTINGS__ = settings;
+        
+        if (settings.sidebarCollapsed) {
+          document.documentElement.classList.add('sidebar-collapsed-init');
+        }
       })();
     </script>
   </head>

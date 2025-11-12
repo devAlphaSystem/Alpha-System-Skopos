@@ -33,6 +33,12 @@
             <i class="fa-solid fa-key"></i>
             <span>API Keys</span>
           </button>
+          <% if (apiKeys?.find(k => k.service === 'resend' && k.isActive)) { %>
+            <button class="tab-button" data-tab="notifications">
+              <i class="fa-solid fa-bell"></i>
+              <span>Notifications</span>
+            </button>
+          <% } %>
         </div>
 
         <div class="tabs-body">
@@ -224,6 +230,125 @@
                   </form>
                 <% } %>
               </div>
+
+              <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1rem 0;">
+
+              <div class="api-key-section" style="padding: 1rem 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                  <h4 style="margin: 0; color: var(--text-primary);">
+                    <img src="/img/vendors/resend.svg" alt="Resend" style="width: 24px; height: 24px; margin-right: 0.5rem; vertical-align: middle; filter: brightness(0) saturate(100%) invert(40%) sepia(95%) saturate(2387%) hue-rotate(210deg) brightness(94%) contrast(95%);">
+                    Resend Email Service
+                  </h4>
+                  <% 
+                    const resendKey = apiKeys?.find(k => k.service === 'resend' && k.isActive);
+                  %>
+                  <% if (resendKey) { %>
+                    <span style="color: var(--success); font-size: 0.875rem;">
+                      <i class="fa-solid fa-circle-check"></i> Configured
+                    </span>
+                  <% } else { %>
+                    <span style="color: var(--text-muted); font-size: 0.875rem;">
+                      <i class="fa-solid fa-circle-xmark"></i> Not configured
+                    </span>
+                  <% } %>
+                </div>
+                
+                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                  Required for sending email notifications about events, visitors, and analytics. 
+                  <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" style="color: var(--primary);">Get your API key</a>
+                </p>
+
+                <% if (resendKey) { %>
+                  <div style="padding: 1rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                      <div>
+                        <div style="font-size: 0.875rem; color: var(--text-secondary);">Key ID: <%= resendKey.id.substring(0, 8) %>...</div>
+                        <% if (resendKey.metadata?.fromEmail) { %>
+                          <div style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.25rem;">From: <%= resendKey.metadata.fromEmail %></div>
+                        <% } %>
+                      </div>
+                      <button class="btn btn-danger btn-sm" onclick="deleteApiKey('<%= resendKey.id %>', 'resend')">
+                        <i class="fa-solid fa-trash"></i> Remove
+                      </button>
+                    </div>
+                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                      <span>Used <%= resendKey.usageCount || 0 %> times</span>
+                      <% if (resendKey.lastUsed) { %>
+                        <span style="margin-left: 1rem;">Last used: <%= new Date(resendKey.lastUsed).toLocaleDateString() %></span>
+                      <% } %>
+                    </div>
+                  </div>
+                <% } else { %>
+                  <form id="resend-form" onsubmit="addApiKey(event, 'resend')" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div>
+                      <label style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-secondary); font-weight: 500;">API Key</label>
+                      <input type="text" name="apiKey" class="settings-input" placeholder="re_..." required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); color: var(--text-primary);">
+                    </div>
+                    <div>
+                      <label style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-secondary); font-weight: 500;">From Email</label>
+                      <input type="email" name="fromEmail" class="settings-input" placeholder="notifications@yourdomain.com" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--card-bg); color: var(--text-primary);">
+                      <small style="display: block; margin-top: 0.25rem; color: var(--text-muted); font-size: 0.75rem;">Must be a verified domain in your Resend account</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="align-self: flex-start;">
+                      <i class="fa-solid fa-save"></i> Save Configuration
+                    </button>
+                  </form>
+                <% } %>
+              </div>
+            </div>
+          </section>
+
+          <section class="tab-panel" id="notifications-panel">
+            <div class="settings-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding: 1rem 0;">
+                <div>
+                  <h3 style="margin: 0 0 0.5rem 0; color: var(--text-primary);">Notification Rules</h3>
+                  <p style="margin: 0; font-size: 0.875rem; color: var(--text-secondary);">
+                    Configure email notifications for important events on your websites.
+                  </p>
+                </div>
+                <button class="btn btn-primary" onclick="showAddNotificationModal()">
+                  <i class="fa-solid fa-plus"></i> Add Rule
+                </button>
+              </div>
+
+              <% if (!apiKeys?.find(k => k.service === 'resend' && k.isActive)) { %>
+                <div style="padding: 1.5rem; background: var(--warning-bg, #FEF3C7); border-radius: 8px; border: 1px solid var(--warning-border, #FCD34D); margin-bottom: 1.5rem;">
+                  <div style="display: flex; align-items: start; gap: 1rem;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: #F59E0B; font-size: 1.5rem; margin-top: 0.25rem;"></i>
+                    <div>
+                      <h4 style="margin: 0 0 0.5rem 0; color: #92400E;">Resend API Key Required</h4>
+                      <p style="margin: 0; color: #92400E; font-size: 0.875rem;">
+                        You need to configure a Resend API key in the <strong>API Keys</strong> tab before you can create notification rules.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              <% } %>
+
+              <div id="notifications-table-container">
+                <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="background: var(--card-bg); border-bottom: 2px solid var(--border-color);">
+                      <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--text-primary);">Name</th>
+                      <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--text-primary);">Event Type</th>
+                      <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--text-primary);">Recipient</th>
+                      <th style="padding: 0.75rem; text-align: left; font-weight: 600; color: var(--text-primary);">Website</th>
+                      <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: var(--text-primary);">Status</th>
+                      <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: var(--text-primary);">Triggered</th>
+                      <th style="padding: 0.75rem; text-align: center; font-weight: 600; color: var(--text-primary);">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="notifications-table-body">
+                    <tr>
+                      <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-muted);">
+                        <i class="fa-solid fa-bell-slash" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.5rem;"></i>
+                        No notification rules configured yet.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
         </div>
@@ -231,5 +356,139 @@
     </main>
   </div>
 </div>
+
+<div class="drawer-overlay" id="notification-drawer-overlay"></div>
+
+<div class="drawer" id="notification-drawer">
+  <div class="drawer-header">
+    <h2>Add Notification Rule</h2>
+    <button class="drawer-close" id="notification-drawer-close"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="drawer-content">
+    <form id="notification-form" onsubmit="saveNotificationRule(event)">
+      <div class="settings-group">
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+            Rule Name <span style="color: var(--danger);">*</span>
+          </label>
+          <input type="text" name="name" class="settings-input" placeholder="e.g., New Visitor Alert" required 
+            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+            Event Type <span style="color: var(--danger);">*</span>
+          </label>
+          <select name="eventType" class="website-selector" required onchange="handleEventTypeChange(this.value)">
+            <option value="">Select an event type...</option>
+            <option value="new_visitor">New Visitor Registered</option>
+            <option value="custom_event">Custom Event Triggered</option>
+            <option value="new_session">New Session Started</option>
+            <option value="daily_summary">Daily Summary Report</option>
+            <option value="error_threshold">Error Threshold Exceeded</option>
+            <option value="traffic_spike">Traffic Spike Detected</option>
+          </select>
+        </div>
+
+        <div id="custom-event-name-group" class="form-group" style="margin-bottom: 1.5rem; display: none;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+            Custom Event Name <span style="color: var(--danger);">*</span>
+          </label>
+          <input type="text" name="customEventName" class="settings-input" placeholder="e.g., button_click" 
+            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);">
+          <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">
+            Enter the exact name of the custom event to monitor.
+          </small>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+            Recipient Email <span style="color: var(--danger);">*</span>
+          </label>
+          <input type="email" name="recipientEmail" class="settings-input" placeholder="you@example.com" required 
+            style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+            Website
+          </label>
+          <select name="website" class="website-selector">
+            <option value="">All Websites</option>
+            <% if (websites && websites.length > 0) { %>
+              <% websites.forEach(site => { %>
+                <option value="<%= site.id %>"><%= site.name %></option>
+              <% }); %>
+            <% } %>
+          </select>
+          <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">
+            Leave empty to apply to all websites.
+          </small>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 2rem;">
+          <button type="button" class="btn btn-secondary" onclick="closeNotificationDrawer()" style="flex: 1;">Cancel</button>
+          <button type="submit" class="btn btn-primary" style="flex: 1;">
+            <i class="fa-solid fa-save"></i> Save Rule
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+.data-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s;
+}
+
+.data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: var(--card-bg);
+}
+
+.data-table td {
+  padding: 0.75rem;
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-success {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.badge-muted {
+  background: var(--card-bg);
+  color: var(--text-muted);
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: var(--card-bg);
+  color: var(--text-primary);
+}
+</style>
 
 <%- include('partials/footer', { scripts: ['settings'] }) %>
