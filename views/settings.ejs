@@ -588,6 +588,7 @@
             <option value="daily_summary">Daily Summary Report</option>
             <option value="error_threshold">Error Threshold Exceeded</option>
             <option value="traffic_spike">Traffic Spike Detected</option>
+            <option value="uptime_status">Website Uptime Change</option>
           </select>
         </div>
 
@@ -599,6 +600,20 @@
             style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);">
           <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">
             Enter the exact name of the custom event to monitor.
+          </small>
+        </div>
+
+        <div id="uptime-event-settings" class="form-group" style="margin-bottom: 1.5rem; display: none;">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+            Uptime Alert Options
+          </label>
+          <select name="uptimeNotifyOn" id="uptime-notify-on" class="website-selector">
+            <option value="down" selected>Notify when the website goes down</option>
+            <option value="up">Notify when the website recovers</option>
+            <option value="both">Notify for both downtime and recovery</option>
+          </select>
+          <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.875rem;">
+            Choose when Skopos should send uptime alerts.
           </small>
         </div>
 

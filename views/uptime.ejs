@@ -1,0 +1,286 @@
+<%- include('partials/header', {title: 'Uptime Monitoring'}) %>
+
+<% const isArchived = currentWebsite.isArchived %>
+
+<%- include('partials/mobile-header') %>
+
+<div class="page-wrapper <%= isArchived ? 'archived-state' : '' %>" data-website-id="<%= currentWebsite.id %>" data-is-archived="<%= isArchived %>">
+  <%- include('partials/sidebar', { websites, archivedWebsites, currentWebsite, currentPage }) %>
+  <div class="main-container">
+    <header class="main-header">
+      <div class="header-content">
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle Sidebar"><i class="fa-solid fa-bars"></i></button>
+        <div class="header-title">
+          <h1>Uptime Monitoring</h1>
+          <p><%= currentWebsite.name %></p>
+        </div>
+        <div class="header-actions">
+          <% if (!isArchived) { %>
+            <button id="manual-check-btn" class="btn-icon" title="Run Manual Check"><i class="fa-solid fa-play"></i></button>
+            <button id="uptime-settings-btn" class="btn-icon" title="Uptime Settings"><i class="fa-solid fa-sliders"></i></button>
+          <% } %>
+        </div>
+      </div>
+    </header>
+    
+    <main class="main-content" style="padding-top: 1rem;">
+      <% if (isArchived) { %>
+        <div class="archived-banner">
+          <i class="fa-solid fa-box-archive"></i> This website is archived. Uptime monitoring is disabled.
+        </div>
+      <% } %>
+
+      <div class="uptime-status-banner <%= metrics.current.status === 'up' ? 'status-up' : metrics.current.status === 'down' ? 'status-down' : 'status-unknown' %>">
+        <div class="status-indicator">
+          <div class="status-pulse"></div>
+          <i class="fa-solid fa-<%= metrics.current.status === 'up' ? 'circle-check' : metrics.current.status === 'down' ? 'circle-xmark' : 'circle-question' %>"></i>
+        </div>
+        <div class="status-info">
+          <h2><%= metrics.current.status === 'up' ? 'All Systems Operational' : metrics.current.status === 'down' ? 'System Down' : 'Status Unknown' %></h2>
+          <p><%= currentWebsite.domain %> is <%= metrics.current.status === 'up' ? 'responding normally' : metrics.current.status === 'down' ? 'currently unavailable' : 'not yet monitored' %></p>
+        </div>
+        <div class="status-metrics">
+          <div class="status-metric">
+            <span class="metric-label">Response Time</span>
+            <span class="metric-value"><%= metrics.current.responseTime %> ms</span>
+          </div>
+          <div class="status-metric">
+            <span class="metric-label">Uptime (24h)</span>
+            <span class="metric-value"><%= metrics.current.uptime24h %>%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics-grid uptime-metrics-grid">
+        <div class="card metric-card">
+          <div class="metric-icon"><i class="fa-solid fa-chart-line"></i></div>
+          <div class="metric-content">
+            <h3>24 Hour Uptime</h3>
+            <p class="metric-value"><%= metrics.current.uptime24h %>%</p>
+            <span class="metric-detail"><%= metrics.stats.successfulChecks24h %> / <%= metrics.stats.totalChecks24h %> checks</span>
+          </div>
+        </div>
+
+        <div class="card metric-card">
+          <div class="metric-icon"><i class="fa-solid fa-calendar-week"></i></div>
+          <div class="metric-content">
+            <h3>7 Day Uptime</h3>
+            <p class="metric-value"><%= metrics.current.uptime7d %>%</p>
+            <span class="metric-detail">Last 7 days average</span>
+          </div>
+        </div>
+
+        <div class="card metric-card">
+          <div class="metric-icon"><i class="fa-solid fa-calendar"></i></div>
+          <div class="metric-content">
+            <h3>30 Day Uptime</h3>
+            <p class="metric-value"><%= metrics.current.uptime30d %>%</p>
+            <span class="metric-detail">Monthly average</span>
+          </div>
+        </div>
+
+        <div class="card metric-card">
+          <div class="metric-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          <div class="metric-content">
+            <h3>Total Incidents</h3>
+            <p class="metric-value"><%= metrics.reliability.totalIncidents %></p>
+            <span class="metric-detail <%= metrics.reliability.unresolvedIncidents > 0 ? 'text-danger' : 'text-success' %>">
+              <%= metrics.reliability.unresolvedIncidents %> unresolved
+            </span>
+          </div>
+        </div>
+
+        <div class="card metric-card">
+          <div class="metric-icon"><i class="fa-solid fa-clock"></i></div>
+          <div class="metric-content">
+            <h3>MTTR</h3>
+            <p class="metric-value"><%= metrics.reliability.mttr %> <span style="font-size: 0.5em;">min</span></p>
+            <span class="metric-detail">Mean Time To Repair</span>
+          </div>
+        </div>
+      </div>
+
+      <section class="uptime-row timeline-row">
+        <div class="card uptime-timeline-card">
+          <div class="card-header">
+            <h2>24-Hour Uptime Timeline</h2>
+            <div class="timeline-legend">
+              <span class="legend-item"><span class="legend-dot status-up"></span> Operational</span>
+              <span class="legend-item"><span class="legend-dot status-down"></span> Down</span>
+              <span class="legend-item"><span class="legend-dot status-degraded"></span> Slow</span>
+            </div>
+          </div>
+          <div class="uptime-timeline-container">
+            <div id="uptime-timeline-chart" class="uptime-timeline-chart"></div>
+            <div class="timeline-labels">
+              <span>24h ago</span>
+              <span>12h ago</span>
+              <span>Now</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="uptime-row response-row">
+        <div class="card response-time-card">
+          <div class="card-header">
+            <h2>Response Time (Last 24 Hours)</h2>
+          </div>
+          <div class="chart-container response-time-chart-container">
+            <div id="response-time-chart"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="uptime-row incidents-row">
+        <div class="card incidents-card">
+          <div class="card-header">
+            <h2>Recent Incidents</h2>
+          </div>
+          <% if (incidents.length > 0) { %>
+            <div class="incidents-list">
+              <% for (const incident of incidents) { %>
+                <div class="incident-item <%= incident.isResolved ? 'incident-resolved' : 'incident-active' %>">
+                  <div class="incident-status">
+                    <i class="fa-solid fa-<%= incident.isResolved ? 'circle-check' : 'circle-xmark' %>"></i>
+                  </div>
+                  <div class="incident-details">
+                    <div class="incident-header">
+                      <span class="incident-title"><%= incident.isResolved ? 'Resolved' : 'Active' %> Incident</span>
+                      <span class="incident-time"><%= new Date(incident.startTime).toLocaleString() %></span>
+                    </div>
+                    <div class="incident-info">
+                      <% if (incident.error) { %>
+                        <span class="incident-error"><i class="fa-solid fa-exclamation-circle"></i> <%= incident.error %></span>
+                      <% } %>
+                      <% if (incident.statusCode > 0) { %>
+                        <span class="incident-code">HTTP <%= incident.statusCode %></span>
+                      <% } %>
+                    </div>
+                    <div class="incident-duration">
+                      <% if (incident.isResolved) { %>
+                        <span>Duration: <%= Math.floor(incident.duration / 60000) %> minutes</span>
+                        <span>Resolved: <%= new Date(incident.endTime).toLocaleString() %></span>
+                      <% } else { %>
+                        <span class="text-danger">Ongoing for <%= Math.floor((new Date() - new Date(incident.startTime)) / 60000) %> minutes</span>
+                        <button class="btn-small btn-secondary resolve-incident-btn" data-incident-id="<%= incident.id %>">
+                          <i class="fa-solid fa-check"></i> Mark Resolved
+                        </button>
+                      <% } %>
+                    </div>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          <% } else { %>
+            <div class="empty-state">
+              <i class="fa-solid fa-circle-check"></i>
+              <p>No incidents recorded. Your website has been running smoothly!</p>
+            </div>
+          <% } %>
+        </div>
+      </section>
+
+      <div class="uptime-insights-grid">
+        <div class="card insight-card">
+          <div class="insight-header">
+            <h3>Performance</h3>
+          </div>
+          <div class="insight-content">
+            <%
+              let performanceStatus = 'excellent';
+              let performanceMessage = 'Your website is performing excellently';
+              if (metrics.stats.avgResponseTime > 3000) {
+                performanceStatus = 'poor';
+                performanceMessage = 'Response times are slow. Consider optimization.';
+              } else if (metrics.stats.avgResponseTime > 1000) {
+                performanceStatus = 'fair';
+                performanceMessage = 'Response times could be improved.';
+              }
+            %>
+            <div class="insight-status <%= performanceStatus %>">
+              <i class="fa-solid fa-<%= performanceStatus === 'excellent' ? 'face-smile' : performanceStatus === 'fair' ? 'face-meh' : 'face-frown' %>"></i>
+              <span><%= performanceMessage %></span>
+            </div>
+            <div class="insight-metric">
+              Average: <strong><%= metrics.stats.avgResponseTime %>ms</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="card insight-card">
+          <div class="insight-header">
+            <h3>Reliability</h3>
+          </div>
+          <div class="insight-content">
+            <%
+              let reliabilityStatus = 'excellent';
+              let reliabilityMessage = 'Excellent reliability with minimal downtime';
+              if (metrics.current.uptime30d < 95) {
+                reliabilityStatus = 'poor';
+                reliabilityMessage = 'Reliability needs attention. Multiple incidents detected.';
+              } else if (metrics.current.uptime30d < 99) {
+                reliabilityStatus = 'fair';
+                reliabilityMessage = 'Good reliability but room for improvement.';
+              }
+            %>
+            <div class="insight-status <%= reliabilityStatus %>">
+              <i class="fa-solid fa-<%= reliabilityStatus === 'excellent' ? 'face-smile' : reliabilityStatus === 'fair' ? 'face-meh' : 'face-frown' %>"></i>
+              <span><%= reliabilityMessage %></span>
+            </div>
+            <div class="insight-metric">
+              30-day uptime: <strong><%= metrics.current.uptime30d %>%</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="card insight-card">
+          <div class="insight-header">
+            <h3>Recovery</h3>
+          </div>
+          <div class="insight-content">
+            <%
+              let recoveryStatus = 'excellent';
+              let recoveryMessage = 'Quick incident recovery';
+              if (metrics.reliability.mttr > 60) {
+                recoveryStatus = 'poor';
+                recoveryMessage = 'Slow incident recovery. Automation recommended.';
+              } else if (metrics.reliability.mttr > 30) {
+                recoveryStatus = 'fair';
+                recoveryMessage = 'Recovery time could be improved.';
+              }
+            %>
+            <div class="insight-status <%= recoveryStatus %>">
+              <i class="fa-solid fa-<%= recoveryStatus === 'excellent' ? 'face-smile' : recoveryStatus === 'fair' ? 'face-meh' : 'face-frown' %>"></i>
+              <span><%= recoveryMessage %></span>
+            </div>
+            <% if (metrics.reliability.mttr > 0) { %>
+              <div class="insight-metric">
+                MTTR: <strong><%= metrics.reliability.mttr %> minutes</strong>
+              </div>
+            <% } else { %>
+              <div class="insight-metric">
+                <span style="color: var(--text-secondary);">No incidents to measure</span>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="detail-drawer-overlay"></div>
+
+<%- include('partials/website-settings', { currentWebsite, isArchived }) %>
+
+<script>
+  window.__UPTIME_DATA__ = {
+    metrics: <%- JSON.stringify(metrics) %>,
+    timeline: <%- JSON.stringify(timeline) %>,
+    incidents: <%- JSON.stringify(incidents) %>,
+    websiteId: '<%= currentWebsite.id %>'
+  };
+</script>
+
+<%- include('partials/footer', { scripts: ['uptime'] }) %>

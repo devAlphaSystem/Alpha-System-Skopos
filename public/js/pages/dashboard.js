@@ -1023,6 +1023,48 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const uptimeMonitoringToggle = document.getElementById("uptime-monitoring-toggle");
+  if (uptimeMonitoringToggle) {
+    uptimeMonitoringToggle.addEventListener("change", async (e) => {
+      const enabled = e.target.checked;
+      try {
+        const response = await fetch(`/uptime/${WEBSITE_ID}/toggle`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled }),
+        });
+        const data = await response.json();
+        if (!data.success) {
+          e.target.checked = !enabled;
+          window.customAlert("Error", "Failed to update uptime monitoring setting.");
+        }
+      } catch (error) {
+        e.target.checked = !enabled;
+        window.customAlert("Error", "Failed to update uptime monitoring setting.");
+      }
+    });
+  }
+
+  const uptimeCheckIntervalSelect = document.getElementById("uptime-check-interval-select");
+  if (uptimeCheckIntervalSelect) {
+    uptimeCheckIntervalSelect.addEventListener("change", async (e) => {
+      const interval = parseInt(e.target.value);
+      try {
+        const response = await fetch(`/uptime/${WEBSITE_ID}/interval`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ interval }),
+        });
+        const data = await response.json();
+        if (!data.success) {
+          window.customAlert("Error", "Failed to update check interval.");
+        }
+      } catch (error) {
+        window.customAlert("Error", "Failed to update check interval.");
+      }
+    });
+  }
+
   async function fetchUserIp() {
     try {
       const response = await fetch("/api/user-ip");

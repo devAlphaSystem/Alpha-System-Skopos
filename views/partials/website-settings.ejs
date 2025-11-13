@@ -1,0 +1,111 @@
+<% if (!isArchived) { %>
+  <div class="drawer" id="website-settings-drawer">
+    <div class="drawer-header">
+      <h2>Website Settings</h2>
+      <button class="drawer-close" id="website-settings-close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="drawer-content">
+      <div class="settings-group">
+        <h3>Tracking</h3>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">Disable tracking on localhost</div>
+            <div class="settings-description">Prevent tracking on localhost/127.0.0.1</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="disable-localhost-toggle" <%= currentWebsite.disableLocalhostTracking ? 'checked' : '' %>>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">IP Blacklist</div>
+            <div class="settings-description">Block tracking from specific IP addresses</div>
+          </div>
+          <button class="btn btn-secondary" id="manage-ip-blacklist-btn">Manage</button>
+        </div>
+      </div>
+      <div class="settings-group">
+        <h3>Data</h3>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">Data Retention</div>
+            <div class="settings-description">Days to keep data (0 for forever)</div>
+          </div>
+          <input type="number" id="data-retention-input" class="settings-select" value="<%= currentWebsite.dataRetentionDays %>" min="0">
+        </div>
+      </div>
+      <div class="settings-group">
+        <h3>Uptime Monitoring</h3>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">Enable Uptime Monitoring</div>
+            <div class="settings-description">Automatically check website availability</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="uptime-monitoring-toggle" <%= currentWebsite.uptimeMonitoring ? 'checked' : '' %>>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="settings-item">
+          <div>
+            <div class="settings-label">Check Interval</div>
+            <div class="settings-description">How often to check website status</div>
+          </div>
+          <select id="uptime-check-interval-select" class="settings-select">
+            <option value="30" <%= currentWebsite.uptimeCheckInterval === 30 ? 'selected' : '' %>>30 seconds</option>
+            <option value="60" <%= (!currentWebsite.uptimeCheckInterval || currentWebsite.uptimeCheckInterval === 60) ? 'selected' : '' %>>1 minute</option>
+            <option value="120" <%= currentWebsite.uptimeCheckInterval === 120 ? 'selected' : '' %>>2 minutes</option>
+            <option value="300" <%= currentWebsite.uptimeCheckInterval === 300 ? 'selected' : '' %>>5 minutes</option>
+            <option value="600" <%= currentWebsite.uptimeCheckInterval === 600 ? 'selected' : '' %>>10 minutes</option>
+            <option value="1800" <%= currentWebsite.uptimeCheckInterval === 1800 ? 'selected' : '' %>>30 minutes</option>
+            <option value="3600" <%= currentWebsite.uptimeCheckInterval === 3600 ? 'selected' : '' %>>1 hour</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer nested" id="ip-blacklist-drawer">
+    <div class="drawer-header">
+      <h2>IP Blacklist</h2>
+      <button class="drawer-close" id="ip-blacklist-close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="drawer-content">
+      <form id="add-ip-form" class="detail-drawer-controls">
+        <div class="detail-drawer-search">
+          <input type="text" id="ip-address-input" placeholder="Enter IP address" required>
+        </div>
+        <button type="submit" class="btn">Add IP</button>
+      </form>
+      <div class="detail-table-container" style="margin-top: 1rem;">
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>IP Address</th>
+              <th style="width: 100px; text-align: right;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="user-ip-row" style="background-color: var(--surface-color); border-bottom: 2px solid var(--border-color);">
+              <td>
+                <strong id="user-ip-address">Loading...</strong>
+                <span style="font-size: 0.85rem; color: var(--text-secondary); margin-left: 8px;">(Your IP)</span>
+              </td>
+              <td style="text-align: right;">
+                <button class="btn-icon btn-danger" id="add-user-ip-btn" style="display: none;" title="Block your IP">
+                  <i class="fa-solid fa-ban"></i>
+                </button>
+                <button class="btn-icon btn-success" id="remove-user-ip-btn" style="display: none;" title="Unblock your IP">
+                  <i class="fa-solid fa-circle-check"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+          <tbody id="ip-blacklist-table-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% } %>

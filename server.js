@@ -14,11 +14,13 @@ import websitesRoutes from "./src/routes/websites.js";
 import sessionsRoutes from "./src/routes/sessions.js";
 import settingsRoutes from "./src/routes/settings.js";
 import seoRoutes from "./src/routes/seo.js";
+import uptimeRoutes from "./src/routes/uptime.js";
 import apiRoutes from "./src/routes/api.js";
 import { pb } from "./src/services/pocketbase.js";
 import { startCronJobs } from "./src/services/cron.js";
 import { initialize as initializeAppState, doesUserExist } from "./src/services/appState.js";
 import { startRealtimeService } from "./src/services/realtime.js";
+import { initializeUptimeMonitoring } from "./src/services/uptimeMonitor.js";
 import { deviceDetectionMiddleware } from "./src/utils/deviceDetection.js";
 import logger from "./src/services/logger.js";
 import { readFileSync } from "node:fs";
@@ -92,6 +94,7 @@ async function initializeApp() {
   app.use("/", sessionsRoutes);
   app.use("/", settingsRoutes);
   app.use("/", seoRoutes);
+  app.use("/", uptimeRoutes);
 
   app.use(express.static(path.join(__dirname, "public")));
 
@@ -108,6 +111,7 @@ async function initializeApp() {
     logger.info(`Skopos server listening at http://localhost:${port}`);
     startCronJobs();
     startRealtimeService();
+    initializeUptimeMonitoring();
   });
 }
 

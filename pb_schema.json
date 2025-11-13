@@ -772,7 +772,8 @@
           "new_session",
           "daily_summary",
           "error_threshold",
-          "traffic_sipke"
+          "traffic_spike",
+          "uptime_status"
         ]
       },
       {
@@ -1414,6 +1415,281 @@
     "system": false
   },
   {
+    "id": "pbc_3358378995",
+    "listRule": null,
+    "viewRule": null,
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "uptime_checks",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_1701416852",
+        "hidden": false,
+        "id": "relation1198480871",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "website",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "bool2786355633",
+        "name": "isUp",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "number1143199486",
+        "max": null,
+        "min": null,
+        "name": "statusCode",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "number2671703210",
+        "max": null,
+        "min": null,
+        "name": "responseTime",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1574812785",
+        "max": 0,
+        "min": 0,
+        "name": "error",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "bool3923773533",
+        "name": "ssl",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "number1730814922",
+        "max": null,
+        "min": null,
+        "name": "contentLength",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "date2782324286",
+        "max": "",
+        "min": "",
+        "name": "timestamp",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "date"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX `idx_tgEYNrkO7L` ON `uptime_checks` (\n  `website`,\n  `timestamp`\n)"
+    ],
+    "system": false
+  },
+  {
+    "id": "pbc_4096460476",
+    "listRule": null,
+    "viewRule": null,
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "uptime_incidents",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "pbc_1701416852",
+        "hidden": false,
+        "id": "relation1198480871",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "website",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "hidden": false,
+        "id": "date2393256231",
+        "max": "",
+        "min": "",
+        "name": "startTime",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "date"
+      },
+      {
+        "hidden": false,
+        "id": "date4098681852",
+        "max": "",
+        "min": "",
+        "name": "endTime",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "date"
+      },
+      {
+        "hidden": false,
+        "id": "number2254405824",
+        "max": null,
+        "min": null,
+        "name": "duration",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "bool752277036",
+        "name": "isResolved",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1574812785",
+        "max": 0,
+        "min": 0,
+        "name": "error",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "number1143199486",
+        "max": null,
+        "min": null,
+        "name": "statusCode",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX `idx_p40E75XFaq` ON `uptime_incidents` (\n  `website`,\n  `isResolved`\n)",
+      "CREATE INDEX `idx_l89NrDTVh6` ON `uptime_incidents` (`startTime`)"
+    ],
+    "system": false
+  },
+  {
     "id": "pbc_993721382",
     "listRule": null,
     "viewRule": null,
@@ -1694,6 +1970,52 @@
         "required": false,
         "system": false,
         "type": "json"
+      },
+      {
+        "hidden": false,
+        "id": "bool3030104185",
+        "name": "uptimeMonitoring",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "number2114118386",
+        "max": null,
+        "min": null,
+        "name": "uptimeCheckInterval",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1384840114",
+        "max": 0,
+        "min": 0,
+        "name": "currentStatus",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "date4123406607",
+        "max": "",
+        "min": "",
+        "name": "lastUptimeCheck",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "date"
       },
       {
         "hidden": false,

@@ -16,8 +16,10 @@
   </div>
   
   <script src="/js/main.js"></script>
-  <% if (scripts && scripts.includes('dashboard')) { %>
+  <% if (scripts && (scripts.includes('dashboard') || scripts.includes('uptime'))) { %>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@5.3.5/dist/apexcharts.min.js"></script>
+  <% } %>
+  <% if (scripts && scripts.includes('dashboard')) { %>
     <script src="/js/vendors/jsVectorMap-min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.7.0/dist/maps/world.js"></script>
     <script src="/js/pages/dashboard.js"></script>
@@ -36,6 +38,9 @@
   <% } %>
   <% if (scripts && scripts.includes('websites')) { %>
     <script src="/js/pages/websites.js"></script>
+  <% } %>
+  <% if (scripts && scripts.includes('uptime')) { %>
+    <script src="/js/pages/uptime.js"></script>
   <% } %>
   </body>
 </html>

@@ -91,10 +91,8 @@ export async function triggerNotification(userId, websiteId, eventType, eventDat
     }
 
     for (const rule of rules) {
-      if (eventType === "custom_event" && rule.customEventName) {
-        if (eventData.eventName !== rule.customEventName) {
-          continue;
-        }
+      if (!shouldTriggerRule(rule, eventType, eventData)) {
+        continue;
       }
 
       const { subject, htmlContent } = generateEmailContent(eventType, eventData, rule);
@@ -117,6 +115,10 @@ export async function triggerNotification(userId, websiteId, eventType, eventDat
 
 function generateEmailContent(eventType, eventData, rule) {
   const websiteName = eventData.websiteName || "Your Website";
+  const currentStatus = eventData.currentStatus || "";
+  const isDowntimeAlert = eventType === "uptime_status" && currentStatus === "down";
+  const uptimeAccent = isDowntimeAlert ? "#DC2626" : "#10B981";
+  const uptimeBackground = isDowntimeAlert ? "#FEE2E2" : "#D1FAE5";
 
   const templates = {
     new_visitor: {
@@ -243,6 +245,32 @@ function generateEmailContent(eventType, eventData, rule) {
         </div>
       `,
     },
+    uptime_status: {
+      subject: `Uptime Alert: ${websiteName} is ${currentStatus === "down" ? "DOWN" : "UP"}`,
+      html: `
+        <div style="font-family: ${EMAIL_FONT_STACK}; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: ${uptimeAccent};">Website ${currentStatus === "down" ? "Down" : "Recovered"}</h2>
+          <p>${websiteName} (${eventData.websiteDomain || "unknown domain"}) is currently <strong>${currentStatus === "down" ? "UNAVAILABLE" : "ONLINE"}</strong>.</p>
+          <div style="background: ${uptimeBackground}; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${uptimeAccent};">
+            <h3 style="margin-top: 0; color: ${uptimeAccent};">Status Details</h3>
+            <ul style="list-style: none; padding: 0; font-size: 0.95rem;">
+              <li><strong>Current Status:</strong> ${currentStatus || "Unknown"}</li>
+              ${eventData.previousStatus ? `<li><strong>Previous Status:</strong> ${eventData.previousStatus}</li>` : ""}
+              ${eventData.timestamp ? `<li><strong>Detected:</strong> ${new Date(eventData.timestamp).toLocaleString()}</li>` : ""}
+              ${eventData.downtimeStartedAt ? `<li><strong>Downtime Started:</strong> ${new Date(eventData.downtimeStartedAt).toLocaleString()}</li>` : ""}
+              ${eventData.downtimeEndedAt ? `<li><strong>Downtime Ended:</strong> ${new Date(eventData.downtimeEndedAt).toLocaleString()}</li>` : ""}
+              ${eventData.durationMinutes !== undefined ? `<li><strong>Downtime Duration:</strong> ${eventData.durationMinutes} minute(s)</li>` : ""}
+              ${eventData.statusCode ? `<li><strong>Status Code:</strong> ${eventData.statusCode}</li>` : ""}
+              ${eventData.responseTime ? `<li><strong>Response Time:</strong> ${eventData.responseTime} ms</li>` : ""}
+              ${eventData.errorMessage ? `<li><strong>Error:</strong> ${eventData.errorMessage}</li>` : ""}
+            </ul>
+          </div>
+          <p style="color: #6B7280; font-size: 0.875rem;">
+            Incident ID: ${eventData.incidentId || "N/A"}
+          </p>
+        </div>
+      `,
+    },
   };
 
   const template = templates[eventType] || {
@@ -259,6 +287,29 @@ function generateEmailContent(eventType, eventData, rule) {
     subject: template.subject,
     htmlContent: template.html,
   };
+}
+
+function shouldTriggerRule(rule, eventType, eventData) {
+  if (eventType === "custom_event" && rule.customEventName) {
+    return eventData.eventName === rule.customEventName;
+  }
+
+  if (eventType === "uptime_status") {
+    const notifyOn = (rule.metadata?.notifyOn || "down").toLowerCase();
+    const status = (eventData.currentStatus || "").toLowerCase();
+
+    if (notifyOn === "both") {
+      return status === "down" || status === "up";
+    }
+
+    if (notifyOn === "up" || notifyOn === "down") {
+      return status === notifyOn;
+    }
+
+    return false;
+  }
+
+  return true;
 }
 
 export async function listNotificationRules(userId) {

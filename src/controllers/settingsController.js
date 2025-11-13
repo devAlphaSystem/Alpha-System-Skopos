@@ -108,7 +108,7 @@ export async function getNotificationRules(req, res) {
 
 export async function addNotificationRule(req, res) {
   try {
-    const { name, eventType, recipientEmail, website, customEventName } = req.body;
+    const { name, eventType, recipientEmail, website, customEventName, metadata } = req.body;
 
     if (!name || !eventType || !recipientEmail) {
       return res.status(400).json({ error: "Name, event type, and recipient email are required" });
@@ -118,12 +118,22 @@ export async function addNotificationRule(req, res) {
       return res.status(400).json({ error: "Custom event name is required for custom event notifications" });
     }
 
+    let sanitizedMetadata = {};
+    if (eventType === "uptime_status") {
+      const allowedValues = ["down", "up", "both"];
+      const notifyOn = typeof metadata?.notifyOn === "string" ? metadata.notifyOn.toLowerCase() : "";
+      sanitizedMetadata = {
+        notifyOn: allowedValues.includes(notifyOn) ? notifyOn : "down",
+      };
+    }
+
     const rule = await createNotificationRule(res.locals.user.id, {
       name,
       eventType,
       recipientEmail,
       website: website || "",
       customEventName: customEventName || "",
+      metadata: sanitizedMetadata,
     });
 
     logger.info("Notification rule created by user %s", res.locals.user.id);

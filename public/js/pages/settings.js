@@ -281,12 +281,30 @@ function renderNotificationRules(rules) {
     daily_summary: "Daily Summary",
     error_threshold: "Error Threshold",
     traffic_spike: "Traffic Spike",
+    uptime_status: "Uptime Status",
+  };
+  const uptimeNotifyLabels = {
+    down: "Downtime Alerts",
+    up: "Recovery Alerts",
+    both: "Downtime & Recovery Alerts",
   };
 
   tbody.innerHTML = rules
     .map((rule) => {
       const eventLabel = eventTypeLabels[rule.eventType] || rule.eventType;
-      const eventDisplay = rule.eventType === "custom_event" && rule.customEventName ? `${eventLabel}: ${rule.customEventName}` : eventLabel;
+      const eventDisplay = (() => {
+        if (rule.eventType === "custom_event" && rule.customEventName) {
+          return `${eventLabel}: ${rule.customEventName}`;
+        }
+
+        if (rule.eventType === "uptime_status") {
+          const notifyOn = rule.metadata?.notifyOn || "down";
+          const suffix = uptimeNotifyLabels[notifyOn] ? ` · ${uptimeNotifyLabels[notifyOn]}` : "";
+          return `${eventLabel}${suffix}`;
+        }
+
+        return eventLabel;
+      })();
 
       const websiteName = rule.expand?.website?.name || "All Websites";
 
@@ -325,6 +343,14 @@ window.showAddNotificationModal = () => {
     drawer.classList.add("active");
     document.getElementById("notification-form").reset();
     document.getElementById("custom-event-name-group").style.display = "none";
+    const uptimeSettings = document.getElementById("uptime-event-settings");
+    if (uptimeSettings) {
+      uptimeSettings.style.display = "none";
+    }
+    const uptimeSelect = document.getElementById("uptime-notify-on");
+    if (uptimeSelect) {
+      uptimeSelect.value = "down";
+    }
 
     const lastEmail = localStorage.getItem("skopos-notification-email");
     if (lastEmail) {
@@ -354,6 +380,7 @@ window.handleEventTypeChange = (eventType) => {
   const customEventNameGroup = document.getElementById("custom-event-name-group");
   const customEventNameInput = document.querySelector('[name="customEventName"]');
   const ruleNameInput = document.querySelector('[name="name"]');
+  const uptimeSettings = document.getElementById("uptime-event-settings");
 
   if (eventType === "custom_event") {
     customEventNameGroup.style.display = "block";
@@ -364,12 +391,17 @@ window.handleEventTypeChange = (eventType) => {
     customEventNameInput.value = "";
   }
 
+  if (uptimeSettings) {
+    uptimeSettings.style.display = eventType === "uptime_status" ? "block" : "none";
+  }
+
   const eventTypeToRuleName = {
     new_visitor: "New Visitor Alert",
     new_session: "New Session Alert",
     daily_summary: "Daily Summary Report",
     error_threshold: "Error Threshold Alert",
     traffic_spike: "Traffic Spike Alert",
+    uptime_status: "Website Uptime Alert",
   };
 
   if (eventType && eventType !== "custom_event" && ruleNameInput && eventTypeToRuleName[eventType]) {
@@ -389,6 +421,12 @@ window.saveNotificationRule = async (event) => {
     website: formData.get("website") || "",
     customEventName: formData.get("customEventName") || "",
   };
+
+  if (ruleData.eventType === "uptime_status") {
+    ruleData.metadata = {
+      notifyOn: formData.get("uptimeNotifyOn") || "down",
+    };
+  }
 
   if (ruleData.recipientEmail) {
     localStorage.setItem("skopos-notification-email", ruleData.recipientEmail);
