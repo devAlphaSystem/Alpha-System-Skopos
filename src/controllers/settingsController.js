@@ -1,7 +1,8 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
-import { storeApiKey, listApiKeys, deleteApiKey } from "../services/apiKeyManager.js";
+import { storeApiKey, listApiKeys, deleteApiKey, getApiKey } from "../services/apiKeyManager.js";
 import { listNotificationRules, createNotificationRule, updateNotificationRule, deleteNotificationRule } from "../services/notificationService.js";
 import logger from "../services/logger.js";
+import { Resend } from "resend";
 
 export async function showSettings(req, res) {
   logger.info("Rendering settings page for user: %s", res.locals.user.id);
@@ -162,5 +163,161 @@ export async function removeNotificationRule(req, res) {
   } catch (error) {
     logger.error("Error deleting notification rule: %o", error);
     res.status(500).json({ error: "Failed to delete notification rule" });
+  }
+}
+
+export async function testPageSpeedApi(req, res) {
+  try {
+    const { url } = req.body;
+
+    if (!url) {
+      return res.status(400).json({ success: false, error: "URL is required" });
+    }
+
+    const apiKey = await getApiKey(res.locals.user.id, "google_pagespeed");
+    if (!apiKey) {
+      return res.status(400).json({ success: false, error: "PageSpeed API key not configured" });
+    }
+
+    const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&key=${apiKey}`;
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      let errorMessage = "Failed to test PageSpeed API";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error?.message || errorMessage;
+        logger.warn("PageSpeed API test failed for user %s: %o", res.locals.user.id, errorData);
+      } catch (e) {
+        logger.warn("PageSpeed API test failed for user %s with status %d", res.locals.user.id, response.status);
+      }
+      return res.status(200).json({
+        success: false,
+        error: errorMessage,
+      });
+    }
+
+    const data = await response.json();
+    const performanceScore = data.lighthouseResult?.categories?.performance?.score ? Math.round(data.lighthouseResult.categories.performance.score * 100) : null;
+
+    logger.info("PageSpeed API test successful for user %s", res.locals.user.id);
+    return res.status(200).json({
+      success: true,
+      data: {
+        performanceScore,
+        url: data.lighthouseResult?.finalUrl || url,
+      },
+    });
+  } catch (error) {
+    logger.error("Error testing PageSpeed API: %o", error);
+    return res.status(200).json({
+      success: false,
+      error: "Failed to connect to PageSpeed API. Please check your API key.",
+    });
+  }
+}
+
+export async function testChapybaraApi(req, res) {
+  try {
+    const { ip } = req.body;
+
+    if (!ip) {
+      return res.status(400).json({ success: false, error: "IP address is required" });
+    }
+
+    const apiKey = await getApiKey(res.locals.user.id, "chapybara");
+    if (!apiKey) {
+      return res.status(400).json({ success: false, error: "Chapybara API key not configured" });
+    }
+
+    const chapybaraUrl = `https://api.chapyapi.com/api/v1/ip/${encodeURIComponent(ip)}`;
+    const response = await fetch(chapybaraUrl, {
+      headers: {
+        "X-API-Key": apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      let errorMessage = "Failed to test Chapybara API";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+        logger.warn("Chapybara API test failed for user %s: %o", res.locals.user.id, errorData);
+      } catch (e) {
+        logger.warn("Chapybara API test failed for user %s with status %d", res.locals.user.id, response.status);
+      }
+      return res.status(200).json({
+        success: false,
+        error: errorMessage,
+      });
+    }
+
+    const data = await response.json();
+
+    logger.info("Chapybara API test successful for user %s", res.locals.user.id);
+    return res.status(200).json({
+      success: true,
+      data: {
+        country: data.country,
+        city: data.city,
+        isp: data.isp,
+      },
+    });
+  } catch (error) {
+    logger.error("Error testing Chapybara API: %o", error);
+    return res.status(200).json({
+      success: false,
+      error: "Failed to connect to Chapybara API. Please check your API key.",
+    });
+  }
+}
+
+export async function testResendApi(req, res) {
+  try {
+    const { recipient, subject, body } = req.body;
+
+    if (!recipient) {
+      return res.status(400).json({ success: false, error: "Recipient email is required" });
+    }
+
+    const apiKey = await getApiKey(res.locals.user.id, "resend");
+    if (!apiKey) {
+      return res.status(400).json({ success: false, error: "Resend API key not configured" });
+    }
+
+    const apiKeys = await listApiKeys(res.locals.user.id);
+    const resendKey = apiKeys.find((k) => k.service === "resend" && k.isActive);
+    const fromEmail = resendKey?.metadata?.fromEmail || "onboarding@resend.dev";
+
+    const resend = new Resend(apiKey);
+
+    const emailData = await resend.emails.send({
+      from: fromEmail,
+      to: recipient,
+      subject: subject || "Skopos Test Email",
+      html: body || "<h1>Test Email</h1><p>This is a test email from Skopos to verify your Resend API configuration.</p>",
+    });
+
+    if (emailData.error) {
+      logger.warn("Resend API test failed for user %s: %o", res.locals.user.id, emailData.error);
+      return res.status(200).json({
+        success: false,
+        error: emailData.error.message || "Failed to send test email",
+      });
+    }
+
+    logger.info("Resend API test successful for user %s", res.locals.user.id);
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: emailData.data?.id,
+      },
+    });
+  } catch (error) {
+    logger.error("Error testing Resend API: %o", error);
+    return res.status(200).json({
+      success: false,
+      error: "Failed to send test email. Please check your API key and configuration.",
+    });
   }
 }

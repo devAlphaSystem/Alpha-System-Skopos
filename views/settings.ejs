@@ -2,6 +2,192 @@
 
 <%- include('partials/mobile-header') %>
 
+<style>
+.data-table tbody tr {
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s;
+}
+
+.data-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background: var(--card-bg);
+}
+
+.data-table td {
+  padding: 0.75rem;
+  color: var(--text-secondary);
+  vertical-align: middle;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-success {
+  background: #D1FAE5;
+  color: #065F46;
+}
+
+.badge-muted {
+  background: var(--card-bg);
+  color: var(--text-muted);
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--drawer-overlay);
+  z-index: 2000;
+  display: none;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal-overlay.active {
+  display: block;
+}
+
+.modal-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--surface-color);
+  border-radius: 12px;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  z-index: 2001;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: none;
+  animation: slideIn 0.3s ease-out;
+}
+
+.modal-dialog.active {
+  display: block;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.5rem;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+  font-size: 1.25rem;
+}
+
+.modal-close:hover {
+  background: var(--background-color);
+  color: var(--text-primary);
+}
+
+.modal-content {
+  padding: 1.5rem;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.test-result-success {
+  padding: 1rem;
+  background: #d1fae5;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  color: #065f46;
+}
+
+.test-result-error {
+  padding: 1rem;
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  color: #991b1b;
+}
+
+.test-result-info {
+  padding: 1rem;
+  background: #dbeafe;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  color: #1e40af;
+}
+
+[data-theme="dark"] .test-result-success {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: #10b981;
+  color: #6ee7b7;
+}
+
+[data-theme="dark"] .test-result-error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .test-result-info {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+</style>
+
 <div class="page-wrapper">
   <%- include('partials/sidebar', { currentPage: 'settings', websites: websites, currentWebsite: null, user: user }) %>
   <div class="main-container">
@@ -158,9 +344,14 @@
                   <div style="padding: 1rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                       <span style="font-size: 0.875rem; color: var(--text-secondary);">Key ID: <%= pagespeedKey.id.substring(0, 8) %>...</span>
-                      <button class="btn btn-danger btn-sm" onclick="deleteApiKey('<%= pagespeedKey.id %>', 'google_pagespeed')">
-                        <i class="fa-solid fa-trash"></i> Remove
-                      </button>
+                      <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary btn-sm" onclick="testPageSpeedConnection()">
+                          <i class="fa-solid fa-flask"></i> Test Connection
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteApiKey('<%= pagespeedKey.id %>', 'google_pagespeed')">
+                          <i class="fa-solid fa-trash"></i> Remove
+                        </button>
+                      </div>
                     </div>
                     <div style="font-size: 0.875rem; color: var(--text-secondary);">
                       <span>Used <%= pagespeedKey.usageCount || 0 %> times</span>
@@ -210,9 +401,14 @@
                   <div style="padding: 1rem; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                       <span style="font-size: 0.875rem; color: var(--text-secondary);">Key ID: <%= chapybaraKey.id.substring(0, 8) %>...</span>
-                      <button class="btn btn-danger btn-sm" onclick="deleteApiKey('<%= chapybaraKey.id %>', 'chapybara')">
-                        <i class="fa-solid fa-trash"></i> Remove
-                      </button>
+                      <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary btn-sm" onclick="testChapybaraConnection()">
+                          <i class="fa-solid fa-flask"></i> Test Connection
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteApiKey('<%= chapybaraKey.id %>', 'chapybara')">
+                          <i class="fa-solid fa-trash"></i> Remove
+                        </button>
+                      </div>
                     </div>
                     <div style="font-size: 0.875rem; color: var(--text-secondary);">
                       <span>Used <%= chapybaraKey.usageCount || 0 %> times</span>
@@ -267,9 +463,14 @@
                           <div style="font-size: 0.875rem; color: var(--text-secondary); margin-top: 0.25rem;">From: <%= resendKey.metadata.fromEmail %></div>
                         <% } %>
                       </div>
-                      <button class="btn btn-danger btn-sm" onclick="deleteApiKey('<%= resendKey.id %>', 'resend')">
-                        <i class="fa-solid fa-trash"></i> Remove
-                      </button>
+                      <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary btn-sm" onclick="testResendConnection()">
+                          <i class="fa-solid fa-flask"></i> Test Connection
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteApiKey('<%= resendKey.id %>', 'resend')">
+                          <i class="fa-solid fa-trash"></i> Remove
+                        </button>
+                      </div>
                     </div>
                     <div style="font-size: 0.875rem; color: var(--text-secondary);">
                       <span>Used <%= resendKey.usageCount || 0 %> times</span>
@@ -437,58 +638,112 @@
   </div>
 </div>
 
-<style>
-.data-table tbody tr {
-  border-bottom: 1px solid var(--border-color);
-  transition: background 0.2s;
-}
+<div class="modal-overlay" id="test-modal-overlay"></div>
 
-.data-table tbody tr:last-child {
-  border-bottom: none;
-}
+<div class="modal-dialog" id="pagespeed-test-modal">
+  <div class="modal-header">
+    <h3>Test PageSpeed API Connection</h3>
+    <button class="modal-close" onclick="closeTestModal()">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <div class="modal-content">
+    <p style="margin-bottom: 1rem; color: var(--text-secondary);">Enter a website URL to test the PageSpeed Insights API connection.</p>
+    <form id="pagespeed-test-form" onsubmit="submitPageSpeedTest(event)">
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Website URL</label>
+        <input type="url" id="pagespeed-url" class="settings-input" placeholder="https://example.com" required 
+          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);">
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+        <input type="checkbox" id="use-current-url" style="width: auto;" onchange="handleUseCurrentUrl(this.checked)">
+        <label for="use-current-url" style="margin: 0; cursor: pointer; color: var(--text-secondary);">Use current URL</label>
+      </div>
+      <div id="pagespeed-test-result" style="margin-top: 1rem; display: none;"></div>
+      <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeTestModal()" style="flex: 1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex: 1;">
+          <i class="fa-solid fa-flask"></i> Test
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
-.data-table tbody tr:hover {
-  background: var(--card-bg);
-}
+<div class="modal-dialog" id="chapybara-test-modal">
+  <div class="modal-header">
+    <h3>Test Chapybara API Connection</h3>
+    <button class="modal-close" onclick="closeTestModal()">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <div class="modal-content">
+    <p style="margin-bottom: 1rem; color: var(--text-secondary);">Enter an IP address to test the Chapybara API connection.</p>
+    <form id="chapybara-test-form" onsubmit="submitChapybaraTest(event)">
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">IP Address</label>
+        <input type="text" id="chapybara-ip" class="settings-input" placeholder="8.8.8.8" required 
+          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);">
+      </div>
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+        <input type="checkbox" id="use-current-ip" style="width: auto;" onchange="handleUseCurrentIp(this.checked)">
+        <label for="use-current-ip" style="margin: 0; cursor: pointer; color: var(--text-secondary);">Use current IP address</label>
+      </div>
+      <div id="chapybara-test-result" style="margin-top: 1rem; display: none;"></div>
+      <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeTestModal()" style="flex: 1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex: 1;">
+          <i class="fa-solid fa-flask"></i> Test
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
-.data-table td {
-  padding: 0.75rem;
-  color: var(--text-secondary);
-  vertical-align: middle;
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.badge-success {
-  background: #D1FAE5;
-  color: #065F46;
-}
-
-.badge-muted {
-  background: var(--card-bg);
-  color: var(--text-muted);
-}
-
-.btn-icon {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.btn-icon:hover {
-  background: var(--card-bg);
-  color: var(--text-primary);
-}
-</style>
+<div class="modal-dialog" id="resend-test-modal">
+  <div class="modal-header">
+    <h3>Test Resend Email API Connection</h3>
+    <button class="modal-close" onclick="closeTestModal()">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <div class="modal-content">
+    <p style="margin-bottom: 1rem; color: var(--text-secondary);">Send a test email to verify the Resend API connection.</p>
+    <form id="resend-test-form" onsubmit="submitResendTest(event)">
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Recipient Email</label>
+        <input type="email" id="resend-recipient" class="settings-input" placeholder="you@example.com" required 
+          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);">
+      </div>
+      <% 
+        const resendFromEmail = apiKeys?.find(k => k.service === 'resend' && k.isActive)?.metadata?.fromEmail;
+        if (resendFromEmail) { 
+          const domain = resendFromEmail.split('@')[1];
+      %>
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+          <input type="checkbox" id="use-notification-email" style="width: auto;" onchange="handleUseNotificationEmail(this.checked, 'skopos@<%= domain %>')">
+          <label for="use-notification-email" style="margin: 0; cursor: pointer; color: var(--text-secondary);">Use skopos@<%= domain %></label>
+        </div>
+      <% } %>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email Subject</label>
+        <input type="text" id="resend-subject" class="settings-input" value="Skopos Test Email" 
+          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary);">
+      </div>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email Body (HTML)</label>
+        <textarea id="resend-body" class="settings-input" rows="6" 
+          style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-primary); font-family: monospace; resize: vertical;"><h1>Test Email</h1><p>This is a test email from Skopos to verify your Resend API configuration.</p></textarea>
+      </div>
+      <div id="resend-test-result" style="margin-top: 1rem; display: none;"></div>
+      <div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="closeTestModal()" style="flex: 1;">Cancel</button>
+        <button type="submit" class="btn btn-primary" style="flex: 1;">
+          <i class="fa-solid fa-paper-plane"></i> Send Test
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <%- include('partials/footer', { scripts: ['settings'] }) %>

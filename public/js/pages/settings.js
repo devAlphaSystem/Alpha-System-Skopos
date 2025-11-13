@@ -470,3 +470,331 @@ window.deleteNotificationRule = async (ruleId) => {
     await window.customAlert("Network Error", "Error deleting notification rule. Please try again.");
   }
 };
+
+window.testPageSpeedConnection = () => {
+  const overlay = document.getElementById("test-modal-overlay");
+  const modal = document.getElementById("pagespeed-test-modal");
+  if (overlay && modal) {
+    overlay.classList.add("active");
+    modal.classList.add("active");
+    document.getElementById("pagespeed-test-form").reset();
+    document.getElementById("pagespeed-test-result").style.display = "none";
+  }
+};
+
+window.testChapybaraConnection = () => {
+  const overlay = document.getElementById("test-modal-overlay");
+  const modal = document.getElementById("chapybara-test-modal");
+  if (overlay && modal) {
+    overlay.classList.add("active");
+    modal.classList.add("active");
+    document.getElementById("chapybara-test-form").reset();
+    document.getElementById("chapybara-test-result").style.display = "none";
+  }
+};
+
+window.testResendConnection = () => {
+  const overlay = document.getElementById("test-modal-overlay");
+  const modal = document.getElementById("resend-test-modal");
+  if (overlay && modal) {
+    overlay.classList.add("active");
+    modal.classList.add("active");
+    document.getElementById("resend-test-form").reset();
+    document.getElementById("resend-test-result").style.display = "none";
+
+    const savedEmail = localStorage.getItem("skopos-notification-email");
+    if (savedEmail) {
+      const recipientInput = document.getElementById("resend-recipient");
+      if (recipientInput) {
+        recipientInput.value = savedEmail;
+      }
+    }
+  }
+};
+
+window.closeTestModal = () => {
+  const overlay = document.getElementById("test-modal-overlay");
+  const modals = document.querySelectorAll(".modal-dialog");
+
+  if (overlay) {
+    overlay.classList.remove("active");
+  }
+
+  for (const modal of modals) {
+    modal.classList.remove("active");
+  }
+};
+
+window.handleUseCurrentUrl = (checked) => {
+  const urlInput = document.getElementById("pagespeed-url");
+  if (checked && urlInput) {
+    urlInput.value = window.location.origin;
+  }
+};
+
+window.handleUseCurrentIp = async (checked) => {
+  const ipInput = document.getElementById("chapybara-ip");
+  if (checked && ipInput) {
+    try {
+      const response = await fetch("https://api.ipify.org?format=json");
+      const data = await response.json();
+      ipInput.value = data.ip;
+    } catch (error) {
+      console.error("Error fetching current IP:", error);
+      await window.customAlert("Error", "Failed to fetch your current IP address.");
+    }
+  }
+};
+
+window.handleUseNotificationEmail = (checked, email) => {
+  const recipientInput = document.getElementById("resend-recipient");
+  if (checked && recipientInput) {
+    recipientInput.value = email;
+  }
+};
+
+window.submitPageSpeedTest = async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  const url = document.getElementById("pagespeed-url").value;
+  const resultDiv = document.getElementById("pagespeed-test-result");
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  const originalText = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Testing...';
+
+  resultDiv.style.display = "none";
+
+  try {
+    const response = await fetch("/settings/test-api/pagespeed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Received non-JSON response from server");
+    }
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      resultDiv.className = "test-result-success";
+      resultDiv.innerHTML = `
+        <div style="display: flex; align-items: start; gap: 0.75rem;">
+          <i class="fa-solid fa-circle-check" style="font-size: 1.25rem;"></i>
+          <div>
+            <strong style="display: block; margin-bottom: 0.25rem;">Connection Successful!</strong>
+            <div style="font-size: 0.875rem;">
+              Performance Score: <strong>${data.data?.performanceScore || "N/A"}</strong><br>
+              ${data.data?.url ? `Tested URL: ${data.data.url}` : ""}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      resultDiv.className = "test-result-error";
+      resultDiv.innerHTML = `
+        <div style="display: flex; align-items: start; gap: 0.75rem;">
+          <i class="fa-solid fa-circle-xmark" style="font-size: 1.25rem;"></i>
+          <div>
+            <strong style="display: block; margin-bottom: 0.25rem;">Connection Failed</strong>
+            <div style="font-size: 0.875rem;">${data.error || "Unknown error occurred"}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    resultDiv.style.display = "block";
+  } catch (error) {
+    console.error("Error testing PageSpeed API:", error);
+    resultDiv.className = "test-result-error";
+    resultDiv.innerHTML = `
+      <div style="display: flex; align-items: start; gap: 0.75rem;">
+        <i class="fa-solid fa-circle-xmark" style="font-size: 1.25rem;"></i>
+        <div>
+          <strong style="display: block; margin-bottom: 0.25rem;">Network Error</strong>
+          <div style="font-size: 0.875rem;">Failed to connect to server. Please try again.</div>
+        </div>
+      </div>
+    `;
+    resultDiv.style.display = "block";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+  }
+};
+
+window.submitChapybaraTest = async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  const ip = document.getElementById("chapybara-ip").value;
+  const resultDiv = document.getElementById("chapybara-test-result");
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  const originalText = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Testing...';
+
+  resultDiv.style.display = "none";
+
+  try {
+    const response = await fetch("/settings/test-api/chapybara", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ip }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Received non-JSON response from server");
+    }
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      resultDiv.className = "test-result-success";
+      resultDiv.innerHTML = `
+        <div style="display: flex; align-items: start; gap: 0.75rem;">
+          <i class="fa-solid fa-circle-check" style="font-size: 1.25rem;"></i>
+          <div>
+            <strong style="display: block; margin-bottom: 0.25rem;">Connection Successful!</strong>
+            <div style="font-size: 0.875rem;">
+              ${data.data?.country ? `Country: <strong>${data.data.country}</strong><br>` : ""}
+              ${data.data?.city ? `City: ${data.data.city}<br>` : ""}
+              ${data.data?.isp ? `ISP: ${data.data.isp}` : ""}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      resultDiv.className = "test-result-error";
+      resultDiv.innerHTML = `
+        <div style="display: flex; align-items: start; gap: 0.75rem;">
+          <i class="fa-solid fa-circle-xmark" style="font-size: 1.25rem;"></i>
+          <div>
+            <strong style="display: block; margin-bottom: 0.25rem;">Connection Failed</strong>
+            <div style="font-size: 0.875rem;">${data.error || "Unknown error occurred"}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    resultDiv.style.display = "block";
+  } catch (error) {
+    console.error("Error testing Chapybara API:", error);
+    resultDiv.className = "test-result-error";
+    resultDiv.innerHTML = `
+      <div style="display: flex; align-items: start; gap: 0.75rem;">
+        <i class="fa-solid fa-circle-xmark" style="font-size: 1.25rem;"></i>
+        <div>
+          <strong style="display: block; margin-bottom: 0.25rem;">Network Error</strong>
+          <div style="font-size: 0.875rem;">Failed to connect to server. Please try again.</div>
+        </div>
+      </div>
+    `;
+    resultDiv.style.display = "block";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+  }
+};
+
+window.submitResendTest = async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  const recipient = document.getElementById("resend-recipient").value;
+  const subject = document.getElementById("resend-subject").value;
+  const body = document.getElementById("resend-body").value;
+  const resultDiv = document.getElementById("resend-test-result");
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  const originalText = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending...';
+
+  resultDiv.style.display = "none";
+
+  try {
+    const response = await fetch("/settings/test-api/resend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recipient, subject, body }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      throw new Error("Received non-JSON response from server");
+    }
+
+    const data = await response.json();
+
+    if (response.ok && data.success) {
+      resultDiv.className = "test-result-success";
+      resultDiv.innerHTML = `
+        <div style="display: flex; align-items: start; gap: 0.75rem;">
+          <i class="fa-solid fa-circle-check" style="font-size: 1.25rem;"></i>
+          <div>
+            <strong style="display: block; margin-bottom: 0.25rem;">Email Sent Successfully!</strong>
+            <div style="font-size: 0.875rem;">
+              ${data.data?.id ? `Email ID: ${data.data.id}<br>` : ""}
+              Check your inbox at <strong>${recipient}</strong>
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      resultDiv.className = "test-result-error";
+      resultDiv.innerHTML = `
+        <div style="display: flex; align-items: start; gap: 0.75rem;">
+          <i class="fa-solid fa-circle-xmark" style="font-size: 1.25rem;"></i>
+          <div>
+            <strong style="display: block; margin-bottom: 0.25rem;">Email Send Failed</strong>
+            <div style="font-size: 0.875rem;">${data.error || "Unknown error occurred"}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    resultDiv.style.display = "block";
+  } catch (error) {
+    console.error("Error testing Resend API:", error);
+    resultDiv.className = "test-result-error";
+    resultDiv.innerHTML = `
+      <div style="display: flex; align-items: start; gap: 0.75rem;">
+        <i class="fa-solid fa-circle-xmark" style="font-size: 1.25rem;"></i>
+        <div>
+          <strong style="display: block; margin-bottom: 0.25rem;">Network Error</strong>
+          <div style="font-size: 0.875rem;">Failed to connect to server. Please try again.</div>
+        </div>
+      </div>
+    `;
+    resultDiv.style.display = "block";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+  }
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const overlay = document.getElementById("test-modal-overlay");
+  if (overlay) {
+    overlay.addEventListener("click", () => {
+      window.closeTestModal();
+    });
+  }
+});

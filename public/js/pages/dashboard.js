@@ -1,4 +1,34 @@
+const INTER_FONT_STACK = '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
 document.addEventListener("DOMContentLoaded", () => {
+  if (window.Apex) {
+    window.Apex = {
+      ...window.Apex,
+      chart: {
+        ...(window.Apex.chart || {}),
+        fontFamily: INTER_FONT_STACK,
+      },
+      dataLabels: {
+        ...(window.Apex.dataLabels || {}),
+        style: {
+          ...(window.Apex.dataLabels?.style || {}),
+          fontFamily: INTER_FONT_STACK,
+        },
+      },
+      legend: {
+        ...(window.Apex.legend || {}),
+        fontFamily: INTER_FONT_STACK,
+      },
+      tooltip: {
+        ...(window.Apex.tooltip || {}),
+        style: {
+          ...(window.Apex.tooltip?.style || {}),
+          fontFamily: INTER_FONT_STACK,
+        },
+      },
+    };
+  }
+
   const pageWrapper = document.querySelector(".page-wrapper");
   const WEBSITE_ID = pageWrapper ? pageWrapper.dataset.websiteId : null;
   const IS_ARCHIVED = pageWrapper ? pageWrapper.dataset.isArchived === "true" : false;
@@ -497,6 +527,7 @@ document.addEventListener("DOMContentLoaded", () => {
         type: "line",
         height: 40,
         width: 120,
+        fontFamily: INTER_FONT_STACK,
         sparkline: { enabled: true },
         animations: { enabled: false },
       },

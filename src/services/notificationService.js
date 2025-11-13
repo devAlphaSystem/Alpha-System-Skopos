@@ -3,6 +3,8 @@ import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { getApiKey } from "./apiKeyManager.js";
 import logger from "./logger.js";
 
+const EMAIL_FONT_STACK = '"Inter", "Segoe UI", Arial, sans-serif';
+
 async function getResendClient(userId) {
   try {
     const apiKey = await getApiKey(userId, "resend");
@@ -120,7 +122,7 @@ function generateEmailContent(eventType, eventData, rule) {
     new_visitor: {
       subject: `New Visitor on ${websiteName}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="font-family: ${EMAIL_FONT_STACK}; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #4F46E5;">New Visitor Alert</h2>
           <p>A new visitor has been detected on <strong>${websiteName}</strong>.</p>
           <div style="background: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
@@ -142,7 +144,7 @@ function generateEmailContent(eventType, eventData, rule) {
     custom_event: {
       subject: `Custom Event "${eventData.eventName}" Triggered on ${websiteName}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="font-family: ${EMAIL_FONT_STACK}; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #4F46E5;">Custom Event Triggered</h2>
           <p>The custom event <strong>"${eventData.eventName}"</strong> has been triggered on ${websiteName}.</p>
           <div style="background: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
@@ -162,7 +164,7 @@ function generateEmailContent(eventType, eventData, rule) {
     new_session: {
       subject: `New Session Started on ${websiteName}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="font-family: ${EMAIL_FONT_STACK}; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #4F46E5;">New Session Alert</h2>
           <p>A new session has been started on <strong>${websiteName}</strong>.</p>
           <div style="background: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
@@ -183,7 +185,7 @@ function generateEmailContent(eventType, eventData, rule) {
     daily_summary: {
       subject: `Daily Summary for ${websiteName}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="font-family: ${EMAIL_FONT_STACK}; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #4F46E5;">Daily Analytics Summary</h2>
           <p>Here's your daily summary for <strong>${websiteName}</strong>.</p>
           <div style="background: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
@@ -204,7 +206,7 @@ function generateEmailContent(eventType, eventData, rule) {
     error_threshold: {
       subject: `Error Threshold Exceeded on ${websiteName}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="font-family: ${EMAIL_FONT_STACK}; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #DC2626;">Error Threshold Alert</h2>
           <p>The error threshold has been exceeded on <strong>${websiteName}</strong>.</p>
           <div style="background: #FEE2E2; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #DC2626;">
@@ -224,7 +226,7 @@ function generateEmailContent(eventType, eventData, rule) {
     traffic_spike: {
       subject: `Traffic Spike Detected on ${websiteName}`,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="font-family: ${EMAIL_FONT_STACK}; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #10B981;">Traffic Spike Alert</h2>
           <p>A significant traffic spike has been detected on <strong>${websiteName}</strong>.</p>
           <div style="background: #D1FAE5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10B981;">
@@ -245,7 +247,12 @@ function generateEmailContent(eventType, eventData, rule) {
 
   const template = templates[eventType] || {
     subject: `Notification from ${websiteName}`,
-    html: `<p>Event: ${eventType}</p><pre>${JSON.stringify(eventData, null, 2)}</pre>`,
+    html: `
+        <div style="font-family: ${EMAIL_FONT_STACK}; max-width: 600px; margin: 0 auto;">
+          <p>Event: ${eventType}</p>
+          <pre style="background: #F3F4F6; padding: 10px; border-radius: 4px; overflow-x: auto;">${JSON.stringify(eventData, null, 2)}</pre>
+        </div>
+      `,
   };
 
   return {

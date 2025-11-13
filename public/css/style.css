@@ -247,13 +247,26 @@ body {
 .sidebar-nav ul li a:hover,
 .sidebar-nav ul li button:hover {
   background-color: var(--surface-color);
+  background-image: linear-gradient(135deg, var(--surface-color) 0%, rgba(239, 68, 68, 0.03) 100%);
   box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .sidebar-nav ul li a:hover,
+[data-theme="dark"] .sidebar-nav ul li button:hover {
+  background-color: var(--surface-color);
+  background-image: linear-gradient(135deg, var(--surface-color) 0%, rgba(248, 113, 113, 0.04) 100%);
 }
 
 .sidebar-nav ul li.active a {
   background-color: var(--surface-color);
+  background-image: linear-gradient(135deg, var(--surface-color) 0%, rgba(239, 68, 68, 0.05) 100%);
   color: var(--text-primary);
   box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .sidebar-nav ul li.active a {
+  background-color: var(--surface-color);
+  background-image: linear-gradient(135deg, var(--surface-color) 0%, rgba(248, 113, 113, 0.06) 100%);
 }
 
 .sidebar-nav ul li.website-selector-item {
@@ -268,6 +281,7 @@ body {
   font-family: inherit;
   color: var(--text-primary);
   background-color: var(--surface-color);
+  background-image: linear-gradient(135deg, var(--surface-color) 0%, rgba(239, 68, 68, 0.04) 100%);
   border: 1px solid var(--surface-color);
   border-radius: 10px;
   cursor: pointer;
@@ -275,15 +289,36 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+[data-theme="dark"] .website-selector {
+  background-color: var(--surface-color);
+  background-image: linear-gradient(135deg, var(--surface-color) 0%, rgba(248, 113, 113, 0.05) 100%);
+}
+
 .website-selector:hover {
   background-color: var(--background-color);
+  background-image: linear-gradient(135deg, var(--background-color) 0%, rgba(239, 68, 68, 0.06) 100%);
   border-color: var(--primary-color);
+}
+
+[data-theme="dark"] .website-selector:hover {
+  background-color: var(--background-color);
+  background-image: linear-gradient(135deg, var(--background-color) 0%, rgba(248, 113, 113, 0.07) 100%);
 }
 
 .website-selector:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.website-selector option {
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .website-selector option {
+  background-color: var(--surface-color);
+  color: var(--text-primary);
 }
 
 .sidebar-footer {
@@ -1034,7 +1069,28 @@ body {
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-md);
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
   padding: 0.5rem 1rem;
+}
+
+.jvm-container text {
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif !important;
 }
 
 .report-card {
