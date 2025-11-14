@@ -22,7 +22,7 @@ import { initialize as initializeAppState, doesUserExist } from "./src/services/
 import { startRealtimeService } from "./src/services/realtime.js";
 import { initializeUptimeMonitoring } from "./src/services/uptimeMonitor.js";
 import { deviceDetectionMiddleware } from "./src/utils/deviceDetection.js";
-import logger from "./src/services/logger.js";
+import logger from "./src/utils/logger.js";
 import { readFileSync } from "node:fs";
 
 dotenv.config();

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import logger from "../services/logger.js";
+import logger from "./logger.js";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
@@ -14,11 +14,6 @@ function getEncryptionKey() {
   return Buffer.from(key, "hex");
 }
 
-/**
- * Encrypts sensitive data using AES-256-GCM
- * @param {string} text - Plain text to encrypt
- * @returns {string} - Base64 encoded encrypted data with IV and auth tag
- */
 export function encrypt(text) {
   try {
     const masterKey = getEncryptionKey();
@@ -44,11 +39,6 @@ export function encrypt(text) {
   }
 }
 
-/**
- * Decrypts data encrypted with encrypt()
- * @param {string} encryptedData - Base64 encoded encrypted data
- * @returns {string} - Decrypted plain text
- */
 export function decrypt(encryptedData) {
   try {
     const masterKey = getEncryptionKey();
@@ -75,11 +65,6 @@ export function decrypt(encryptedData) {
   }
 }
 
-/**
- * Masks an API key for display (shows first/last 4 chars)
- * @param {string} key - API key to mask
- * @returns {string} - Masked key
- */
 export function maskApiKey(key) {
   if (!key || key.length < 12) {
     return "••••••••";

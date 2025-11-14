@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
     autoRefresh: true,
     dataPeriod: 7,
     resultsLimit: 10,
+    toastsEnabled: true,
   };
 
   const settings = window.__SKOPOS_SETTINGS__ || { ...DEFAULT_SETTINGS };
@@ -67,6 +68,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (resultsLimitSelect) {
       resultsLimitSelect.value = settings.resultsLimit;
     }
+
+    const toastsToggle = document.getElementById("toasts-toggle");
+    if (toastsToggle) {
+      toastsToggle.checked = settings.toastsEnabled !== false;
+    }
   }
 
   const themeToggle = document.getElementById("theme-toggle");
@@ -76,6 +82,18 @@ document.addEventListener("DOMContentLoaded", () => {
       saveSettings();
       applySettingsToUI();
       window.dispatchEvent(new CustomEvent("themeChanged"));
+      showToast("Theme Updated", `${settings.theme === "dark" ? "Dark" : "Light"} mode enabled`, "success");
+    });
+  }
+
+  const toastsToggle = document.getElementById("toasts-toggle");
+  if (toastsToggle) {
+    toastsToggle.addEventListener("change", (e) => {
+      settings.toastsEnabled = e.target.checked;
+      saveSettings();
+      if (settings.toastsEnabled) {
+        showToast("Toast Notifications", "Toast notifications enabled", "success");
+      }
     });
   }
 
@@ -85,6 +103,8 @@ document.addEventListener("DOMContentLoaded", () => {
       settings.refreshRate = Number.parseInt(e.target.value);
       saveSettings();
       window.dispatchEvent(new CustomEvent("settingsChanged"));
+      const rate = settings.refreshRate === 0 ? "Instant" : settings.refreshRate >= 60000 ? `${settings.refreshRate / 60000} minute${settings.refreshRate / 60000 > 1 ? "s" : ""}` : `${settings.refreshRate / 1000} seconds`;
+      showToast("Refresh Rate Updated", `Refresh interval set to ${rate}`, "success");
     });
   }
 
@@ -94,6 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
       settings.autoRefresh = e.target.checked;
       saveSettings();
       window.dispatchEvent(new CustomEvent("settingsChanged"));
+      showToast("Auto Refresh Updated", `Auto refresh ${settings.autoRefresh ? "enabled" : "disabled"}`, "success");
     });
   }
 
@@ -105,11 +126,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const currentPath = window.location.pathname;
       if (currentPath.includes("/dashboard") || currentPath === "/") {
+        showToast("Data Period Updated", `Data period set to ${settings.dataPeriod} days. Reloading...`, "info");
         const url = new URL(window.location.href);
         url.searchParams.set("period", settings.dataPeriod);
-        window.location.href = url.toString();
+        setTimeout(() => {
+          window.location.href = url.toString();
+        }, 1000);
       } else {
         window.dispatchEvent(new CustomEvent("settingsChanged"));
+        showToast("Data Period Updated", `Data period set to ${settings.dataPeriod} days`, "success");
       }
     });
   }
@@ -120,6 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
       settings.resultsLimit = Number.parseInt(e.target.value);
       saveSettings();
       window.dispatchEvent(new CustomEvent("settingsChanged"));
+      showToast("Results Limit Updated", `Results per card set to ${settings.resultsLimit}`, "success");
     });
   }
 
@@ -140,6 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!response.ok) {
           throw new Error("Failed to update setting");
         }
+        showToast("IP Storage Updated", `Raw IP storage ${isEnabled ? "enabled" : "disabled"}`, "success");
       } catch (error) {
         console.error("Error updating IP storage setting:", error);
         e.target.checked = !isEnabled;

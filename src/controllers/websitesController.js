@@ -1,6 +1,6 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
-import logger from "../services/logger.js";
+import logger from "../utils/logger.js";
 import { cleanupOrphanedRecords } from "../services/dashSummary.js";
 import { analyzeSeo } from "../services/seoAnalyzer.js";
 

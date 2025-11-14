@@ -1,19 +1,15 @@
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
-import { subHours, subDays } from "date-fns";
-import logger from "./logger.js";
+import { subDays } from "date-fns";
+import logger from "../utils/logger.js";
 import https from "node:https";
 import http from "node:http";
 import { triggerNotification } from "./notificationService.js";
+import { recordUptimeSummary, getSummaryChecks, pruneUptimeSummary } from "./uptimeSummary.js";
 
 const activeMonitors = new Map();
 const MAX_TIMEOUT = 30000;
+const RETENTION_DAYS = 7;
 
-/**
- * Check if a website is actually up by making a real HTTP request
- * @param {string} url - The URL to check
- * @param {number} timeout - Timeout in milliseconds
- * @returns {Promise<Object>} Check result with status, responseTime, etc.
- */
 async function performUptimeCheck(url, timeout = 10000) {
   const startTime = Date.now();
 
@@ -100,9 +96,6 @@ async function performUptimeCheck(url, timeout = 10000) {
   });
 }
 
-/**
- * Save uptime check result to database
- */
 async function saveUptimeCheck(websiteId, checkResult) {
   try {
     await ensureAdminAuth();
@@ -123,15 +116,67 @@ async function saveUptimeCheck(websiteId, checkResult) {
       currentStatus: checkResult.isUp ? "up" : "down",
     });
 
+    await recordUptimeSummary(websiteId, checkResult);
+    await cleanupOldUptimeChecks(websiteId);
+    await cleanupOldUptimeIncidents(websiteId);
+
     logger.debug("Saved uptime check for website %s: %s", websiteId, checkResult.isUp ? "UP" : "DOWN");
   } catch (error) {
     logger.error("Error saving uptime check for website %s: %o", websiteId, error);
   }
 }
 
-/**
- * Check for status changes and track downtime/uptime incidents
- */
+async function cleanupOldUptimeChecks(websiteId) {
+  try {
+    await ensureAdminAuth();
+    const cutoffISO = subDays(new Date(), RETENTION_DAYS).toISOString();
+
+    const staleChecks = await pbAdmin.collection("uptime_checks").getFullList({
+      filter: `website.id = "${websiteId}" && timestamp < "${cutoffISO}"`,
+      fields: "id",
+      $autoCancel: false,
+    });
+
+    if (!staleChecks.length) {
+      return;
+    }
+
+    for (const check of staleChecks) {
+      await pbAdmin.collection("uptime_checks").delete(check.id);
+    }
+
+    logger.debug("Deleted %d uptime checks older than %d days for website %s", staleChecks.length, RETENTION_DAYS, websiteId);
+    await pruneUptimeSummary(websiteId);
+  } catch (error) {
+    logger.error("Error cleaning old uptime checks for website %s: %o", websiteId, error);
+  }
+}
+
+async function cleanupOldUptimeIncidents(websiteId) {
+  try {
+    await ensureAdminAuth();
+    const cutoffISO = subDays(new Date(), RETENTION_DAYS).toISOString();
+
+    const staleIncidents = await pbAdmin.collection("uptime_incidents").getFullList({
+      filter: `website.id = "${websiteId}" && startTime < "${cutoffISO}" && isResolved = true`,
+      fields: "id",
+      $autoCancel: false,
+    });
+
+    if (!staleIncidents.length) {
+      return;
+    }
+
+    for (const incident of staleIncidents) {
+      await pbAdmin.collection("uptime_incidents").delete(incident.id);
+    }
+
+    logger.debug("Deleted %d uptime incidents older than %d days for website %s", staleIncidents.length, RETENTION_DAYS, websiteId);
+  } catch (error) {
+    logger.error("Error cleaning old uptime incidents for website %s: %o", websiteId, error);
+  }
+}
+
 async function handleStatusChange(websiteId, previousStatus, currentStatus, checkResult) {
   try {
     await ensureAdminAuth();
@@ -204,9 +249,6 @@ async function handleStatusChange(websiteId, previousStatus, currentStatus, chec
   }
 }
 
-/**
- * Monitor a single website
- */
 async function monitorWebsite(websiteId, domain, checkInterval) {
   try {
     const url = domain.startsWith("http") ? domain : `https://${domain}`;
@@ -223,9 +265,6 @@ async function monitorWebsite(websiteId, domain, checkInterval) {
   }
 }
 
-/**
- * Start monitoring for a specific website
- */
 export function startMonitoring(websiteId, domain, checkInterval = 60000) {
   if (activeMonitors.has(websiteId)) {
     logger.debug("Monitor already running for website %s", websiteId);
@@ -247,9 +286,6 @@ export function startMonitoring(websiteId, domain, checkInterval = 60000) {
   });
 }
 
-/**
- * Stop monitoring for a specific website
- */
 export function stopMonitoring(websiteId) {
   const monitor = activeMonitors.get(websiteId);
   if (monitor) {
@@ -259,9 +295,6 @@ export function stopMonitoring(websiteId) {
   }
 }
 
-/**
- * Update monitoring interval for a website
- */
 export function updateMonitoringInterval(websiteId, newInterval) {
   const monitor = activeMonitors.get(websiteId);
   if (monitor && monitor.checkInterval !== newInterval) {
@@ -271,9 +304,6 @@ export function updateMonitoringInterval(websiteId, newInterval) {
   }
 }
 
-/**
- * Initialize monitoring for all active websites
- */
 export async function initializeUptimeMonitoring() {
   try {
     await ensureAdminAuth();
@@ -292,20 +322,9 @@ export async function initializeUptimeMonitoring() {
   }
 }
 
-/**
- * Get uptime statistics for a website
- */
 export async function getUptimeStats(websiteId, hours = 24) {
   try {
-    await ensureAdminAuth();
-    const startTime = subHours(new Date(), hours);
-    const startTimeISO = startTime.toISOString();
-
-    const checks = await pbAdmin.collection("uptime_checks").getFullList({
-      filter: `website.id = "${websiteId}" && timestamp >= "${startTimeISO}"`,
-      sort: "timestamp",
-      $autoCancel: false,
-    });
+    const checks = await getSummaryChecks(websiteId, hours);
 
     if (checks.length === 0) {
       return {
@@ -324,7 +343,7 @@ export async function getUptimeStats(websiteId, hours = 24) {
     const failedChecks = checks.length - successfulChecks;
     const uptimePercentage = ((successfulChecks / checks.length) * 100).toFixed(2);
 
-    const responseTimes = checks.map((c) => c.responseTime);
+    const responseTimes = checks.map((c) => (Number.isFinite(c.responseTime) ? c.responseTime : Number.parseFloat(c.responseTime) || 0));
     const avgResponseTime = Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length);
     const minResponseTime = Math.min(...responseTimes);
     const maxResponseTime = Math.max(...responseTimes);
@@ -332,7 +351,7 @@ export async function getUptimeStats(websiteId, hours = 24) {
     const currentStatus = checks[checks.length - 1].isUp ? "up" : "down";
 
     return {
-      uptimePercentage: parseFloat(uptimePercentage),
+      uptimePercentage: Number.parseFloat(uptimePercentage),
       totalChecks: checks.length,
       successfulChecks,
       failedChecks,
@@ -356,20 +375,9 @@ export async function getUptimeStats(websiteId, hours = 24) {
   }
 }
 
-/**
- * Get uptime checks for timeline display
- */
 export async function getUptimeTimeline(websiteId, hours = 24) {
   try {
-    await ensureAdminAuth();
-    const startTime = subHours(new Date(), hours);
-    const startTimeISO = startTime.toISOString();
-
-    const checks = await pbAdmin.collection("uptime_checks").getFullList({
-      filter: `website.id = "${websiteId}" && timestamp >= "${startTimeISO}"`,
-      sort: "timestamp",
-      $autoCancel: false,
-    });
+    const checks = await getSummaryChecks(websiteId, hours);
 
     return checks.map((check) => ({
       timestamp: check.timestamp,
@@ -384,9 +392,6 @@ export async function getUptimeTimeline(websiteId, hours = 24) {
   }
 }
 
-/**
- * Get recent incidents
- */
 export async function getRecentIncidents(websiteId, limit = 10) {
   try {
     await ensureAdminAuth();
@@ -411,19 +416,15 @@ export async function getRecentIncidents(websiteId, limit = 10) {
   }
 }
 
-/**
- * Get uptime performance by day
- */
 export async function getUptimeByDay(websiteId, days = 30) {
   try {
-    await ensureAdminAuth();
     const startDate = subDays(new Date(), days);
-    const startDateISO = startDate.toISOString();
-
-    const checks = await pbAdmin.collection("uptime_checks").getFullList({
-      filter: `website.id = "${websiteId}" && timestamp >= "${startDateISO}"`,
-      sort: "timestamp",
-      $autoCancel: false,
+    const startMs = startDate.getTime();
+    const hoursToFetch = Math.min(days * 24, RETENTION_DAYS * 24);
+    const candidateChecks = await getSummaryChecks(websiteId, hoursToFetch);
+    const checks = candidateChecks.filter((check) => {
+      const ts = new Date(check.timestamp).getTime();
+      return Number.isFinite(ts) && ts >= startMs;
     });
 
     const dailyStats = new Map();
@@ -449,7 +450,8 @@ export async function getUptimeByDay(websiteId, days = 30) {
       } else {
         stats.down++;
       }
-      stats.responseTimes.push(check.responseTime);
+      const responseTime = Number.isFinite(check.responseTime) ? check.responseTime : Number.parseFloat(check.responseTime) || 0;
+      stats.responseTimes.push(responseTime);
     }
 
     return Array.from(dailyStats.values()).map((stats) => ({
@@ -466,18 +468,18 @@ export async function getUptimeByDay(websiteId, days = 30) {
   }
 }
 
-/**
- * Calculate uptime percentage for a specific time range
- */
 export async function calculateUptimePercentage(websiteId, startDate, endDate) {
   try {
-    await ensureAdminAuth();
-    const startISO = new Date(startDate).toISOString();
-    const endISO = new Date(endDate).toISOString();
+    const startMs = new Date(startDate).getTime();
+    const endMs = new Date(endDate).getTime();
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+      return 0;
+    }
 
-    const checks = await pbAdmin.collection("uptime_checks").getFullList({
-      filter: `website.id = "${websiteId}" && timestamp >= "${startISO}" && timestamp <= "${endISO}"`,
-      $autoCancel: false,
+    const candidateChecks = await getSummaryChecks(websiteId, RETENTION_DAYS * 24);
+    const checks = candidateChecks.filter((check) => {
+      const ts = new Date(check.timestamp).getTime();
+      return Number.isFinite(ts) && ts >= startMs && ts <= endMs;
     });
 
     if (checks.length === 0) {
@@ -492,9 +494,6 @@ export async function calculateUptimePercentage(websiteId, startDate, endDate) {
   }
 }
 
-/**
- * Perform a manual uptime check
- */
 export async function manualUptimeCheck(websiteId, domain) {
   try {
     const url = domain.startsWith("http") ? domain : `https://${domain}`;

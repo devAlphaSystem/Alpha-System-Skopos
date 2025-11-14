@@ -1,6 +1,6 @@
 import { ensureAdminAuth, pbAdmin } from "./pocketbase.js";
-import { calculateMetrics } from "../utils/analytics.js";
-import logger from "./logger.js";
+import { calculateMetrics } from "./analyticsService.js";
+import logger from "../utils/logger.js";
 
 function toDateKey(value) {
   if (!value) {

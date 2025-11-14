@@ -1,7 +1,7 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { storeApiKey, listApiKeys, deleteApiKey, getApiKey } from "../services/apiKeyManager.js";
 import { listNotificationRules, createNotificationRule, updateNotificationRule, deleteNotificationRule } from "../services/notificationService.js";
-import logger from "../services/logger.js";
+import logger from "../utils/logger.js";
 import { Resend } from "resend";
 
 export async function showSettings(req, res) {

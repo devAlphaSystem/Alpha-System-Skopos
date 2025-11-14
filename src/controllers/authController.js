@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { pb, pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { initialize as initializeAppState } from "../services/appState.js";
-import logger from "../services/logger.js";
+import logger from "../utils/logger.js";
 
 dotenv.config();
 

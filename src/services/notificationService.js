@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { getApiKey } from "./apiKeyManager.js";
-import logger from "./logger.js";
+import logger from "../utils/logger.js";
 
 const EMAIL_FONT_STACK = '"Inter", "Segoe UI", Arial, sans-serif';
 

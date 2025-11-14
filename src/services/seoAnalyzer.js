@@ -1,7 +1,7 @@
 import https from "node:https";
 import http from "node:http";
 import { URL } from "node:url";
-import logger from "./logger.js";
+import logger from "../utils/logger.js";
 import { getApiKeyWithFallback } from "./apiKeyManager.js";
 
 async function fetchHtml(url) {

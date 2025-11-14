@@ -1030,6 +1030,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updateWebsiteSetting({
         disableLocalhostTracking: e.target.checked,
       });
+      showToast("Tracking Updated", `Localhost tracking ${e.target.checked ? "disabled" : "enabled"}`, "success");
     });
   }
 
@@ -1038,6 +1039,9 @@ document.addEventListener("DOMContentLoaded", () => {
       updateWebsiteSetting({
         dataRetentionDays: e.target.value,
       });
+      const days = e.target.value;
+      const message = days > 0 ? `Data retention set to ${days} days` : "Data retention set to forever";
+      showToast("Data Retention Updated", message, "success");
     });
   }
 
@@ -1055,6 +1059,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!data.success) {
           e.target.checked = !enabled;
           window.customAlert("Error", "Failed to update uptime monitoring setting.");
+        } else {
+          showToast("Uptime Monitoring", `Uptime monitoring ${enabled ? "enabled" : "disabled"}`, "success");
         }
       } catch (error) {
         e.target.checked = !enabled;
@@ -1076,6 +1082,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await response.json();
         if (!data.success) {
           window.customAlert("Error", "Failed to update check interval.");
+        } else {
+          const intervalText = interval >= 60 ? `${interval / 60} minute${interval / 60 > 1 ? "s" : ""}` : `${interval} seconds`;
+          showToast("Check Interval Updated", `Check interval set to ${intervalText}`, "success");
         }
       } catch (error) {
         window.customAlert("Error", "Failed to update check interval.");

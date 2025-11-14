@@ -171,6 +171,7 @@ Click the **Settings** button in the main sidebar to customize your dashboard ex
 
 #### Appearance
 - **Theme**: Toggle between Light and Dark mode for comfortable viewing in any environment
+- **Toast Notifications**: Enable or disable toast notifications that provide immediate feedback when you update settings. When enabled, you'll see brief notification popups confirming your changes (e.g., "Theme Updated", "Refresh Rate Updated").
 
 #### Dashboard Updates
 - **Auto-refresh**: Enable or disable automatic data updates
@@ -294,6 +295,7 @@ When viewing a specific website, click the **Website Settings** button in the he
 -   **Disable tracking on localhost:** Prevents the SDK from processing events from `localhost` or `127.0.0.1`. Useful during development.
 -   **IP Blacklist:** Manage a list of IP addresses from which events will be ignored. Add one IP per line.
 -   **Data Retention:** Set how many days to keep analytics data for this site (0 = forever, or choose 30, 60, 90, 365 days).
+-   **Uptime Monitoring:** Configure uptime monitoring settings including check intervals. The system maintains a rolling 7-day window of uptime checks for efficient storage and fast access.
 
 ## Sessions
 

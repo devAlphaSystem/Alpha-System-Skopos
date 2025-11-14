@@ -1,6 +1,6 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { analyzeSeo, calculateSeoScore } from "../services/seoAnalyzer.js";
-import logger from "../services/logger.js";
+import logger from "../utils/logger.js";
 
 function truncate(value, length = 80) {
   if (!value) return value;

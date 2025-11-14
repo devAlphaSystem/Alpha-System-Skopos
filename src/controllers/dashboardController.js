@@ -1,8 +1,8 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { subDays } from "date-fns";
-import { aggregateSummaries, getReportsFromSummaries, calculatePercentageChange, calculateActiveUsers, getMetricTrends } from "../utils/analytics.js";
+import { aggregateSummaries, getReportsFromSummaries, calculatePercentageChange, calculateActiveUsers, getMetricTrends } from "../services/analyticsService.js";
 import { calculateSeoScore } from "../services/seoAnalyzer.js";
-import logger from "../services/logger.js";
+import logger from "../utils/logger.js";
 
 async function getCommonData(userId) {
   logger.debug("Fetching common data for user: %s", userId);

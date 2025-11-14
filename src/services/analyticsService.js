@@ -1,5 +1,5 @@
 import { eachDayOfInterval, format, subDays } from "date-fns";
-import { pbAdmin } from "../services/pocketbase.js";
+import { pbAdmin } from "./pocketbase.js";
 
 function processAndSort(map, total) {
   if (total === 0) return [];

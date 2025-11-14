@@ -1,6 +1,6 @@
 # Skopos Analytics - Dashboard
 
-**Version 0.31.0**
+**Version 0.34.0**
 
 This repository contains the source code for the Skopos Dashboard, the self-hosted web interface for the Skopos open-source, privacy-first analytics platform.
 
@@ -74,8 +74,10 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 -   **Enhanced Session Analytics**: Detailed session information including optional IP address display and click-to-copy functionality.
 -   **Encrypted API Key Vault**: Securely store and manage third-party API keys with AES-256-GCM encryption, per-user isolation, and usage analytics.
 -   **Email Notifications**: Receive real-time email alerts for important events using Resend integration with customizable notification rules.
+-   **Optimized Uptime Monitoring**: Enhanced uptime monitoring with efficient 7-day summary storage, reducing database load while maintaining historical data accuracy.
 -   **Website Management**: Easily add, remove, restore, and archive your tracked websites; adding a new website keeps you on the management page.
 -   **Configurable Settings**: Customize the dashboard experience, including theme, data period, refresh rates, privacy settings, and notification preferences.
+-   **Toast Notifications**: Configurable toast notifications provide immediate feedback when settings are updated, with the ability to enable/disable in settings.
 -   **Light & Dark Mode**: Automatic theme detection and manual toggle for your preference.
 -   **Interactive Modals**: Custom confirmation dialogs and loading indicators for user actions.
 -   **Responsive Design**: Optimized for desktop, tablet, and mobile devices with smart sidebar behavior.
@@ -88,6 +90,7 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 -   **Charts & Maps**: [ApexCharts](https://apexcharts.com/) and [jsvectormap](https://github.com/themustafaomar/jsvectormap).
 -   **Real-time**: Server-Sent Events (SSE) with Node's `eventsource` module.
 -   **Scheduling**: `node-cron` for background data processing jobs.
+-   **Logging**: Winston with daily log rotation for production-ready logging.
 -   **Utilities**: `date-fns` for robust date manipulation.
 
 ## Getting Started
@@ -179,50 +182,6 @@ On your first visit, you'll be prompted to create an admin account. This is a on
 3. Submit to create your account and automatically log in
 
 **Important:** Only one user account is supported per installation. This is intentional for self-hosted, single-tenant deployments.
-
-## Project Structure
-
-```
-skopos-dashboard/
-├── server.js                 # Main application entry point
-├── nodemon.json             # Nodemon configuration for development
-├── package.json             # Dependencies and scripts
-├── pb_schema.json           # PocketBase schema definition
-├── .env                     # Environment variables (create from .env.example)
-├── client/                  # Client-side tracking scripts
-│   ├── skopos.js           # Full client script
-│   └── skopos-min.js       # Minified version
-├── docs/                    # Comprehensive documentation
-│   ├── client_side_script.md
-│   ├── dashboard_guide.md
-│   └── sdk_documentation.md
-├── public/                  # Static assets
-│   ├── css/                # Stylesheets
-│   ├── img/                # Images and icons
-│   └── js/                 # Client-side JavaScript
-│       ├── main.js         # Common utilities and shared functions
-│       └── pages/          # Page-specific JavaScript modules
-│           ├── dashboard.js      # Dashboard page logic
-│           ├── seo-analytics.js  # SEO analytics page
-│           ├── sessions.js       # Sessions list page
-│           ├── session-details.js # Session details page
-│           ├── settings.js       # Settings page
-│           └── websites.js       # Website management page
-├── src/                     # Server-side source code
-│   ├── controllers/        # Request handlers
-│   ├── routes/             # Express route definitions
-│   ├── services/           # Business logic
-│   │   ├── seoAnalyzer.js # SEO analysis engine with recommendations
-│   │   ├── apiKeyManager.js # Encrypted API key storage
-│   │   └── cron.js        # Scheduled jobs (SEO, cleanup, aggregation)
-│   └── utils/              # Utility functions
-│       ├── analytics.js   # Analytics calculation utilities
-│       ├── encryption.js  # AES-256-GCM encryption for API keys
-│       └── anonymize.js   # Visitor ID hashing
-└── views/                   # EJS templates
-    ├── partials/           # Reusable template components
-    └── *.ejs               # Page templates
-```
 
 ## Key Features Explained
 

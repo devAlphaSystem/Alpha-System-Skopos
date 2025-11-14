@@ -1,7 +1,7 @@
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { broadcast } from "./sseManager.js";
 import { triggerNotification } from "./notificationService.js";
-import logger from "./logger.js";
+import logger from "../utils/logger.js";
 
 let isSubscribed = false;
 

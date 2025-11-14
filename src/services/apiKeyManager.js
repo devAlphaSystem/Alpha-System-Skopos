@@ -1,10 +1,7 @@
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { encrypt, decrypt } from "../utils/encryption.js";
-import logger from "./logger.js";
+import logger from "../utils/logger.js";
 
-/**
- * Store an API key securely
- */
 export async function storeApiKey(userId, service, apiKey, label = "", metadata = {}) {
   try {
     await ensureAdminAuth();
@@ -44,9 +41,6 @@ export async function storeApiKey(userId, service, apiKey, label = "", metadata 
   }
 }
 
-/**
- * Retrieve and decrypt an API key
- */
 export async function getApiKey(userId, service, label = "") {
   try {
     await ensureAdminAuth();
@@ -81,9 +75,6 @@ export async function getApiKey(userId, service, label = "") {
   }
 }
 
-/**
- * List all API keys for a user (without decrypting)
- */
 export async function listApiKeys(userId) {
   try {
     await ensureAdminAuth();
@@ -110,9 +101,6 @@ export async function listApiKeys(userId) {
   }
 }
 
-/**
- * Delete an API key
- */
 export async function deleteApiKey(userId, keyId) {
   try {
     await ensureAdminAuth();
@@ -131,9 +119,6 @@ export async function deleteApiKey(userId, keyId) {
   }
 }
 
-/**
- * Get API key with fallback to environment variable
- */
 export async function getApiKeyWithFallback(userId, service, envVarName) {
   const userKey = await getApiKey(userId, service);
   if (userKey) {

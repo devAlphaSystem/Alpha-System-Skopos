@@ -14,6 +14,8 @@
       <p class="loading-modal-message" id="loading-modal-message">Please wait</p>
     </div>
   </div>
+
+  <%- include('toast') %>
   
   <script src="/js/main.js"></script>
   <% if (scripts && (scripts.includes('dashboard') || scripts.includes('uptime'))) { %>

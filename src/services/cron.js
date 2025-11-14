@@ -1,9 +1,9 @@
 import cron from "node-cron";
 import { subDays, startOfYesterday } from "date-fns";
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
-import { calculateMetrics } from "../utils/analytics.js";
+import { calculateMetrics } from "./analyticsService.js";
 import { cleanupOrphanedRecords } from "./dashSummary.js";
-import logger from "./logger.js";
+import logger from "../utils/logger.js";
 
 async function pruneOldSummaries() {
   logger.info("Running cron job: Pruning old dashboard summaries...");

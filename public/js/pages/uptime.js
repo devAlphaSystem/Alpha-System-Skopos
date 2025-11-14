@@ -563,37 +563,11 @@
     } catch (error) {
       console.error("Error resolving incident:", error);
       showToast("Error", "Failed to resolve incident", "danger");
+    } finally {
       resolveBtn.disabled = false;
       resolveBtn.innerHTML = '<i class="fa-solid fa-check"></i> Mark Resolved';
     }
   });
-
-  function showToast(title, message, type = "info") {
-    const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `
-      <div class="toast-header">
-        <strong>${title}</strong>
-        <button class="toast-close">&times;</button>
-      </div>
-      <div class="toast-body">${message}</div>
-    `;
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => toast.classList.add("show"), 10);
-
-    const closeBtn = toast.querySelector(".toast-close");
-    closeBtn?.addEventListener("click", () => {
-      toast.classList.remove("show");
-      setTimeout(() => toast.remove(), 300);
-    });
-
-    setTimeout(() => {
-      toast.classList.remove("show");
-      setTimeout(() => toast.remove(), 300);
-    }, 5000);
-  }
 
   renderUptimeTimeline();
   initResponseTimeChart();

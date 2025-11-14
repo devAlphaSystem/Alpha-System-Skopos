@@ -1,0 +1,33 @@
+<script>
+  window.showToast = function(title, message, type = "info") {
+    const settings = JSON.parse(localStorage.getItem("skopos-settings") || "{}");
+    if (settings.toastsEnabled === false) {
+      return;
+    }
+
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+      <div class="toast-header">
+        <strong>${title}</strong>
+        <button class="toast-close">&times;</button>
+      </div>
+      <div class="toast-body">${message}</div>
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => toast.classList.add("show"), 10);
+
+    const closeBtn = toast.querySelector(".toast-close");
+    closeBtn?.addEventListener("click", () => {
+      toast.classList.remove("show");
+      setTimeout(() => toast.remove(), 300);
+    });
+
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => toast.remove(), 300);
+    }, 5000);
+  };
+</script>

@@ -1,6 +1,6 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { getUptimeStats, getUptimeTimeline, getRecentIncidents, manualUptimeCheck, startMonitoring, stopMonitoring, updateMonitoringInterval } from "../services/uptimeMonitor.js";
-import logger from "../services/logger.js";
+import logger from "../utils/logger.js";
 
 async function getCommonData(userId) {
   logger.debug("Fetching common data for user: %s", userId);

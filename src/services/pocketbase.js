@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import PocketBase from "pocketbase";
-import logger from "./logger.js";
+import logger from "../utils/logger.js";
 
 dotenv.config();
 

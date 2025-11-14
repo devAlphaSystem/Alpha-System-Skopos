@@ -1,8 +1,8 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { subDays } from "date-fns";
-import { aggregateSummaries, getReportsFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData, getMetricTrends } from "../utils/analytics.js";
+import { aggregateSummaries, getReportsFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData, getMetricTrends } from "../services/analyticsService.js";
 import { addClient } from "../services/sseManager.js";
-import logger from "../services/logger.js";
+import logger from "../utils/logger.js";
 
 export function handleSseConnection(req, res) {
   logger.info("New SSE client connected from user: %s", res.locals.user?.id || "unknown");

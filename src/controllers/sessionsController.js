@@ -1,5 +1,5 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
-import logger from "../services/logger.js";
+import logger from "../utils/logger.js";
 import { initializeAdjustments, accumulateSessionAdjustments, accumulateJsErrorAdjustments, applyDashSummaryAdjustments } from "../services/dashSummary.js";
 import { getApiKey, listApiKeys } from "../services/apiKeyManager.js";
 
