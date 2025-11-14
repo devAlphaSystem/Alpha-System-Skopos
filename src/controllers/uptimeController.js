@@ -34,7 +34,7 @@ export async function showUptime(req, res) {
     const stats7d = await getUptimeStats(websiteId, 24 * 7);
     const stats30d = await getUptimeStats(websiteId, 24 * 30);
 
-    const timeline = await getUptimeTimeline(websiteId, 24);
+    const timeline = await getUptimeTimeline(websiteId, 24 * 7);
 
     const incidents = await getRecentIncidents(websiteId, 20);
 

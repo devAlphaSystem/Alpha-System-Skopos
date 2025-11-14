@@ -102,7 +102,15 @@ document.addEventListener("DOMContentLoaded", () => {
     dataPeriodSelect.addEventListener("change", (e) => {
       settings.dataPeriod = Number.parseInt(e.target.value);
       saveSettings();
-      window.dispatchEvent(new CustomEvent("settingsChanged"));
+
+      const currentPath = window.location.pathname;
+      if (currentPath.includes("/dashboard") || currentPath === "/") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("period", settings.dataPeriod);
+        window.location.href = url.toString();
+      } else {
+        window.dispatchEvent(new CustomEvent("settingsChanged"));
+      }
     });
   }
 

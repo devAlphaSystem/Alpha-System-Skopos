@@ -52,9 +52,9 @@ export async function showOverview(req, res) {
       return res.redirect("/websites");
     }
 
-    const dataPeriod = 7;
+    const dataPeriod = Number.parseInt(req.query.period) || 7;
     const resultsLimit = 10;
-    const trendDays = 7;
+    const trendDays = Math.min(dataPeriod, 7);
     const today = new Date();
 
     const currentStartDate = subDays(today, dataPeriod - 1);
@@ -122,9 +122,9 @@ export async function showDashboard(req, res) {
       return res.status(404).render("404");
     }
 
-    const dataPeriod = 7;
+    const dataPeriod = Number.parseInt(req.query.period) || 7;
     const resultsLimit = 10;
-    const trendDays = 7;
+    const trendDays = Math.min(dataPeriod, 7);
     const today = new Date();
 
     const currentStartDate = subDays(today, dataPeriod - 1);

@@ -62,6 +62,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const websiteSelector = document.getElementById("website-selector");
 
   let settings = window.__SKOPOS_SETTINGS__;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlPeriod = urlParams.get("period");
+  if (urlPeriod) {
+    const periodValue = Number.parseInt(urlPeriod);
+    if (!isNaN(periodValue) && periodValue > 0) {
+      settings.dataPeriod = periodValue;
+      try {
+        const stored = localStorage.getItem("skopos-settings");
+        const storedSettings = stored ? JSON.parse(stored) : {};
+        storedSettings.dataPeriod = periodValue;
+        localStorage.setItem("skopos-settings", JSON.stringify(storedSettings));
+      } catch (e) {
+        console.error("Failed to save period to localStorage:", e);
+      }
+    }
+  }
+
   let userCurrentIp = null;
   let refreshInterval = null;
   let worldMap = null;

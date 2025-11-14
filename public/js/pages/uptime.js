@@ -29,10 +29,10 @@
     container.innerHTML = "";
 
     const now = new Date();
-    const twentyFourHoursAgo = new Date(now - 24 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
     const timeRange = now - twentyFourHoursAgo;
 
-    const bucketSize = 5 * 60 * 1000;
+    const bucketSize = 30 * 60 * 1000;
     const buckets = new Map();
 
     for (const check of timeline) {
