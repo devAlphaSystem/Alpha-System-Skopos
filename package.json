@@ -1,11 +1,11 @@
 {
   "name": "alpha-system-skopos",
-  "version": "0.34.0",
+  "version": "0.34.1",
   "main": "server.js",
   "type": "module",
   "scripts": {
     "format": "prettier --write .",
-    "readyup": "powershell -ExecutionPolicy Bypass -File ./readyup.ps1",
+    "readyup": "node readyup.js",
     "dev": "nodemon"
   },
   "keywords": [

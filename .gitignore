@@ -1,6 +1,4 @@
 /logs
 /node_modules
 /.env
-intro.md
-todo.md
-readyup.ps1
+readyup.js

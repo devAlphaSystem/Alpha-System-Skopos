@@ -1,6 +1,7 @@
 import https from "node:https";
 import http from "node:http";
 import { URL } from "node:url";
+import { createGunzip, createInflate, createBrotliDecompress } from "node:zlib";
 import logger from "../utils/logger.js";
 import { getApiKeyWithFallback } from "./apiKeyManager.js";
 
@@ -16,18 +17,34 @@ async function fetchHtml(url) {
       method: "GET",
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+        "Accept-Encoding": "gzip, deflate, br",
       },
       timeout: 10000,
     };
 
     const req = client.request(options, (res) => {
-      let data = "";
+      let stream = res;
+      const encoding = res.headers["content-encoding"];
 
-      res.on("data", (chunk) => {
+      if (encoding === "gzip") {
+        stream = createGunzip();
+        res.pipe(stream);
+      } else if (encoding === "deflate") {
+        stream = createInflate();
+        res.pipe(stream);
+      } else if (encoding === "br") {
+        stream = createBrotliDecompress();
+        res.pipe(stream);
+      }
+
+      let data = "";
+      stream.setEncoding("utf8");
+
+      stream.on("data", (chunk) => {
         data += chunk;
       });
 
-      res.on("end", () => {
+      stream.on("end", () => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve({ html: data, statusCode: res.statusCode, headers: res.headers });
         } else if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
@@ -37,6 +54,8 @@ async function fetchHtml(url) {
           reject(new Error(`HTTP ${res.statusCode}`));
         }
       });
+
+      stream.on("error", reject);
     });
 
     req.on("error", reject);
@@ -277,12 +296,25 @@ function analyzeTechnicalSeo(html, headers, url) {
     pageSpeed: null,
     pageSpeedStrategy: null,
     compression: false,
+    compressionNote: null,
     caching: false,
   };
 
   technical.hasStructuredData = html.includes('type="application/ld+json"') || html.includes("itemscope") || html.includes("vocab=");
   technical.mobileResponsive = html.includes('name="viewport"');
-  technical.compression = headers["content-encoding"] && (headers["content-encoding"].includes("gzip") || headers["content-encoding"].includes("br"));
+
+  const contentEncoding = headers["content-encoding"];
+
+  logger.info("Compression check - content-encoding: %s", contentEncoding || "none");
+
+  if (contentEncoding && (contentEncoding.includes("gzip") || contentEncoding.includes("br") || contentEncoding.includes("deflate"))) {
+    technical.compression = true;
+    logger.info("Compression detected via content-encoding header: %s", contentEncoding);
+  } else {
+    technical.compression = false;
+    logger.info("No compression detected in response headers");
+  }
+
   technical.caching = !!(headers["cache-control"] || headers.expires);
 
   return technical;
@@ -498,11 +530,12 @@ function generateRecommendations(seoData) {
   }
 
   if (!technicalSeo?.compression) {
+    const note = technicalSeo?.compressionNote ? ` Note: ${technicalSeo.compressionNote}` : "";
     recommendations.push({
       priority: "high",
       category: "performance",
       issue: "No compression enabled",
-      description: "Enable gzip or brotli compression on your server to reduce file sizes and improve page load speed.",
+      description: `Enable gzip or brotli compression on your server to reduce file sizes and improve page load speed.${note}`,
       impact: "medium",
     });
   }

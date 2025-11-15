@@ -159,7 +159,7 @@ function processSeoDataForView(seoData) {
     {
       label: "Compression",
       ok: Boolean(technical.compression),
-      detail: technical.compression ? technical.compression.toUpperCase() : "Not enabled",
+      detail: technical.compression ? "Enabled" : "Not enabled",
       icon: "file-zipper",
       importance: "recommended",
     },
