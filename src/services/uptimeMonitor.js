@@ -9,8 +9,9 @@ import { recordUptimeSummary, getSummaryChecks, pruneUptimeSummary } from "./upt
 const activeMonitors = new Map();
 const MAX_TIMEOUT = 30000;
 const RETENTION_DAYS = 7;
+const MAX_RETRIES = 2;
 
-async function performUptimeCheck(url, timeout = 10000) {
+async function performSingleUptimeCheck(url, timeout = 10000) {
   const startTime = Date.now();
 
   return new Promise((resolve) => {
@@ -94,6 +95,39 @@ async function performUptimeCheck(url, timeout = 10000) {
       });
     }
   });
+}
+
+async function performUptimeCheck(url, timeout = 10000) {
+  let lastResult = null;
+  let attemptCount = 0;
+
+  for (let i = 0; i <= MAX_RETRIES; i++) {
+    attemptCount++;
+    lastResult = await performSingleUptimeCheck(url, timeout);
+
+    if (lastResult.isUp) {
+      if (attemptCount > 1) {
+        logger.debug("Website %s is UP after %d attempt(s)", url, attemptCount);
+      }
+      return lastResult;
+    }
+
+    if (lastResult.error === "Request timeout" && i < MAX_RETRIES) {
+      logger.debug("Timeout detected for %s, retrying... (attempt %d/%d)", url, attemptCount + 1, MAX_RETRIES + 1);
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      continue;
+    }
+
+    if (lastResult.error !== "Request timeout") {
+      break;
+    }
+  }
+
+  if (attemptCount > 1) {
+    logger.warn("Website %s is DOWN after %d attempt(s): %s", url, attemptCount, lastResult.error);
+  }
+
+  return lastResult;
 }
 
 async function saveUptimeCheck(websiteId, checkResult) {
