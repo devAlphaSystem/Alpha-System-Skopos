@@ -1145,11 +1145,11 @@ body {
 
 .list-item-key {
   font-weight: 600;
-  word-break: break-word;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: normal;
+  white-space: nowrap;
   padding-right: 1rem;
+  max-width: 400px;
 }
 
 .progress-bar-container {

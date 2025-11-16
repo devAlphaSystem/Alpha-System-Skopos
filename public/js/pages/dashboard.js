@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const urlPeriod = urlParams.get("period");
   if (urlPeriod) {
     const periodValue = Number.parseInt(urlPeriod);
-    if (!isNaN(periodValue) && periodValue > 0) {
+    if (!Number.isNaN(periodValue) && periodValue > 0) {
       settings.dataPeriod = periodValue;
       try {
         const stored = localStorage.getItem("skopos-settings");
@@ -649,9 +649,17 @@ document.addEventListener("DOMContentLoaded", () => {
       reportContainer.innerHTML = '<p class="no-data">No data available for this report.</p>';
       return;
     }
+
+    const truncateText = (text, maxLength = 35) => {
+      if (text.length <= maxLength) return text;
+      return `${text.substring(0, maxLength)}...`;
+    };
+
     let html = '<div class="report-table-header"><span>Item</span><span>Count</span></div><ul class="report-table-list">';
     for (const item of data) {
-      html += `<li><div class="list-item-info"><span class="list-item-key">${countryNames[item.key] || item.key}</span><span class="list-item-count">${item.count}</span></div><div class="progress-bar-container"><div class="progress-bar" style="width: ${item.percentage}%"></div></div></li>`;
+      const displayKey = countryNames[item.key] || item.key;
+      const truncatedKey = truncateText(displayKey);
+      html += `<li><div class="list-item-info"><span class="list-item-key" title="${displayKey}">${truncatedKey}</span><span class="list-item-count">${item.count}</span></div><div class="progress-bar-container"><div class="progress-bar" style="width: ${item.percentage}%"></div></div></li>`;
     }
     html += "</ul>";
     reportContainer.innerHTML = html;
@@ -872,7 +880,8 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const item of pageData) {
       const isClickable = isErrorLog || (isCustomEvents && item.hasData) || isCountryBreakdown;
       const rowClass = isClickable ? "clickable" : "";
-      const dataAttr = isErrorLog ? `data-stacktrace="${item.stackTrace.replace(/"/g, "&quot;")}"` : "";
+      const stackTraceText = typeof item.stackTrace === "string" && item.stackTrace.length > 0 ? item.stackTrace : "Stack trace unavailable.";
+      const dataAttr = isErrorLog ? `data-stacktrace="${stackTraceText.replace(/"/g, "&quot;")}"` : "";
       const eventNameAttr = isCustomEvents ? `data-event-name="${item.key}"` : "";
       const countryCodeAttr = isCountryBreakdown ? `data-country-code="${item.key}"` : "";
       const keyDisplay = countryNames[item.key] || item.key;
@@ -1072,7 +1081,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const uptimeCheckIntervalSelect = document.getElementById("uptime-check-interval-select");
   if (uptimeCheckIntervalSelect) {
     uptimeCheckIntervalSelect.addEventListener("change", async (e) => {
-      const interval = parseInt(e.target.value);
+      const interval = Number.parseInt(e.target.value);
       try {
         const response = await fetch(`/uptime/${WEBSITE_ID}/interval`, {
           method: "POST",

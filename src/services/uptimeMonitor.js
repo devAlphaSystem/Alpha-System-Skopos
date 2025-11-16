@@ -1,8 +1,8 @@
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { subDays } from "date-fns";
+import dns from "node:dns/promises";
+import { Agent } from "undici";
 import logger from "../utils/logger.js";
-import https from "node:https";
-import http from "node:http";
 import { triggerNotification } from "./notificationService.js";
 import { recordUptimeSummary, getSummaryChecks, pruneUptimeSummary } from "./uptimeSummary.js";
 
@@ -10,91 +10,95 @@ const activeMonitors = new Map();
 const MAX_TIMEOUT = 30000;
 const RETENTION_DAYS = 7;
 const MAX_RETRIES = 2;
+const RECOVERY_RECHECK_DELAY_MS = 15000;
+const DNS_ERROR_CODES = new Set(["ENOTFOUND", "EAI_AGAIN", "EAI_FAIL"]);
+const ipv4Agent = new Agent({
+  connect: {
+    family: 4,
+  },
+});
+
+function isDnsError(error) {
+  const code = error?.code || error?.cause?.code;
+  return code ? DNS_ERROR_CODES.has(code) : false;
+}
+
+async function fetchWithIPv4(url, signal, extraHeaders = {}) {
+  return fetch(url, {
+    method: "GET",
+    headers: {
+      "User-Agent": "Skopos-Uptime-Monitor/1.0",
+      ...extraHeaders,
+    },
+    signal,
+    redirect: "follow",
+    dispatcher: ipv4Agent,
+  });
+}
+
+async function fetchViaResolvedIp(url, signal) {
+  const urlObj = new URL(url);
+  const { address } = await dns.lookup(urlObj.hostname, { family: 4 });
+  const ipUrl = `${urlObj.protocol}//${address}${urlObj.pathname}${urlObj.search}`;
+  const response = await fetchWithIPv4(ipUrl, signal, { Host: urlObj.hostname });
+  return { response, resolvedIp: address };
+}
 
 async function performSingleUptimeCheck(url, timeout = 10000) {
   const startTime = Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), Math.min(timeout, MAX_TIMEOUT));
 
-  return new Promise((resolve) => {
+  try {
+    let response;
     try {
-      const urlObj = new URL(url);
-      const protocol = urlObj.protocol === "https:" ? https : http;
-
-      const options = {
-        hostname: urlObj.hostname,
-        port: urlObj.port,
-        path: urlObj.pathname + urlObj.search,
-        method: "GET",
-        timeout: Math.min(timeout, MAX_TIMEOUT),
-        headers: {
-          "User-Agent": "Skopos-Uptime-Monitor/1.0",
-        },
-      };
-
-      const req = protocol.request(options, (res) => {
-        const responseTime = Date.now() - startTime;
-        const chunks = [];
-
-        res.on("data", (chunk) => {
-          chunks.push(chunk);
-        });
-
-        res.on("end", () => {
-          const body = Buffer.concat(chunks).toString();
-          const isUp = res.statusCode >= 200 && res.statusCode < 400;
-
-          resolve({
-            isUp,
-            statusCode: res.statusCode,
-            responseTime,
-            timestamp: new Date().toISOString(),
-            error: null,
-            ssl: urlObj.protocol === "https:",
-            contentLength: body.length,
-          });
-        });
-      });
-
-      req.on("error", (error) => {
-        const responseTime = Date.now() - startTime;
-        resolve({
-          isUp: false,
-          statusCode: 0,
-          responseTime,
-          timestamp: new Date().toISOString(),
-          error: error.message,
-          ssl: false,
-          contentLength: 0,
-        });
-      });
-
-      req.on("timeout", () => {
-        req.destroy();
-        const responseTime = Date.now() - startTime;
-        resolve({
-          isUp: false,
-          statusCode: 0,
-          responseTime,
-          timestamp: new Date().toISOString(),
-          error: "Request timeout",
-          ssl: false,
-          contentLength: 0,
-        });
-      });
-
-      req.end();
-    } catch (error) {
-      const responseTime = Date.now() - startTime;
-      resolve({
-        isUp: false,
-        statusCode: 0,
-        responseTime,
-        timestamp: new Date().toISOString(),
-        error: error.message,
-        ssl: false,
-        contentLength: 0,
-      });
+      response = await fetchWithIPv4(url, controller.signal);
+    } catch (initialError) {
+      if (isDnsError(initialError)) {
+        logger.warn("DNS lookup failed for %s (%s). Attempting resolved IP fallback.", url, initialError.code || initialError.message);
+        const fallback = await fetchViaResolvedIp(url, controller.signal);
+        response = fallback.response;
+        logger.debug("Resolved %s to %s for uptime check", url, fallback.resolvedIp);
+      } else {
+        throw initialError;
+      }
     }
-  });
+
+    const responseTime = Date.now() - startTime;
+    const body = await response.text();
+    const isUp = response.status >= 200 && response.status < 400;
+
+    return {
+      isUp,
+      statusCode: response.status,
+      responseTime,
+      timestamp: new Date().toISOString(),
+      error: null,
+      ssl: url.startsWith("https:"),
+      contentLength: body.length,
+    };
+  } catch (error) {
+    const responseTime = Date.now() - startTime;
+
+    let errorMessage = error.message;
+    if (error.name === "AbortError") {
+      errorMessage = "Request timeout";
+    }
+
+    logger.error("Uptime check failed for %s - %s (Type: %s, Code: %s)", url, errorMessage, error.name, error.code);
+
+    return {
+      isUp: false,
+      statusCode: 0,
+      responseTime,
+      timestamp: new Date().toISOString(),
+      error: errorMessage,
+      ssl: false,
+      contentLength: 0,
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function performUptimeCheck(url, timeout = 10000) {
@@ -120,6 +124,17 @@ async function performUptimeCheck(url, timeout = 10000) {
 
     if (lastResult.error !== "Request timeout") {
       break;
+    }
+  }
+
+  if (url.startsWith("http://")) {
+    const httpsUrl = url.replace("http://", "https://");
+    logger.debug("HTTP failed for %s, trying HTTPS fallback: %s", url, httpsUrl);
+
+    const httpsResult = await performSingleUptimeCheck(httpsUrl, timeout);
+    if (httpsResult.isUp) {
+      logger.info("HTTPS fallback succeeded for %s", url);
+      return httpsResult;
     }
   }
 
@@ -211,6 +226,35 @@ async function cleanupOldUptimeIncidents(websiteId) {
   }
 }
 
+function clearRecoveryRetry(websiteId) {
+  const monitor = activeMonitors.get(websiteId);
+  if (monitor?.recoveryTimeoutId) {
+    clearTimeout(monitor.recoveryTimeoutId);
+    monitor.recoveryTimeoutId = null;
+    logger.debug("Cleared recovery re-check for website %s", websiteId);
+  }
+}
+
+function scheduleRecoveryRetry(websiteId) {
+  const monitor = activeMonitors.get(websiteId);
+  if (!monitor) {
+    return;
+  }
+  if (monitor.recoveryTimeoutId) {
+    return;
+  }
+
+  monitor.recoveryTimeoutId = setTimeout(() => {
+    monitor.recoveryTimeoutId = null;
+    monitorWebsite(websiteId, monitor.domain, monitor.checkInterval, true).catch((error) => {
+      logger.error("Error during recovery re-check for website %s: %o", websiteId, error);
+      scheduleRecoveryRetry(websiteId);
+    });
+  }, RECOVERY_RECHECK_DELAY_MS);
+
+  logger.debug("Scheduled recovery re-check for website %s in %dms", websiteId, RECOVERY_RECHECK_DELAY_MS);
+}
+
 async function handleStatusChange(websiteId, previousStatus, currentStatus, checkResult) {
   try {
     await ensureAdminAuth();
@@ -283,7 +327,7 @@ async function handleStatusChange(websiteId, previousStatus, currentStatus, chec
   }
 }
 
-async function monitorWebsite(websiteId, domain, checkInterval) {
+async function monitorWebsite(websiteId, domain, checkInterval, triggeredByRecovery = false) {
   try {
     const url = domain.startsWith("http") ? domain : `https://${domain}`;
     const checkResult = await performUptimeCheck(url, 10000);
@@ -294,8 +338,17 @@ async function monitorWebsite(websiteId, domain, checkInterval) {
 
     await saveUptimeCheck(websiteId, checkResult);
     await handleStatusChange(websiteId, previousStatus, checkResult.isUp ? "up" : "down", checkResult);
+
+    if (checkResult.isUp) {
+      clearRecoveryRetry(websiteId);
+    } else {
+      scheduleRecoveryRetry(websiteId);
+    }
   } catch (error) {
     logger.error("Error monitoring website %s: %o", websiteId, error);
+    if (triggeredByRecovery) {
+      scheduleRecoveryRetry(websiteId);
+    }
   }
 }
 
@@ -306,24 +359,28 @@ export function startMonitoring(websiteId, domain, checkInterval = 60000) {
   }
 
   logger.info("Starting uptime monitor for website %s with interval %d ms", websiteId, checkInterval);
+  const monitorState = {
+    intervalId: null,
+    domain,
+    checkInterval,
+    recoveryTimeoutId: null,
+  };
+  activeMonitors.set(websiteId, monitorState);
 
   monitorWebsite(websiteId, domain, checkInterval);
 
-  const intervalId = setInterval(() => {
+  monitorState.intervalId = setInterval(() => {
     monitorWebsite(websiteId, domain, checkInterval);
   }, checkInterval);
-
-  activeMonitors.set(websiteId, {
-    intervalId,
-    domain,
-    checkInterval,
-  });
 }
 
 export function stopMonitoring(websiteId) {
   const monitor = activeMonitors.get(websiteId);
   if (monitor) {
     clearInterval(monitor.intervalId);
+    if (monitor.recoveryTimeoutId) {
+      clearTimeout(monitor.recoveryTimeoutId);
+    }
     activeMonitors.delete(websiteId);
     logger.info("Stopped uptime monitor for website %s", websiteId);
   }

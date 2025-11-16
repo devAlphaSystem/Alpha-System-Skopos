@@ -229,23 +229,30 @@ export function accumulateSessionAdjustments(adjustments, session, events, jsErr
 
 export function accumulateJsErrorAdjustments(adjustments, jsErrors) {
   for (const errorRecord of jsErrors || []) {
-    const dateKey = toDateKey(errorRecord.created || errorRecord.lastSeen);
-    if (!dateKey) {
-      logger.warn("JS error with invalid timestamp found, skipping adjustment. Error ID: %s", errorRecord.id || "unknown");
-      continue;
-    }
-    const adjustment = ensureAdjustment(adjustments, dateKey);
-    if (!adjustment) {
-      logger.error("Failed to ensure adjustment for JS error dateKey: %s", dateKey);
-      continue;
-    }
     const count = typeof errorRecord.count === "number" && !Number.isNaN(errorRecord.count) ? errorRecord.count : 1;
     if (count === 0) {
       continue;
     }
+
+    const createdDateKey = toDateKey(errorRecord.created);
+    const lastSeenDateKey = toDateKey(errorRecord.lastSeen);
+
+    if (!createdDateKey && !lastSeenDateKey) {
+      logger.warn("JS error with invalid timestamps found, skipping adjustment. Error ID: %s", errorRecord.id || "unknown");
+      continue;
+    }
+
+    const primaryDateKey = createdDateKey || lastSeenDateKey;
+    const adjustment = ensureAdjustment(adjustments, primaryDateKey);
+    if (!adjustment) {
+      logger.error("Failed to ensure adjustment for JS error dateKey: %s", primaryDateKey);
+      continue;
+    }
+
     adjustment.jsErrors -= count;
     if (errorRecord.errorMessage) {
       recordMapDelta(adjustment.topJsErrors, errorRecord.errorMessage, -count);
+      logger.debug("Adjusted topJsErrors for date %s: '%s' (delta: -%d)", primaryDateKey, errorRecord.errorMessage, count);
     }
   }
 }
@@ -361,6 +368,10 @@ export async function applyDashSummaryAdjustments(websiteId, adjustments) {
     summary.stateBreakdown = applyListAdjustments(summary.stateBreakdown, adjustment.stateBreakdown);
     summary.topCustomEvents = applyListAdjustments(summary.topCustomEvents, adjustment.topCustomEvents);
     summary.topJsErrors = applyListAdjustments(summary.topJsErrors, adjustment.topJsErrors);
+
+    if (adjustment.topJsErrors && adjustment.topJsErrors.size > 0) {
+      logger.debug("Applied topJsErrors adjustments for %s: %d items adjusted", dateKey, adjustment.topJsErrors.size);
+    }
 
     try {
       const metrics = await recalculateDerivedMetrics(websiteId, dateKey);

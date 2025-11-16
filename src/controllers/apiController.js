@@ -209,9 +209,15 @@ export async function getDetailedReport(req, res) {
     }
 
     if (reportType === "topJsErrors") {
+      const dataPeriod = Number.parseInt(req.query.period) || 7;
+      const today = new Date();
+      const startDate = subDays(today, dataPeriod - 1);
+      const startDateISO = startDate.toISOString();
+
       const allErrors = await pbAdmin.collection("js_errors").getFullList({
-        filter: `website.id = "${websiteId}"`,
+        filter: `website.id = "${websiteId}" && lastSeen >= "${startDateISO}"`,
         sort: "-count",
+        $autoCancel: false,
       });
       const totalErrors = allErrors.reduce((sum, item) => sum + item.count, 0);
       const reportData = allErrors.map((item) => ({
@@ -220,8 +226,19 @@ export async function getDetailedReport(req, res) {
         percentage: totalErrors > 0 ? Math.round((item.count / totalErrors) * 100) : 0,
         stackTrace: item.stackTrace,
       }));
-      logger.debug("Found %d unique JS errors for report.", reportData.length);
-      return res.status(200).json({ data: reportData });
+
+      if (reportData.length > 0) {
+        logger.debug("Found %d unique JS errors for report (period: %d days).", reportData.length, dataPeriod);
+        return res.status(200).json({ data: reportData });
+      }
+
+      const summaries = await fetchSummaries(websiteId, startDate, today);
+      const fallbackData = getAllData(summaries, "topJsErrors").map((item) => ({
+        ...item,
+        stackTrace: null,
+      }));
+      logger.debug("No JS error records found in js_errors; falling back to summaries with %d items (period: %d days).", fallbackData.length, dataPeriod);
+      return res.status(200).json({ data: fallbackData });
     }
 
     if (reportType === "topCustomEvents") {
