@@ -331,3 +331,53 @@ export async function testResendApi(req, res) {
     });
   }
 }
+
+export async function deleteCollectionData(req, res) {
+  try {
+    const { collections } = req.body;
+
+    if (!Array.isArray(collections) || collections.length === 0) {
+      return res.status(400).json({ error: "No collections specified" });
+    }
+
+    const allowedCollections = ["api_keys", "dash_sum", "events", "js_errors", "notyf_rules", "seo_data", "sessions", "uptime_checks", "uptime_incidents", "uptime_sum", "visitors", "websites"];
+
+    const validCollections = collections.filter((c) => allowedCollections.includes(c));
+
+    if (validCollections.length === 0) {
+      return res.status(400).json({ error: "No valid collections specified" });
+    }
+
+    await ensureAdminAuth();
+
+    const deletedCollections = [];
+    const failedCollections = [];
+
+    for (const collectionName of validCollections) {
+      try {
+        await pbAdmin.collections.truncate(collectionName);
+        deletedCollections.push(collectionName);
+        logger.info("Truncated collection %s", collectionName);
+      } catch (error) {
+        failedCollections.push(collectionName);
+        logger.error("Error truncating collection %s: %o", collectionName, error);
+      }
+    }
+
+    logger.info("Successfully truncated %d collections", deletedCollections.length);
+
+    if (failedCollections.length > 0) {
+      logger.warn("Failed to truncate %d collections: %s", failedCollections.length, failedCollections.join(", "));
+    }
+
+    res.json({
+      success: true,
+      deleted: deletedCollections.length,
+      collections: deletedCollections,
+      failed: failedCollections.length > 0 ? failedCollections : undefined,
+    });
+  } catch (error) {
+    logger.error("Error deleting collection data: %o", error);
+    res.status(500).json({ error: "Failed to delete collection data" });
+  }
+}

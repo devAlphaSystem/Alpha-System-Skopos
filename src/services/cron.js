@@ -3,6 +3,7 @@ import { subDays, startOfYesterday } from "date-fns";
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { calculateMetrics } from "./analyticsService.js";
 import { cleanupOrphanedRecords } from "./dashSummary.js";
+import { triggerNotification } from "./notificationService.js";
 import logger from "../utils/logger.js";
 
 async function pruneOldSummaries() {
@@ -182,24 +183,254 @@ async function cleanupOrphanedData() {
   }
 }
 
+async function sendDailySummaryReports() {
+  logger.info("Running cron job: Sending daily summary reports...");
+  try {
+    await ensureAdminAuth();
+
+    const rules = await pbAdmin.collection("notyf_rules").getFullList({
+      filter: `eventType = "daily_summary" && isActive = true`,
+      expand: "website,user",
+    });
+
+    if (rules.length === 0) {
+      logger.debug("No active daily summary notification rules found.");
+      return;
+    }
+
+    logger.debug("Found %d active daily summary notification rules.", rules.length);
+
+    const yesterday = startOfYesterday();
+    const yesterdayDate = yesterday.toISOString().slice(0, 10);
+
+    for (const rule of rules) {
+      try {
+        const websiteId = rule.website;
+        const userId = rule.user;
+
+        if (!websiteId || !userId) {
+          logger.warn("Skipping rule %s: missing website or user", rule.id);
+          continue;
+        }
+
+        const website = rule.expand?.website || (await pbAdmin.collection("websites").getOne(websiteId));
+
+        let summary;
+        try {
+          const summaryRecord = await pbAdmin.collection("dash_sum").getFirstListItem(`website.id="${websiteId}" && date ~ "${yesterdayDate}%"`);
+          summary = summaryRecord.summary || {};
+        } catch (error) {
+          if (error.status === 404) {
+            logger.debug("No summary found for website %s on %s, using empty metrics", websiteId, yesterdayDate);
+            summary = {
+              pageViews: 0,
+              visitors: 0,
+              newVisitors: 0,
+              sessions: 0,
+            };
+          } else {
+            throw error;
+          }
+        }
+
+        const eventData = {
+          websiteName: website.name,
+          pageViews: summary.pageViews || 0,
+          uniqueVisitors: summary.visitors || 0,
+          newVisitors: summary.newVisitors || 0,
+          sessions: summary.engagedSessions || 0,
+        };
+
+        await triggerNotification(userId, websiteId, "daily_summary", eventData);
+
+        logger.info("Daily summary sent for website %s to %s", website.name, rule.recipientEmail);
+      } catch (error) {
+        logger.error("Error sending daily summary for rule %s: %o", rule.id, error);
+      }
+    }
+
+    logger.info("Finished sending daily summary reports.");
+  } catch (error) {
+    logger.error("Error during daily summary reports cron job: %o", error);
+  }
+}
+
+async function checkErrorThresholds() {
+  logger.info("Running cron job: Checking error thresholds...");
+  try {
+    await ensureAdminAuth();
+
+    const rules = await pbAdmin.collection("notyf_rules").getFullList({
+      filter: `eventType = "error_threshold" && isActive = true`,
+      expand: "website,user",
+    });
+
+    if (rules.length === 0) {
+      logger.debug("No active error threshold notification rules found.");
+      return;
+    }
+
+    logger.debug("Found %d active error threshold notification rules.", rules.length);
+
+    const oneDayAgo = subDays(new Date(), 1).toISOString();
+
+    for (const rule of rules) {
+      try {
+        const websiteId = rule.website;
+        const userId = rule.user;
+
+        if (!websiteId || !userId) {
+          logger.warn("Skipping rule %s: missing website or user", rule.id);
+          continue;
+        }
+
+        const threshold = rule.metadata?.threshold || 10;
+        const timeWindow = rule.metadata?.timeWindowHours || 24;
+        const cutoffDate = subDays(new Date(), timeWindow / 24).toISOString();
+
+        const website = rule.expand?.website || (await pbAdmin.collection("websites").getOne(websiteId));
+
+        const jsErrors = await pbAdmin.collection("js_errors").getFullList({
+          filter: `website.id = "${websiteId}" && lastSeen >= "${cutoffDate}"`,
+          sort: "-count",
+          $autoCancel: false,
+        });
+
+        const totalErrorCount = jsErrors.reduce((sum, error) => sum + error.count, 0);
+
+        if (totalErrorCount >= threshold) {
+          const topError = jsErrors.length > 0 ? jsErrors[0].errorMessage : "N/A";
+
+          const eventData = {
+            websiteName: website.name,
+            errorCount: totalErrorCount,
+            threshold: threshold,
+            topError: topError,
+            uniqueErrors: jsErrors.length,
+          };
+
+          await triggerNotification(userId, websiteId, "error_threshold", eventData);
+
+          logger.info("Error threshold exceeded for website %s: %d errors (threshold: %d)", website.name, totalErrorCount, threshold);
+        } else {
+          logger.debug("Error threshold not exceeded for website %s: %d errors (threshold: %d)", website.name, totalErrorCount, threshold);
+        }
+      } catch (error) {
+        logger.error("Error checking error threshold for rule %s: %o", rule.id, error);
+      }
+    }
+
+    logger.info("Finished checking error thresholds.");
+  } catch (error) {
+    logger.error("Error during error threshold check cron job: %o", error);
+  }
+}
+
+async function checkTrafficSpikes() {
+  logger.info("Running cron job: Checking for traffic spikes...");
+  try {
+    await ensureAdminAuth();
+
+    const rules = await pbAdmin.collection("notyf_rules").getFullList({
+      filter: `eventType = "traffic_spike" && isActive = true`,
+      expand: "website,user",
+    });
+
+    if (rules.length === 0) {
+      logger.debug("No active traffic spike notification rules found.");
+      return;
+    }
+
+    logger.debug("Found %d active traffic spike notification rules.", rules.length);
+
+    for (const rule of rules) {
+      try {
+        const websiteId = rule.website;
+        const userId = rule.user;
+
+        if (!websiteId || !userId) {
+          logger.warn("Skipping rule %s: missing website or user", rule.id);
+          continue;
+        }
+
+        const spikeThreshold = rule.metadata?.spikeThreshold || 200;
+
+        const website = rule.expand?.website || (await pbAdmin.collection("websites").getOne(websiteId));
+
+        const thirtyMinutesAgo = subDays(new Date(), 30 / (24 * 60)).toISOString();
+        const currentSessions = await pbAdmin.collection("sessions").getFullList({
+          filter: `website.id = "${websiteId}" && updated >= "${thirtyMinutesAgo}"`,
+          fields: "id",
+          $autoCancel: false,
+        });
+
+        const currentVisitors = currentSessions.length;
+
+        const sevenDaysAgo = subDays(new Date(), 7);
+        const yesterday = subDays(new Date(), 1);
+        const summaries = await pbAdmin.collection("dash_sum").getFullList({
+          filter: `website.id = "${websiteId}" && date >= "${sevenDaysAgo.toISOString().slice(0, 10)}" && date <= "${yesterday.toISOString().slice(0, 10)}"`,
+          $autoCancel: false,
+        });
+
+        if (summaries.length === 0) {
+          logger.debug("No historical data for website %s, skipping traffic spike check", website.name);
+          continue;
+        }
+
+        const totalVisitors = summaries.reduce((sum, s) => sum + (s.summary?.visitors || 0), 0);
+        const averageVisitors = Math.ceil(totalVisitors / summaries.length);
+
+        const averageVisitorsPerWindow = Math.max(1, Math.ceil(averageVisitors / 48));
+
+        const increasePercentage = averageVisitorsPerWindow > 0 ? Math.round(((currentVisitors - averageVisitorsPerWindow) / averageVisitorsPerWindow) * 100) : 0;
+
+        if (currentVisitors > averageVisitorsPerWindow && increasePercentage >= spikeThreshold) {
+          const eventData = {
+            websiteName: website.name,
+            currentVisitors: currentVisitors,
+            averageVisitors: averageVisitorsPerWindow,
+            increase: increasePercentage,
+          };
+
+          await triggerNotification(userId, websiteId, "traffic_spike", eventData);
+
+          logger.info("Traffic spike detected for website %s: %d visitors (avg: %d, +%d%%)", website.name, currentVisitors, averageVisitorsPerWindow, increasePercentage);
+        } else {
+          logger.debug("No traffic spike for website %s: %d visitors (avg: %d, +%d%%)", website.name, currentVisitors, averageVisitorsPerWindow, increasePercentage);
+        }
+      } catch (error) {
+        logger.error("Error checking traffic spike for rule %s: %o", rule.id, error);
+      }
+    }
+
+    logger.info("Finished checking for traffic spikes.");
+  } catch (error) {
+    logger.error("Error during traffic spike check cron job: %o", error);
+  }
+}
+
 export function startCronJobs() {
-  cron.schedule("0 0 * * *", pruneOldSummaries, {
+  cron.schedule(
+    "0 0 * * *",
+    async () => {
+      await finalizeDailySummaries();
+      await enforceDataRetention();
+      await pruneOldSessions();
+      await pruneOldSummaries();
+      await cleanupOrphanedData();
+      await sendDailySummaryReports();
+    },
+    {
+      timezone: "UTC",
+    },
+  );
+
+  cron.schedule("0 * * * *", checkErrorThresholds, {
     timezone: "UTC",
   });
 
-  cron.schedule("0 1 * * *", enforceDataRetention, {
-    timezone: "UTC",
-  });
-
-  cron.schedule("5 0 * * *", finalizeDailySummaries, {
-    timezone: "UTC",
-  });
-
-  cron.schedule("0 2 * * *", pruneOldSessions, {
-    timezone: "UTC",
-  });
-
-  cron.schedule("30 2 * * *", cleanupOrphanedData, {
+  cron.schedule("*/15 * * * *", checkTrafficSpikes, {
     timezone: "UTC",
   });
 

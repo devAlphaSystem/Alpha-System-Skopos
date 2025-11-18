@@ -225,6 +225,10 @@
               <span>Notifications</span>
             </button>
           <% } %>
+          <button class="tab-button" data-tab="database">
+            <i class="fa-solid fa-database"></i>
+            <span>Database</span>
+          </button>
         </div>
 
         <div class="tabs-body">
@@ -562,6 +566,35 @@
               </div>
             </div>
           </section>
+
+          <section class="tab-panel" id="database-panel">
+            <div class="settings-group">
+              <div class="db-management-header">
+                <div>
+                  <h3>Database Management</h3>
+                  <p class="db-management-subtitle">
+                    Manage and prune database records. Use with caution - deleted data cannot be recovered.
+                  </p>
+                </div>
+                <button class="btn btn-danger" onclick="showDataManagementDrawer()">
+                  <i class="fa-solid fa-database"></i> Manage Data
+                </button>
+              </div>
+
+              <div class="db-warning-card" style="margin-bottom: 1rem;">
+                <div class="db-warning-content">
+                  <i class="fa-solid fa-triangle-exclamation"></i>
+                  <div>
+                    <h4>Warning: Irreversible Action</h4>
+                    <p>
+                      Deleting records from the database is permanent. Make sure you understand the consequences before proceeding. 
+                      This action will remove all data from the selected collections and cannot be undone.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </main>
@@ -660,6 +693,252 @@
         </div>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="data-management-overlay"></div>
+
+<div class="drawer" id="data-management-drawer">
+  <div class="drawer-header">
+    <h2>Prune Database Records</h2>
+    <button class="drawer-close" id="data-management-close"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+  <div class="drawer-content">
+    <div class="db-drawer-container">
+      <div class="db-danger-alert">
+        <i class="fa-solid fa-exclamation-triangle"></i>
+        <div class="db-danger-alert-content">
+          <strong>Permanent Data Deletion</strong>
+          <span>Selected collections will have <strong>all records permanently deleted</strong>. This cannot be undone.</span>
+        </div>
+      </div>
+
+      <div class="db-action-buttons">
+        <button class="btn btn-secondary" onclick="selectAllCollections()">
+          <i class="fa-solid fa-check-double"></i> Select All
+        </button>
+        <button class="btn btn-secondary" onclick="resetCollectionSelection()">
+          <i class="fa-solid fa-rotate-left"></i> Reset
+        </button>
+      </div>
+
+      <div class="db-collections-grid">
+        <div class="db-collection-card" data-collection="api_keys">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="api_keys">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <i class="fa-solid fa-key"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>API Keys</h4>
+                <p>Third-party service credentials</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+        <div class="db-collection-card" data-collection="dash_sum">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="dash_sum">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <i class="fa-solid fa-chart-simple"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>Dashboard Summaries</h4>
+                <p>Historical analytics snapshots</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+        <div class="db-collection-card" data-collection="events">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="events">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <i class="fa-solid fa-calendar-check"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>Events</h4>
+                <p>User interactions and page views</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+        <div class="db-collection-card" data-collection="js_errors">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="js_errors">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                <i class="fa-solid fa-bug"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>JavaScript Errors</h4>
+                <p>Client-side error logs</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+        <div class="db-collection-card" data-collection="notyf_rules">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="notyf_rules">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                <i class="fa-solid fa-bell"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>Notification Rules</h4>
+                <p>Email alert configurations</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+
+        <div class="db-collection-card" data-collection="seo_data">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="seo_data">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);">
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>SEO Data</h4>
+                <p>Search engine optimization metrics</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+        <div class="db-collection-card" data-collection="sessions">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="sessions">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);">
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>Sessions</h4>
+                <p>User session tracking data</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+        <div class="db-collection-card" data-collection="uptime_checks">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="uptime_checks">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);">
+                <i class="fa-solid fa-heart-pulse"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>Uptime Checks</h4>
+                <p>Website availability monitoring</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+        <div class="db-collection-card" data-collection="uptime_incidents">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="uptime_incidents">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #fad0c4 0%, #ffd1ff 100%);">
+                <i class="fa-solid fa-circle-exclamation"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>Uptime Incidents</h4>
+                <p>Downtime event records</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+        <div class="db-collection-card" data-collection="uptime_sum">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="uptime_sum">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%);">
+                <i class="fa-solid fa-chart-line"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>Uptime Summaries</h4>
+                <p>Aggregated uptime statistics</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+        <div class="db-collection-card" data-collection="visitors">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="visitors">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);">
+                <i class="fa-solid fa-user"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>Visitors</h4>
+                <p>Unique visitor identification data</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+        <div class="db-collection-card" data-collection="websites">
+          <label class="db-collection-label">
+            <input type="checkbox" class="collection-checkbox" data-collection="websites">
+            <div class="db-collection-content">
+              <div class="db-collection-icon" style="background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%);">
+                <i class="fa-solid fa-globe"></i>
+              </div>
+              <div class="db-collection-info">
+                <h4>Websites</h4>
+                <p>Registered website configurations</p>
+              </div>
+            </div>
+            <div class="db-collection-check">
+              <i class="fa-solid fa-circle-check"></i>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="db-drawer-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeDataManagementDrawer()">
+          <i class="fa-solid fa-xmark"></i> Cancel
+        </button>
+        <button type="button" class="btn btn-danger" onclick="deleteSelectedCollections()">
+          <i class="fa-solid fa-trash"></i> Delete Selected Data
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
