@@ -175,6 +175,32 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const discardShortSessionsToggle = document.getElementById("discard-short-sessions-toggle");
+  if (discardShortSessionsToggle) {
+    discardShortSessionsToggle.addEventListener("change", async (e) => {
+      const isEnabled = e.target.checked;
+
+      try {
+        const response = await fetch("/settings/app", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ discardShortSessions: isEnabled }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update setting");
+        }
+        showToast("Short Session Filtering Updated", `Sessions under 1 second will ${isEnabled ? "be discarded" : "be stored"}`, "success");
+      } catch (error) {
+        console.error("Error updating short session filtering setting:", error);
+        e.target.checked = !isEnabled;
+        window.customAlert("Error", "Failed to update short session filtering setting. Please try again.");
+      }
+    });
+  }
+
   applySettingsToUI();
 
   loadNotificationRules();

@@ -3,8 +3,14 @@ import { ensureAdminAuth, pbAdmin } from "./pocketbase.js";
 import logger from "../utils/logger.js";
 
 const SUMMARY_COLLECTION = "uptime_sum";
-const RETENTION_DAYS = 7;
-const RETENTION_MS = RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
+function getRetentionDays() {
+  return Number.parseInt(process.env.DATA_RETENTION_DAYS || "180", 10);
+}
+
+function getRetentionMs() {
+  return getRetentionDays() * 24 * 60 * 60 * 1000;
+}
 
 function sanitizeTimestamp(value) {
   if (!value) {
@@ -32,7 +38,7 @@ function normalizeCheckPayload(payload) {
 }
 
 function pruneChecks(checks) {
-  const cutoffMs = Date.now() - RETENTION_MS;
+  const cutoffMs = Date.now() - getRetentionMs();
   return (checks || []).filter((check) => {
     if (!check?.timestamp) {
       return false;
@@ -58,7 +64,7 @@ function ensureSummaryShape(summary) {
 }
 
 async function buildSummaryFromExistingChecks(websiteId) {
-  const cutoffISO = subDays(new Date(), RETENTION_DAYS).toISOString();
+  const cutoffISO = subDays(new Date(), getRetentionDays()).toISOString();
   const rawChecks = await pbAdmin.collection("uptime_checks").getFullList({
     filter: `website.id = "${websiteId}" && timestamp >= "${cutoffISO}"`,
     sort: "timestamp",

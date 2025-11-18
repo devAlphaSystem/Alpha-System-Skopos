@@ -140,10 +140,10 @@ Enter one IP address per line in the format `192.168.1.100`. Both IPv4 and IPv6 
 
 #### Data Retention
 Set how many days to keep analytics data for this website:
-- **0**: Keep data forever (default)
+- **0**: Keep data forever (subject to global system retention limits)
 - **30, 60, 90, 365**: Automatically delete data older than the specified number of days
 
-**Note:** Data retention is enforced by automatic cleanup jobs that run periodically. Deleted data cannot be recovered.
+**Note:** Data retention is enforced by automatic cleanup jobs that run periodically. Deleted data cannot be recovered. The system administrator may also configure a global maximum retention period (default 180 days) via environment variables, which overrides the "Forever" setting.
 
 ### Archiving and Deleting Websites
 
@@ -188,6 +188,17 @@ Click the **Settings** button in the main sidebar to customize your dashboard ex
 - **Results Limit**: Control how many items appear on dashboard report cards (5, 10, 15, 20, 25, 50)
 
 **Note:** Time frame and results limit settings apply to all websites. The active users counter always shows the last 5 minutes regardless of the selected time frame.
+
+#### Privacy & Data Collection
+- **Store Raw IP Addresses**: Choose whether to store full IP addresses or only hashed visitor IDs
+  - **Disabled (Default)**: Only anonymous hashed IDs are stored, maximizing privacy
+  - **Enabled**: Store complete IP addresses for security analysis, fraud detection, or debugging
+  - **Privacy Note**: IP addresses are considered personal data under GDPR. Enable only if you have a legitimate business need.
+- **Discard Short Sessions**: Automatically filter out sessions under 1 second
+  - **Disabled (Default)**: All sessions are stored regardless of duration
+  - **Enabled**: Sessions lasting less than 1 second are discarded before being stored
+  - **Use Cases**: Reduces noise from bot traffic, accidental page loads, and improves data quality
+  - **Impact**: Results in cleaner analytics focused on genuine user engagement
 
 #### API Keys
 - **Per-User Storage**: Keys are private to the currently signed-in user and can be rotated or removed at any time.

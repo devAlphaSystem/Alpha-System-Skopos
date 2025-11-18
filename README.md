@@ -1,6 +1,6 @@
 # Skopos Analytics - Dashboard
 
-**Version 0.34.0**
+**Version 0.36.0**
 
 This repository contains the source code for the Skopos Dashboard, the self-hosted web interface for the Skopos open-source, privacy-first analytics platform.
 
@@ -69,12 +69,14 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 -   **State-Level Geo Insights**: Drill into a country's visitors to see top states and provinces directly from the dashboard reports.
 -   **Secure API Key Vault**: Store third-party API keys per user with AES-256 encryption and fine-grained usage tracking.
 -   **Privacy-First IP Management**: Optional raw IP address storage with GDPR-compliant defaults (hashed IDs only).
+-   **Short Session Filtering**: Automatically discard sessions under 1 second to reduce noise and improve data quality.
 -   **Chapybara IP Intelligence**: Advanced IP analysis with threat detection, proxy/VPN identification, and geolocation enrichment (requires API key).
 -   **SDK Version Tracking**: Monitor connected SDK versions for each website directly from the dashboard.
 -   **Enhanced Session Analytics**: Detailed session information including optional IP address display and click-to-copy functionality.
 -   **Encrypted API Key Vault**: Securely store and manage third-party API keys with AES-256-GCM encryption, per-user isolation, and usage analytics.
 -   **Email Notifications**: Receive real-time email alerts for important events using Resend integration with customizable notification rules.
--   **Optimized Uptime Monitoring**: Enhanced uptime monitoring with efficient 7-day summary storage, reducing database load while maintaining historical data accuracy.
+-   **Optimized Uptime Monitoring**: Enhanced uptime monitoring with configurable retention periods, reducing database load while maintaining historical data accuracy.
+-   **Configurable Data Retention**: Set global retention policies via environment variables to automatically manage database size and comply with data privacy regulations.
 -   **Website Management**: Easily add, remove, restore, and archive your tracked websites; adding a new website keeps you on the management page.
 -   **Configurable Settings**: Customize the dashboard experience, including theme, data period, refresh rates, privacy settings, and notification preferences.
 -   **Toast Notifications**: Configurable toast notifications provide immediate feedback when settings are updated, with the ability to enable/disable in settings.
@@ -155,6 +157,10 @@ Below are some screenshots showcasing different parts of the Skopos Dashboard:
 
     # Master encryption key for securing user API keys (NEVER commit this to version control!)
     ENCRYPTION_KEY="your_master_encryption_key_here"
+
+    # Global data retention period in days (default: 180)
+    # Records older than this will be permanently deleted during daily maintenance
+    DATA_RETENTION_DAYS=180
     ```
 
 ### Running the Application
@@ -356,9 +362,14 @@ Per-website configuration (click the settings icon on a website card):
 - **Localhost Tracking**: Enable/disable local development tracking
 
 #### Data Management
-- **Data Retention**: Automatic cleanup after 30, 60, 90, 365 days, or never
+- **Data Retention**: Automatic cleanup after 30, 60, 90, 365 days, or never (subject to global retention limits)
+- **Global Retention Policy**: Administrators can configure a system-wide maximum retention period via `DATA_RETENTION_DAYS` environment variable
 - **Archive**: Temporarily disable tracking while preserving data
 - **Delete**: Permanently remove website and optionally all data
+
+#### Privacy & Data Quality
+- **Short Session Filtering**: Enable automatic filtering of sessions under 1 second to reduce noise from bots and accidental page loads
+- **Session Quality Control**: Improves data quality by excluding ultra-short sessions that don't represent genuine user engagement
 
 #### Email Notifications
 
@@ -426,6 +437,7 @@ The Notifications settings tab appears automatically when you have configured a 
 | `POCKETBASE_ADMIN_EMAIL` | Admin account email | `admin@example.com` |
 | `POCKETBASE_ADMIN_PASSWORD` | Admin account password | `your_secure_password` |
 | `ENCRYPTION_KEY` | 64-character hex string (32 bytes) used to encrypt stored API keys with AES-256-GCM | `d4f1e2a3b4c5...` (64 chars) |
+| `DATA_RETENTION_DAYS` | Global data retention period in days (default: 180). Records older than this are permanently deleted. | `180` |
 | `PAGESPEED_API_KEY` | Optional fallback Google PageSpeed Insights API key (used if no dashboard key is configured) | `AIza...` |
 | `PAGESPEED_STRATEGIES` | Optional comma-separated list of strategies for automated SEO scans (manual scans always prompt for selection) | `mobile,desktop` or `mobile` |
 

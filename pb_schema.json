@@ -1898,11 +1898,37 @@
         "type": "text"
       },
       {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text1384840114",
+        "max": 0,
+        "min": 0,
+        "name": "currentStatus",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
         "hidden": false,
         "id": "number1953238800",
         "max": null,
         "min": null,
         "name": "dataRetentionDays",
+        "onlyInt": false,
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "number"
+      },
+      {
+        "hidden": false,
+        "id": "number2114118386",
+        "max": null,
+        "min": null,
+        "name": "uptimeCheckInterval",
         "onlyInt": false,
         "presentable": false,
         "required": false,
@@ -1938,16 +1964,6 @@
       },
       {
         "hidden": false,
-        "id": "json3921172801",
-        "maxSize": 0,
-        "name": "ipBlacklist",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "json"
-      },
-      {
-        "hidden": false,
         "id": "bool3030104185",
         "name": "uptimeMonitoring",
         "presentable": false,
@@ -1957,29 +1973,22 @@
       },
       {
         "hidden": false,
-        "id": "number2114118386",
-        "max": null,
-        "min": null,
-        "name": "uptimeCheckInterval",
-        "onlyInt": false,
+        "id": "bool1947562358",
+        "name": "discardShortSessions",
         "presentable": false,
         "required": false,
         "system": false,
-        "type": "number"
+        "type": "bool"
       },
       {
-        "autogeneratePattern": "",
         "hidden": false,
-        "id": "text1384840114",
-        "max": 0,
-        "min": 0,
-        "name": "currentStatus",
-        "pattern": "",
+        "id": "json3921172801",
+        "maxSize": 0,
+        "name": "ipBlacklist",
         "presentable": false,
-        "primaryKey": false,
         "required": false,
         "system": false,
-        "type": "text"
+        "type": "json"
       },
       {
         "hidden": false,

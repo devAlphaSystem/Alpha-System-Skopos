@@ -8,7 +8,6 @@ import { recordUptimeSummary, getSummaryChecks, pruneUptimeSummary } from "./upt
 
 const activeMonitors = new Map();
 const MAX_TIMEOUT = 30000;
-const RETENTION_DAYS = 7;
 const MAX_RETRIES = 2;
 const RECOVERY_RECHECK_DELAY_MS = 15000;
 const DNS_ERROR_CODES = new Set(["ENOTFOUND", "EAI_AGAIN", "EAI_FAIL"]);
@@ -178,7 +177,8 @@ async function saveUptimeCheck(websiteId, checkResult) {
 async function cleanupOldUptimeChecks(websiteId) {
   try {
     await ensureAdminAuth();
-    const cutoffISO = subDays(new Date(), RETENTION_DAYS).toISOString();
+    const retentionDays = Number.parseInt(process.env.DATA_RETENTION_DAYS || "180", 10);
+    const cutoffISO = subDays(new Date(), retentionDays).toISOString();
 
     const staleChecks = await pbAdmin.collection("uptime_checks").getFullList({
       filter: `website.id = "${websiteId}" && timestamp < "${cutoffISO}"`,
@@ -194,7 +194,7 @@ async function cleanupOldUptimeChecks(websiteId) {
       await pbAdmin.collection("uptime_checks").delete(check.id);
     }
 
-    logger.debug("Deleted %d uptime checks older than %d days for website %s", staleChecks.length, RETENTION_DAYS, websiteId);
+    logger.debug("Deleted %d uptime checks older than %d days for website %s", staleChecks.length, retentionDays, websiteId);
     await pruneUptimeSummary(websiteId);
   } catch (error) {
     logger.error("Error cleaning old uptime checks for website %s: %o", websiteId, error);
@@ -204,7 +204,8 @@ async function cleanupOldUptimeChecks(websiteId) {
 async function cleanupOldUptimeIncidents(websiteId) {
   try {
     await ensureAdminAuth();
-    const cutoffISO = subDays(new Date(), RETENTION_DAYS).toISOString();
+    const retentionDays = Number.parseInt(process.env.DATA_RETENTION_DAYS || "180", 10);
+    const cutoffISO = subDays(new Date(), retentionDays).toISOString();
 
     const staleIncidents = await pbAdmin.collection("uptime_incidents").getFullList({
       filter: `website.id = "${websiteId}" && startTime < "${cutoffISO}" && isResolved = true`,
@@ -220,7 +221,7 @@ async function cleanupOldUptimeIncidents(websiteId) {
       await pbAdmin.collection("uptime_incidents").delete(incident.id);
     }
 
-    logger.debug("Deleted %d uptime incidents older than %d days for website %s", staleIncidents.length, RETENTION_DAYS, websiteId);
+    logger.debug("Deleted %d uptime incidents older than %d days for website %s", staleIncidents.length, retentionDays, websiteId);
   } catch (error) {
     logger.error("Error cleaning old uptime incidents for website %s: %o", websiteId, error);
   }
@@ -511,7 +512,8 @@ export async function getUptimeByDay(websiteId, days = 30) {
   try {
     const startDate = subDays(new Date(), days);
     const startMs = startDate.getTime();
-    const hoursToFetch = Math.min(days * 24, RETENTION_DAYS * 24);
+    const retentionDays = Number.parseInt(process.env.DATA_RETENTION_DAYS || "180", 10);
+    const hoursToFetch = Math.min(days * 24, retentionDays * 24);
     const candidateChecks = await getSummaryChecks(websiteId, hoursToFetch);
     const checks = candidateChecks.filter((check) => {
       const ts = new Date(check.timestamp).getTime();
@@ -567,7 +569,8 @@ export async function calculateUptimePercentage(websiteId, startDate, endDate) {
       return 0;
     }
 
-    const candidateChecks = await getSummaryChecks(websiteId, RETENTION_DAYS * 24);
+    const retentionDays = Number.parseInt(process.env.DATA_RETENTION_DAYS || "180", 10);
+    const candidateChecks = await getSummaryChecks(websiteId, retentionDays * 24);
     const checks = candidateChecks.filter((check) => {
       const ts = new Date(check.timestamp).getTime();
       return Number.isFinite(ts) && ts >= startMs && ts <= endMs;

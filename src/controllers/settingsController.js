@@ -21,6 +21,7 @@ export async function showSettings(req, res) {
 
     const appSettings = {
       storeRawIp: websites.length > 0 ? websites[0].storeRawIp || false : false,
+      discardShortSessions: websites.length > 0 ? websites[0].discardShortSessions || false : false,
     };
 
     res.render("settings", {
@@ -40,23 +41,35 @@ export async function updateAppSettings(req, res) {
   logger.info("Updating app settings for user: %s", res.locals.user.id);
   try {
     await ensureAdminAuth();
-    const { storeRawIp } = req.body;
+    const { storeRawIp, discardShortSessions } = req.body;
 
-    if (typeof storeRawIp !== "boolean") {
-      return res.status(400).json({ error: "Invalid input" });
+    if (storeRawIp !== undefined && typeof storeRawIp !== "boolean") {
+      return res.status(400).json({ error: "Invalid input for storeRawIp" });
+    }
+
+    if (discardShortSessions !== undefined && typeof discardShortSessions !== "boolean") {
+      return res.status(400).json({ error: "Invalid input for discardShortSessions" });
     }
 
     const allWebsites = await pbAdmin.collection("websites").getFullList({
       filter: `user.id = "${res.locals.user.id}"`,
     });
 
-    logger.debug("Updating storeRawIp to %s for %d websites", storeRawIp, allWebsites.length);
+    const updateData = {};
+    if (storeRawIp !== undefined) {
+      updateData.storeRawIp = storeRawIp;
+      logger.debug("Updating storeRawIp to %s for %d websites", storeRawIp, allWebsites.length);
+    }
+    if (discardShortSessions !== undefined) {
+      updateData.discardShortSessions = discardShortSessions;
+      logger.debug("Updating discardShortSessions to %s for %d websites", discardShortSessions, allWebsites.length);
+    }
 
-    const updatePromises = allWebsites.map((website) => pbAdmin.collection("websites").update(website.id, { storeRawIp }));
+    const updatePromises = allWebsites.map((website) => pbAdmin.collection("websites").update(website.id, updateData));
 
     await Promise.all(updatePromises);
 
-    logger.info("Successfully updated storeRawIp setting for user %s", res.locals.user.id);
+    logger.info("Successfully updated app settings for user %s", res.locals.user.id);
     res.status(200).json({ success: true });
   } catch (error) {
     logger.error("Error updating app settings for user %s: %o", res.locals.user.id, error);

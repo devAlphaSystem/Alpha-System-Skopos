@@ -10,9 +10,10 @@ async function pruneOldSummaries() {
   logger.info("Running cron job: Pruning old dashboard summaries...");
   try {
     await ensureAdminAuth();
-    const thirtyDaysAgo = subDays(new Date(), 31);
-    const filterDate = thirtyDaysAgo.toISOString().split("T")[0];
-    logger.debug("Pruning summaries older than %s", filterDate);
+    const retentionDays = Number.parseInt(process.env.DATA_RETENTION_DAYS || "180", 10);
+    const cutoffDate = subDays(new Date(), retentionDays);
+    const filterDate = cutoffDate.toISOString().split("T")[0];
+    logger.debug("Pruning summaries older than %s (Retention: %d days)", filterDate, retentionDays);
 
     const recordsToDelete = await pbAdmin.collection("dash_sum").getFullList({
       filter: `date < "${filterDate}"`,
@@ -129,29 +130,42 @@ async function finalizeDailySummaries() {
   }
 }
 
-async function pruneOldSessions() {
-  logger.info("Running cron job: Pruning old sessions...");
+async function pruneOldRawData() {
+  logger.info("Running cron job: Pruning old raw data (sessions and events)...");
   try {
     await ensureAdminAuth();
-    const sevenDaysAgo = subDays(new Date(), 7);
-    const cutoffISO = sevenDaysAgo.toISOString();
-    logger.debug("Pruning sessions older than %s", cutoffISO);
+    const retentionDays = Number.parseInt(process.env.DATA_RETENTION_DAYS || "180", 10);
+    const cutoffDate = subDays(new Date(), retentionDays);
+    const cutoffISO = cutoffDate.toISOString();
+    logger.debug("Pruning raw data older than %s (Retention: %d days)", cutoffISO, retentionDays);
 
-    const recordsToDelete = await pbAdmin.collection("sessions").getFullList({
+    const sessionsToDelete = await pbAdmin.collection("sessions").getFullList({
       filter: `created < "${cutoffISO}"`,
       fields: "id",
     });
 
-    if (recordsToDelete.length > 0) {
-      logger.debug("Found %d old session records to prune.", recordsToDelete.length);
-      for (const record of recordsToDelete) {
+    if (sessionsToDelete.length > 0) {
+      logger.debug("Found %d old session records to prune.", sessionsToDelete.length);
+      for (const record of sessionsToDelete) {
         await pbAdmin.collection("sessions").delete(record.id);
       }
     }
 
-    logger.info(`Pruned ${recordsToDelete.length} old session records.`);
+    const eventsToDelete = await pbAdmin.collection("events").getFullList({
+      filter: `created < "${cutoffISO}"`,
+      fields: "id",
+    });
+
+    if (eventsToDelete.length > 0) {
+      logger.debug("Found %d old event records to prune.", eventsToDelete.length);
+      for (const record of eventsToDelete) {
+        await pbAdmin.collection("events").delete(record.id);
+      }
+    }
+
+    logger.info(`Pruned ${sessionsToDelete.length} old sessions and ${eventsToDelete.length} old events.`);
   } catch (error) {
-    logger.error("Error during session pruning cron job: %o", error);
+    logger.error("Error during raw data pruning cron job: %o", error);
   }
 }
 
@@ -416,7 +430,7 @@ export function startCronJobs() {
     async () => {
       await finalizeDailySummaries();
       await enforceDataRetention();
-      await pruneOldSessions();
+      await pruneOldRawData();
       await pruneOldSummaries();
       await cleanupOrphanedData();
       await sendDailySummaryReports();
