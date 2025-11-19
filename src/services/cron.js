@@ -340,6 +340,65 @@ async function checkErrorThresholds() {
   }
 }
 
+async function discardShortSessions() {
+  logger.info("Running cron job: Discarding short sessions...");
+  try {
+    await ensureAdminAuth();
+
+    const websites = await pbAdmin.collection("websites").getFullList({
+      filter: "discardShortSessions = true",
+      fields: "id,name,discardShortSessions",
+    });
+
+    if (websites.length === 0) {
+      logger.debug("No websites with discardShortSessions enabled.");
+      return;
+    }
+
+    logger.debug("Found %d websites with discardShortSessions enabled.", websites.length);
+
+    let totalDiscarded = 0;
+
+    for (const website of websites) {
+      try {
+        const fiveMinutesAgo = subDays(new Date(), 5 / (24 * 60)).toISOString();
+
+        const oldSessions = await pbAdmin.collection("sessions").getFullList({
+          filter: `website.id = "${website.id}" && updated < "${fiveMinutesAgo}"`,
+          fields: "id,created,updated",
+          $autoCancel: false,
+        });
+
+        let discardedForWebsite = 0;
+
+        for (const session of oldSessions) {
+          const sessionStart = new Date(session.created);
+          const sessionEnd = new Date(session.updated);
+          const durationSeconds = (sessionEnd - sessionStart) / 1000;
+
+          if (durationSeconds < 1) {
+            await pbAdmin.collection("sessions").delete(session.id);
+            discardedForWebsite++;
+          }
+        }
+
+        if (discardedForWebsite > 0) {
+          logger.info(`Discarded ${discardedForWebsite} short sessions for website ${website.name}`);
+          totalDiscarded += discardedForWebsite;
+        }
+      } catch (error) {
+        logger.error("Error discarding short sessions for website %s: %o", website.id, error);
+      }
+    }
+
+    if (totalDiscarded > 0) {
+      logger.info(`Total short sessions discarded: ${totalDiscarded}`);
+    }
+  } catch (error) {
+    logger.error("Error during short session discard cron job: %o", error);
+  }
+}
+
 async function checkTrafficSpikes() {
   logger.info("Running cron job: Checking for traffic spikes...");
   try {
@@ -445,6 +504,10 @@ export function startCronJobs() {
   });
 
   cron.schedule("*/15 * * * *", checkTrafficSpikes, {
+    timezone: "UTC",
+  });
+
+  cron.schedule("*/5 * * * *", discardShortSessions, {
     timezone: "UTC",
   });
 
