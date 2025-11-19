@@ -335,26 +335,6 @@ function generateEmailContent(eventType, eventData, rule) {
         </div>
       `,
     },
-    traffic_spike: {
-      subject: `Traffic Spike Detected on ${websiteName}`,
-      html: `
-        <div style="font-family: ${EMAIL_FONT_STACK}; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #10B981;">Traffic Spike Alert</h2>
-          <p>A significant traffic spike has been detected on <strong>${websiteName}</strong>.</p>
-          <div style="background: #D1FAE5; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10B981;">
-            <h3 style="margin-top: 0; color: #10B981;">Traffic Details:</h3>
-            <ul style="list-style: none; padding: 0;">
-              <li><strong>Current Visitors:</strong> ${eventData.currentVisitors || 0}</li>
-              <li><strong>Average Visitors:</strong> ${eventData.averageVisitors || 0}</li>
-              <li><strong>Increase:</strong> ${eventData.increase || 0}%</li>
-            </ul>
-          </div>
-          <p style="color: #6B7280; font-size: 14px;">
-            Time: ${new Date().toLocaleString()}
-          </p>
-        </div>
-      `,
-    },
     uptime_status: {
       subject: `Uptime Alert: ${websiteName} is ${currentStatus === "down" ? "DOWN" : "UP"}`,
       html: `

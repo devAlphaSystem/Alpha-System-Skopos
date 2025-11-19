@@ -343,7 +343,6 @@ function renderNotificationRules(rules) {
     new_session: "New Session",
     daily_summary: "Daily Summary",
     error_threshold: "Error Threshold",
-    traffic_spike: "Traffic Spike",
     uptime_status: "Uptime Status",
   };
   const uptimeNotifyLabels = {
@@ -475,7 +474,6 @@ window.handleEventTypeChange = (eventType) => {
     new_session: "New Session Alert",
     daily_summary: "Daily Summary Report",
     error_threshold: "Error Threshold Alert",
-    traffic_spike: "Traffic Spike Alert",
     uptime_status: "Website Uptime Alert",
   };
 

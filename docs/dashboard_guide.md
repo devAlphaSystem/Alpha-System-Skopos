@@ -269,7 +269,6 @@ Click the "Add Rule" button to configure a new notification:
   - **Custom Event**: A specific custom event you're tracking (requires event name)
   - **Daily Summary**: Daily analytics report (future feature)
   - **Error Threshold**: When errors exceed a limit (future feature)
-  - **Traffic Spike**: Unusual traffic increases (future feature)
   - **Website Uptime Change**: Alerts when monitored websites go down or come back online
 - **Custom Event Name**: Required when monitoring a specific custom event
 - **Recipient Email**: Where to send the notification

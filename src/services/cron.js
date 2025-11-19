@@ -332,98 +332,6 @@ async function discardShortSessions() {
   }
 }
 
-async function checkTrafficSpikes() {
-  logger.info("Running cron job: Checking for traffic spikes...");
-  try {
-    await ensureAdminAuth();
-
-    const rules = await pbAdmin.collection("notyf_rules").getFullList({
-      filter: `eventType = "traffic_spike" && isActive = true`,
-      expand: "website,user",
-    });
-
-    if (rules.length === 0) {
-      logger.debug("No active traffic spike notification rules found.");
-      return;
-    }
-
-    logger.debug("Found %d active traffic spike notification rules.", rules.length);
-
-    for (const rule of rules) {
-      try {
-        const userId = rule.user;
-
-        if (!userId) {
-          logger.warn("Skipping rule %s: missing user", rule.id);
-          continue;
-        }
-
-        const targetWebsites = await resolveRuleWebsites(rule);
-
-        if (targetWebsites.length === 0) {
-          logger.warn("Skipping rule %s: no websites resolved for user %s", rule.id, userId);
-          continue;
-        }
-
-        const spikeThreshold = rule.metadata?.spikeThreshold || 200;
-
-        for (const website of targetWebsites) {
-          const thirtyMinutesAgo = subDays(new Date(), 30 / (24 * 60)).toISOString();
-          const currentSessions = await pbAdmin.collection("sessions").getFullList({
-            filter: `website.id = "${website.id}" && updated >= "${thirtyMinutesAgo}"`,
-            fields: "id",
-            $autoCancel: false,
-          });
-
-          const currentVisitors = currentSessions.length;
-
-          const sevenDaysAgo = subDays(new Date(), 7);
-          const yesterday = subDays(new Date(), 1);
-
-          const historicalSessions = await pbAdmin.collection("sessions").getFullList({
-            filter: `website.id = "${website.id}" && created >= "${sevenDaysAgo.toISOString()}" && created <= "${yesterday.toISOString()}"`,
-            fields: "id,created",
-            $autoCancel: false,
-          });
-
-          if (historicalSessions.length === 0) {
-            logger.debug("No historical data for website %s, skipping traffic spike check", website.name);
-            continue;
-          }
-
-          const totalVisitors = historicalSessions.length;
-          const averageVisitors = Math.ceil(totalVisitors / 7);
-
-          const averageVisitorsPerWindow = Math.max(1, Math.ceil(averageVisitors / 48));
-
-          const increasePercentage = averageVisitorsPerWindow > 0 ? Math.round(((currentVisitors - averageVisitorsPerWindow) / averageVisitorsPerWindow) * 100) : 0;
-
-          if (currentVisitors > averageVisitorsPerWindow && increasePercentage >= spikeThreshold) {
-            const eventData = {
-              websiteName: website.name,
-              currentVisitors: currentVisitors,
-              averageVisitors: averageVisitorsPerWindow,
-              increase: increasePercentage,
-            };
-
-            await triggerNotification(userId, website.id, "traffic_spike", eventData);
-
-            logger.info("Traffic spike detected for website %s: %d visitors (avg: %d, +%d%%)", website.name, currentVisitors, averageVisitorsPerWindow, increasePercentage);
-          } else {
-            logger.debug("No traffic spike for website %s: %d visitors (avg: %d, +%d%%)", website.name, currentVisitors, averageVisitorsPerWindow, increasePercentage);
-          }
-        }
-      } catch (error) {
-        logger.error("Error checking traffic spike for rule %s: %o", rule.id, error);
-      }
-    }
-
-    logger.info("Finished checking for traffic spikes.");
-  } catch (error) {
-    logger.error("Error during traffic spike check cron job: %o", error);
-  }
-}
-
 export function startCronJobs() {
   cron.schedule(
     "0 0 * * *",
@@ -439,10 +347,6 @@ export function startCronJobs() {
   );
 
   cron.schedule("0 * * * *", checkErrorThresholds, {
-    timezone: "UTC",
-  });
-
-  cron.schedule("*/15 * * * *", checkTrafficSpikes, {
     timezone: "UTC",
   });
 

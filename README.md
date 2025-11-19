@@ -396,8 +396,6 @@ Configure custom notification rules to receive emails when specific events occur
   - Page views, unique visitors, new visitors, and sessions
 - **Error Threshold**: Alert when errors exceed a threshold
   - Error counts and most common error details
-- **Traffic Spike**: Notify when traffic significantly increases
-  - Current vs. average visitor comparison
 
 **Rule Configuration:**
 - **Rule Name**: Descriptive name for the notification (e.g., "New Visitor Alert")

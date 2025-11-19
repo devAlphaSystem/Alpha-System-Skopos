@@ -679,7 +679,6 @@
           "new_session",
           "daily_summary",
           "error_threshold",
-          "traffic_spike",
           "uptime_status"
         ]
       },
