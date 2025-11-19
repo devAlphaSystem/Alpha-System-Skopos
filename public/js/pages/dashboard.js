@@ -334,7 +334,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Unknown: "Unknown",
   };
 
-  function updateDashboardSettings() {
+  function updateDashboardSettings(skipInitialFetch = false) {
     settings = window.__SKOPOS_SETTINGS__;
     try {
       const stored = localStorage.getItem("skopos-settings");
@@ -350,7 +350,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (IS_ARCHIVED) return;
-    fetchDashboardData();
+
+    if (!skipInitialFetch) {
+      fetchDashboardData();
+    }
     setupRefreshInterval();
   }
 
@@ -1275,6 +1278,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   (() => {
-    updateDashboardSettings();
+    updateDashboardSettings(true);
   })();
 });

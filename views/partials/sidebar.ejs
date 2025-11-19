@@ -81,8 +81,13 @@
           <i class="fa-brands fa-github"></i>
           <span>GitHub</span>
         </a>
-        <a href="https://docs.alphasystem.dev/view/if9fgsgzo3ew5b4" target="_blank" rel="noopener noreferrer" class="footer-button version-button" title="View Changelog">
+        <a href="https://docs.alphasystem.dev/view/if9fgsgzo3ew5b4" target="_blank" rel="noopener noreferrer" class="footer-button version-button" title="<%= hasUpdate ? 'New update available: v' + latestVersion + ' - View Changelog' : 'View Changelog' %>">
           <span>v<%= appVersion %></span>
+          <% if (hasUpdate) { %>
+            <span class="update-badge">
+              <i class="fa-solid fa-arrow-up"></i>
+            </span>
+          <% } %>
         </a>
       </div>
     <% } %>

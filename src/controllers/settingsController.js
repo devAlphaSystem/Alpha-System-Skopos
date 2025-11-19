@@ -1,8 +1,26 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { storeApiKey, listApiKeys, deleteApiKey, getApiKey } from "../services/apiKeyManager.js";
-import { listNotificationRules, createNotificationRule, updateNotificationRule, deleteNotificationRule } from "../services/notificationService.js";
+import { listNotificationRules, createNotificationRule, updateNotificationRule, deleteNotificationRule, triggerNotification } from "../services/notificationService.js";
+import { resolveRuleWebsites, createDailySummaryEventData } from "../services/notificationRuleUtils.js";
 import logger from "../utils/logger.js";
 import { Resend } from "resend";
+import { startOfYesterday } from "date-fns";
+
+const MANUAL_TRIGGERABLE_EVENTS = new Set(["daily_summary"]);
+
+async function getDailySummaryEventData(website, datePrefix) {
+  let summary = {};
+  try {
+    const summaryRecord = await pbAdmin.collection("dash_sum").getFirstListItem(`website.id="${website.id}" && date ~ "${datePrefix}%"`);
+    summary = summaryRecord.summary || {};
+  } catch (error) {
+    if (error.status !== 404) {
+      throw error;
+    }
+  }
+
+  return createDailySummaryEventData(website, summary, { reportDate: datePrefix });
+}
 
 export async function showSettings(req, res) {
   logger.info("Rendering settings page for user: %s", res.locals.user.id);
@@ -186,6 +204,66 @@ export async function removeNotificationRule(req, res) {
   } catch (error) {
     logger.error("Error deleting notification rule: %o", error);
     res.status(500).json({ error: "Failed to delete notification rule" });
+  }
+}
+
+export async function triggerNotificationRuleNow(req, res) {
+  const { ruleId } = req.params;
+
+  try {
+    await ensureAdminAuth();
+    const rule = await pbAdmin.collection("notyf_rules").getOne(ruleId, {
+      expand: "website",
+    });
+
+    if (!rule || rule.user !== res.locals.user.id) {
+      return res.status(404).json({ error: "Notification rule not found" });
+    }
+
+    if (!rule.isActive) {
+      return res.status(400).json({ error: "Activate this notification rule before triggering it." });
+    }
+
+    if (!MANUAL_TRIGGERABLE_EVENTS.has(rule.eventType)) {
+      return res.status(400).json({ error: "Manual triggering is not available for this event type." });
+    }
+
+    const targetWebsites = await resolveRuleWebsites(rule);
+
+    if (targetWebsites.length === 0) {
+      return res.status(400).json({ error: "No active websites are linked to this notification rule." });
+    }
+
+    const results = [];
+
+    switch (rule.eventType) {
+      case "daily_summary": {
+        const yesterday = startOfYesterday();
+        const datePrefix = yesterday.toISOString().slice(0, 10);
+        for (const website of targetWebsites) {
+          const eventData = await getDailySummaryEventData(website, datePrefix);
+          await triggerNotification(res.locals.user.id, website.id, "daily_summary", eventData, {
+            ruleOverride: rule,
+          });
+          results.push({ websiteId: website.id, websiteName: website.name });
+        }
+        break;
+      }
+      default:
+        return res.status(400).json({ error: "Manual triggering is not available for this event type." });
+    }
+
+    logger.info("Manually triggered notification rule %s for user %s (%d websites)", ruleId, res.locals.user.id, results.length);
+
+    res.json({
+      success: true,
+      triggered: results.length,
+      results,
+      message: results.length === 1 ? "Notification sent for 1 website." : `Notification sent for ${results.length} websites.`,
+    });
+  } catch (error) {
+    logger.error("Error manually triggering notification rule %s: %o", ruleId, error);
+    res.status(500).json({ error: "Failed to trigger notification rule." });
   }
 }
 

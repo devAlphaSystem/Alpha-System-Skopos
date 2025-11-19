@@ -1,5 +1,5 @@
 import express from "express";
-import { showSettings, updateAppSettings, addApiKey, removeApiKey, getNotificationRules, addNotificationRule, toggleNotificationRule, removeNotificationRule, testPageSpeedApi, testChapybaraApi, testResendApi, deleteCollectionData } from "../controllers/settingsController.js";
+import { showSettings, updateAppSettings, addApiKey, removeApiKey, getNotificationRules, addNotificationRule, toggleNotificationRule, removeNotificationRule, triggerNotificationRuleNow, testPageSpeedApi, testChapybaraApi, testResendApi, deleteCollectionData } from "../controllers/settingsController.js";
 
 const router = express.Router();
 
@@ -18,6 +18,7 @@ router.get("/settings/notifications", requireAuth, getNotificationRules);
 router.post("/settings/notifications", requireAuth, addNotificationRule);
 router.patch("/settings/notifications/:ruleId", requireAuth, toggleNotificationRule);
 router.delete("/settings/notifications/:ruleId", requireAuth, removeNotificationRule);
+router.post("/settings/notifications/:ruleId/send", requireAuth, triggerNotificationRuleNow);
 router.post("/settings/test-api/pagespeed", requireAuth, testPageSpeedApi);
 router.post("/settings/test-api/chapybara", requireAuth, testChapybaraApi);
 router.post("/settings/test-api/resend", requireAuth, testResendApi);

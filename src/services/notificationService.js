@@ -4,6 +4,55 @@ import { getApiKey } from "./apiKeyManager.js";
 import logger from "../utils/logger.js";
 
 const EMAIL_FONT_STACK = '"Inter", "Segoe UI", Arial, sans-serif';
+const RESEND_MAX_RETRIES = 3;
+const RESEND_BASE_DELAY_MS = 600;
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function formatNumber(value, fallback = "0") {
+  const num = Number(value);
+  if (!Number.isFinite(num)) {
+    return fallback;
+  }
+  return num.toLocaleString();
+}
+
+function formatPercentage(value, fallback = "N/A") {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  return `${value}%`;
+}
+
+function renderBreakdownList(items, emptyLabel) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return `<li style="color: #6B7280; font-style: italic;">${emptyLabel}</li>`;
+  }
+
+  return items
+    .map((item) => {
+      const count = Number(item?.count);
+      const label = item?.label || item?.key || "Unknown";
+      const percentage = item?.percentage !== null && item?.percentage !== undefined ? ` - ${item.percentage}%` : "";
+      const countText = Number.isFinite(count) ? count.toLocaleString() : "0";
+      return `<li><strong>${label}:</strong> ${countText}${percentage}</li>`;
+    })
+    .join("");
+}
+
+function normalizeWebsiteSelection(value) {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  return [value];
+}
 
 async function getResendClient(userId) {
   try {
@@ -19,7 +68,7 @@ async function getResendClient(userId) {
   }
 }
 
-export async function sendNotificationEmail(userId, subject, htmlContent, recipientEmail, fromEmail = null) {
+export async function sendNotificationEmail(userId, subject, htmlContent, recipientEmail, fromEmail = null, retryAttempt = 0) {
   try {
     const resend = await getResendClient(userId);
     if (!resend) {
@@ -42,6 +91,13 @@ export async function sendNotificationEmail(userId, subject, htmlContent, recipi
     });
 
     if (error) {
+      if (error.statusCode === 429 && retryAttempt < RESEND_MAX_RETRIES) {
+        const delayMs = RESEND_BASE_DELAY_MS * 2 ** retryAttempt;
+        logger.warn("Resend rate limit hit for user %s (attempt %d). Retrying in %dms...", userId, retryAttempt + 1, delayMs);
+        await delay(delayMs);
+        return sendNotificationEmail(userId, subject, htmlContent, recipientEmail, senderEmail, retryAttempt + 1);
+      }
+
       logger.error("Error sending email via Resend: %o", error);
       return false;
     }
@@ -54,15 +110,26 @@ export async function sendNotificationEmail(userId, subject, htmlContent, recipi
   }
 }
 
+function ruleMatchesWebsite(rule, websiteId) {
+  if (!websiteId) {
+    return true;
+  }
+
+  const websiteField = rule.website;
+
+  if (!websiteField || (Array.isArray(websiteField) && websiteField.length === 0)) {
+    return true;
+  }
+
+  const websiteIds = Array.isArray(websiteField) ? websiteField : [websiteField];
+  return websiteIds.includes(websiteId);
+}
+
 export async function getActiveNotificationRules(userId, websiteId = null, eventType = null) {
   try {
     await ensureAdminAuth();
 
     let filter = `user.id = "${userId}" && isActive = true`;
-
-    if (websiteId) {
-      filter += ` && (website.id = "${websiteId}" || website = "")`;
-    }
 
     if (eventType) {
       filter += ` && eventType = "${eventType}"`;
@@ -73,17 +140,31 @@ export async function getActiveNotificationRules(userId, websiteId = null, event
       sort: "-created",
     });
 
-    logger.debug("Found %d active notification rules for user %s", rules.length, userId);
-    return rules;
+    const filteredRules = websiteId ? rules.filter((rule) => ruleMatchesWebsite(rule, websiteId)) : rules;
+
+    logger.debug("Found %d active notification rules for user %s", filteredRules.length, userId);
+    return filteredRules;
   } catch (error) {
     logger.error("Error fetching notification rules: %o", error);
     return [];
   }
 }
 
-export async function triggerNotification(userId, websiteId, eventType, eventData = {}) {
+export async function triggerNotification(userId, websiteId, eventType, eventData = {}, options = {}) {
   try {
-    const rules = await getActiveNotificationRules(userId, websiteId, eventType);
+    let rules;
+
+    if (options.ruleOverride) {
+      rules = [options.ruleOverride];
+    } else if (options.rulesOverride) {
+      rules = options.rulesOverride;
+    } else {
+      rules = await getActiveNotificationRules(userId, websiteId, eventType);
+    }
+
+    if (!options.includeInactive) {
+      rules = rules.filter((rule) => rule.isActive !== false);
+    }
 
     if (rules.length === 0) {
       logger.debug("No active notification rules found for event %s", eventType);
@@ -100,10 +181,12 @@ export async function triggerNotification(userId, websiteId, eventType, eventDat
 
       if (sent) {
         await ensureAdminAuth();
+        const nextTriggerCount = (rule.triggerCount || 0) + 1;
         await pbAdmin.collection("notyf_rules").update(rule.id, {
           lastTriggered: new Date().toISOString(),
-          triggerCount: (rule.triggerCount || 0) + 1,
+          triggerCount: nextTriggerCount,
         });
+        rule.triggerCount = nextTriggerCount;
 
         logger.info("Notification sent for rule %s (event: %s)", rule.id, eventType);
       }
@@ -119,6 +202,7 @@ function generateEmailContent(eventType, eventData, rule) {
   const isDowntimeAlert = eventType === "uptime_status" && currentStatus === "down";
   const uptimeAccent = isDowntimeAlert ? "#DC2626" : "#10B981";
   const uptimeBackground = isDowntimeAlert ? "#FEE2E2" : "#D1FAE5";
+  const reportDateLabel = eventData.reportDate ? new Date(eventData.reportDate).toLocaleDateString() : new Date().toLocaleDateString();
 
   const templates = {
     new_visitor: {
@@ -191,16 +275,42 @@ function generateEmailContent(eventType, eventData, rule) {
           <h2 style="color: #4F46E5;">Daily Analytics Summary</h2>
           <p>Here's your daily summary for <strong>${websiteName}</strong>.</p>
           <div style="background: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="margin-top: 0;">Today's Metrics:</h3>
-            <ul style="list-style: none; padding: 0;">
-              <li><strong>Page Views:</strong> ${eventData.pageViews || 0}</li>
-              <li><strong>Unique Visitors:</strong> ${eventData.uniqueVisitors || 0}</li>
-              <li><strong>New Visitors:</strong> ${eventData.newVisitors || 0}</li>
-              <li><strong>Sessions:</strong> ${eventData.sessions || 0}</li>
+            <h3 style="margin-top: 0;">Key Metrics</h3>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+              <li><strong>Page Views:</strong> ${formatNumber(eventData.pageViews)}</li>
+              <li><strong>Unique Visitors:</strong> ${formatNumber(eventData.uniqueVisitors)}</li>
+              <li><strong>New Visitors:</strong> ${formatNumber(eventData.newVisitors)}</li>
+              <li><strong>Returning Visitors:</strong> ${formatNumber(eventData.returningVisitors)}</li>
+              <li><strong>Sessions:</strong> ${formatNumber(eventData.sessions)}</li>
+              <li><strong>Engaged Sessions:</strong> ${formatNumber(eventData.engagedSessions)}</li>
+              <li><strong>Engagement Rate:</strong> ${formatPercentage(eventData.engagementRate)}</li>
+              <li><strong>Bounce Rate:</strong> ${formatPercentage(eventData.bounceRate)}</li>
+              <li><strong>Avg. Session Duration:</strong> ${eventData.avgSessionDuration || "00:00"}</li>
+              <li><strong>JS Errors:</strong> ${formatNumber(eventData.jsErrors)}</li>
             </ul>
           </div>
-          <p style="color: #6B7280; font-size: 14px;">
-            Date: ${new Date().toLocaleDateString()}
+          <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+            <div style="flex: 1 1 160px; background: #FFFFFF; border: 1px solid #E5E7EB; padding: 12px; border-radius: 8px;">
+              <h4 style="margin: 0 0 8px; color: #374151;">Top Pages</h4>
+              <ul style="list-style: none; padding: 0; margin: 0;">
+                ${renderBreakdownList(eventData.topPages, "No page data yet.")}
+              </ul>
+            </div>
+            <div style="flex: 1 1 160px; background: #FFFFFF; border: 1px solid #E5E7EB; padding: 12px; border-radius: 8px;">
+              <h4 style="margin: 0 0 8px; color: #374151;">Top Referrers</h4>
+              <ul style="list-style: none; padding: 0; margin: 0;">
+                ${renderBreakdownList(eventData.topReferrers, "No referrer data yet.")}
+              </ul>
+            </div>
+            <div style="flex: 1 1 160px; background: #FFFFFF; border: 1px solid #E5E7EB; padding: 12px; border-radius: 8px;">
+              <h4 style="margin: 0 0 8px; color: #374151;">Device Breakdown</h4>
+              <ul style="list-style: none; padding: 0; margin: 0;">
+                ${renderBreakdownList(eventData.deviceBreakdown, "No device data yet.")}
+              </ul>
+            </div>
+          </div>
+          <p style="color: #6B7280; font-size: 14px; margin-top: 16px;">
+            Date: ${reportDateLabel}
           </p>
         </div>
       `,
@@ -332,7 +442,7 @@ export async function createNotificationRule(userId, ruleData) {
     await ensureAdminAuth();
     const rule = await pbAdmin.collection("notyf_rules").create({
       user: userId,
-      website: ruleData.website || "",
+      website: normalizeWebsiteSelection(ruleData.website),
       name: ruleData.name,
       eventType: ruleData.eventType,
       recipientEmail: ruleData.recipientEmail,
@@ -352,7 +462,15 @@ export async function createNotificationRule(userId, ruleData) {
 export async function updateNotificationRule(userId, ruleId, updates) {
   try {
     await ensureAdminAuth();
-    const rule = await pbAdmin.collection("notyf_rules").update(ruleId, updates);
+    const payload = {
+      ...updates,
+    };
+
+    if (Object.prototype.hasOwnProperty.call(updates, "website")) {
+      payload.website = normalizeWebsiteSelection(updates.website);
+    }
+
+    const rule = await pbAdmin.collection("notyf_rules").update(ruleId, payload);
     logger.info("Notification rule updated: %s", ruleId);
     return rule;
   } catch (error) {

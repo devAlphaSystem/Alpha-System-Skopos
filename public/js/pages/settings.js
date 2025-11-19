@@ -1,3 +1,5 @@
+const MANUAL_TRIGGER_EVENT_TYPES = new Set(["daily_summary"]);
+
 document.addEventListener("DOMContentLoaded", () => {
   const tabs = document.querySelectorAll(".tab-button");
   const panels = document.querySelectorAll(".tab-panel");
@@ -369,6 +371,15 @@ function renderNotificationRules(rules) {
 
       const websiteName = rule.expand?.website?.name || "All Websites";
 
+      const manualTriggerSupported = MANUAL_TRIGGER_EVENT_TYPES.has(rule.eventType);
+      const manualTriggerButton = manualTriggerSupported
+        ? `<button class="btn-icon" data-trigger-btn="${rule.id}" onclick="manualTriggerNotificationRule('${rule.id}')" title="Send this notification now">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>`
+        : `<button class="btn-icon" disabled title="Manual trigger not available for this event type" style="opacity: 0.5; cursor: not-allowed;">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>`;
+
       return `
       <tr>
         <td style="font-weight: 500; color: var(--text-primary);">${rule.name}</td>
@@ -385,9 +396,12 @@ function renderNotificationRules(rules) {
           <span style="font-size: 0.875rem; color: var(--text-muted);">${rule.triggerCount || 0}x</span>
         </td>
         <td style="text-align: center;">
-          <button class="btn-icon" onclick="deleteNotificationRule('${rule.id}')" title="Delete rule">
-            <i class="fa-solid fa-trash"></i>
-          </button>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+            ${manualTriggerButton}
+            <button class="btn-icon" onclick="deleteNotificationRule('${rule.id}')" title="Delete rule">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
         </td>
       </tr>
     `;
@@ -567,6 +581,46 @@ window.deleteNotificationRule = async (ruleId) => {
   } catch (error) {
     console.error("Error deleting notification rule:", error);
     await window.customAlert("Network Error", "Error deleting notification rule. Please try again.");
+  }
+};
+
+window.manualTriggerNotificationRule = async (ruleId) => {
+  const confirmed = await window.customConfirm("Send Notification Now?", "This will immediately send the notification email for this rule. Continue?");
+
+  if (!confirmed) {
+    return;
+  }
+
+  const triggerBtn = document.querySelector(`[data-trigger-btn="${ruleId}"]`);
+  const originalContent = triggerBtn ? triggerBtn.innerHTML : null;
+
+  if (triggerBtn) {
+    triggerBtn.disabled = true;
+    triggerBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+  }
+
+  try {
+    const response = await fetch(`/settings/notifications/${ruleId}/send`, {
+      method: "POST",
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || "Failed to trigger notification.");
+    }
+
+    if (typeof showToast === "function") {
+      showToast("Notification Sent", data.message || "Notification triggered successfully.", "success");
+    }
+  } catch (error) {
+    console.error("Error triggering notification rule:", error);
+    await window.customAlert("Trigger Failed", error.message || "Failed to trigger notification. Please try again.");
+  } finally {
+    if (triggerBtn && originalContent) {
+      triggerBtn.disabled = false;
+      triggerBtn.innerHTML = originalContent;
+    }
   }
 };
 

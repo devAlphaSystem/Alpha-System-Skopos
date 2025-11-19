@@ -57,7 +57,17 @@
                     <p><strong>Domain:</strong> <%= website.domain %></p>
                     <p><strong>Retention:</strong> <%= website.dataRetentionDays > 0 ? `${website.dataRetentionDays} days` : 'Forever' %></p>
                     <% if (website.sdkVersion) { %>
-                      <p><strong>SDK Version:</strong> <%= website.sdkVersion %></p>
+                      <p>
+                        <strong>SDK Version:</strong> 
+                        <span class="sdk-version-wrapper">
+                          <%= website.sdkVersion %>
+                          <% if (website.hasSdkUpdate) { %>
+                            <span class="sdk-update-badge" title="SDK update available: v<%= latestSdkVersion %>">
+                              <i class="fa-solid fa-arrow-up"></i>
+                            </span>
+                          <% } %>
+                        </span>
+                      </p>
                     <% } else { %>
                       <p><strong>SDK Version:</strong> <span style="color: #888;">Not connected</span></p>
                     <% } %>

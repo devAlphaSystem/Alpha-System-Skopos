@@ -22,6 +22,7 @@ import { initialize as initializeAppState, doesUserExist } from "./src/services/
 import { startRealtimeService } from "./src/services/realtime.js";
 import { initializeUptimeMonitoring } from "./src/services/uptimeMonitor.js";
 import { deviceDetectionMiddleware } from "./src/utils/deviceDetection.js";
+import { checkForUpdates } from "./src/services/updateChecker.js";
 import logger from "./src/utils/logger.js";
 import { readFileSync } from "node:fs";
 
@@ -70,7 +71,9 @@ async function initializeApp() {
     next();
   });
 
-  app.use(async (req, res, next) => {
+  const updateStatus = await checkForUpdates(packageJson.version);
+
+  app.use((req, res, next) => {
     pb.authStore.clear();
 
     try {
@@ -84,6 +87,9 @@ async function initializeApp() {
     }
     res.locals.user = pb.authStore.isValid ? pb.authStore.record : null;
     res.locals.appVersion = packageJson.version;
+    res.locals.hasUpdate = updateStatus.hasUpdate;
+    res.locals.latestVersion = updateStatus.latestVersion;
+
     next();
   });
 

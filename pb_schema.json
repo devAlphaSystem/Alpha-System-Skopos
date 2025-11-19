@@ -735,7 +735,7 @@
         "collectionId": "pbc_1701416852",
         "hidden": false,
         "id": "relation1198480871",
-        "maxSelect": 1,
+        "maxSelect": 999,
         "minSelect": 0,
         "name": "website",
         "presentable": false,
