@@ -1,7 +1,6 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
 import logger from "../utils/logger.js";
-import { cleanupOrphanedRecords } from "../services/dashSummary.js";
 import { analyzeSeo } from "../services/seoAnalyzer.js";
 import { getLatestSdkVersion, checkSdkUpdate } from "../services/updateChecker.js";
 
@@ -154,7 +153,7 @@ export async function deleteWebsite(req, res) {
 
     if (deleteData === "true") {
       logger.info("Deleting associated data for website %s", id);
-      const relatedCollections = ["dash_sum", "events", "js_errors", "sessions", "visitors"];
+      const relatedCollections = ["events", "js_errors", "sessions", "visitors"];
       for (const collection of relatedCollections) {
         let items;
         do {
@@ -292,12 +291,30 @@ export async function cleanupWebsiteData(req, res) {
 
     const website = await pbAdmin.collection("websites").getFirstListItem(`id="${websiteId}" && user.id="${userId}"`);
 
-    const result = await cleanupOrphanedRecords(website.id);
-    logger.info("Successfully cleaned up website %s: %o", websiteId, result);
+    const allVisitors = await pbAdmin.collection("visitors").getFullList({
+      filter: `website.id = "${website.id}"`,
+      fields: "id,visitorId",
+      $autoCancel: false,
+    });
+
+    let orphanedVisitors = 0;
+    for (const visitor of allVisitors) {
+      const sessions = await pbAdmin.collection("sessions").getList(1, 1, {
+        filter: `visitor.id = "${visitor.id}"`,
+        $autoCancel: false,
+      });
+
+      if (sessions.totalItems === 0) {
+        await pbAdmin.collection("visitors").delete(visitor.id);
+        orphanedVisitors++;
+        logger.debug("Deleted orphaned visitor: %s", visitor.id);
+      }
+    }
+
+    logger.info("Successfully cleaned up website %s: %d orphaned visitors removed", websiteId, orphanedVisitors);
     res.status(200).json({
       success: true,
-      orphanedVisitors: result.orphanedVisitors,
-      emptyDashSums: result.emptyDashSums,
+      orphanedVisitors: orphanedVisitors,
     });
   } catch (error) {
     logger.error("Failed to cleanup website %s: %o", websiteId, error);

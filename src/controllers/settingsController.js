@@ -2,6 +2,7 @@ import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { storeApiKey, listApiKeys, deleteApiKey, getApiKey } from "../services/apiKeyManager.js";
 import { listNotificationRules, createNotificationRule, updateNotificationRule, deleteNotificationRule, triggerNotification } from "../services/notificationService.js";
 import { resolveRuleWebsites, createDailySummaryEventData } from "../services/notificationRuleUtils.js";
+import { calculateMetricsFromRecords } from "../services/analyticsService.js";
 import logger from "../utils/logger.js";
 import { Resend } from "resend";
 import { startOfYesterday } from "date-fns";
@@ -11,12 +12,11 @@ const MANUAL_TRIGGERABLE_EVENTS = new Set(["daily_summary"]);
 async function getDailySummaryEventData(website, datePrefix) {
   let summary = {};
   try {
-    const summaryRecord = await pbAdmin.collection("dash_sum").getFirstListItem(`website.id="${website.id}" && date ~ "${datePrefix}%"`);
-    summary = summaryRecord.summary || {};
+    const yesterday = startOfYesterday();
+    const yesterdayEnd = new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1);
+    summary = await calculateMetricsFromRecords(website.id, yesterday, yesterdayEnd);
   } catch (error) {
-    if (error.status !== 404) {
-      throw error;
-    }
+    logger.error("Error calculating metrics for website %s: %o", website.id, error);
   }
 
   return createDailySummaryEventData(website, summary, { reportDate: datePrefix });
@@ -431,7 +431,7 @@ export async function deleteCollectionData(req, res) {
       return res.status(400).json({ error: "No collections specified" });
     }
 
-    const allowedCollections = ["api_keys", "dash_sum", "events", "js_errors", "notyf_rules", "seo_data", "sessions", "uptime_checks", "uptime_incidents", "uptime_sum", "visitors", "websites"];
+    const allowedCollections = ["api_keys", "events", "js_errors", "notyf_rules", "seo_data", "sessions", "uptime_checks", "uptime_incidents", "uptime_sum", "visitors", "websites"];
 
     const validCollections = collections.filter((c) => allowedCollections.includes(c));
 

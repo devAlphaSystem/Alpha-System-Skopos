@@ -1,6 +1,6 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { subDays } from "date-fns";
-import { aggregateSummaries, getReportsFromSummaries, calculatePercentageChange, calculateActiveUsers, getMetricTrends } from "../services/analyticsService.js";
+import { calculateMetricsFromRecords, calculatePercentageChange, calculateActiveUsers, getMetricTrends, getReportsFromMetrics } from "../services/analyticsService.js";
 import logger from "../utils/logger.js";
 
 async function getCommonData(userId) {
@@ -18,28 +18,38 @@ async function getCommonData(userId) {
   return { websites, archivedWebsites, allWebsites };
 }
 
-async function fetchSummaries(websiteId, startDate, endDate) {
-  logger.debug("Fetching summaries for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
+async function fetchSessions(websiteId, startDate, endDate) {
+  logger.debug("Fetching sessions for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
   await ensureAdminAuth();
-  const startYear = startDate.getUTCFullYear();
-  const startMonth = String(startDate.getUTCMonth() + 1).padStart(2, "0");
-  const startDay = String(startDate.getUTCDate()).padStart(2, "0");
-  const startDateString = `${startYear}-${startMonth}-${startDay}`;
 
-  const endYear = endDate.getUTCFullYear();
-  const endMonth = String(endDate.getUTCMonth() + 1).padStart(2, "0");
-  const endDay = String(endDate.getUTCDate()).padStart(2, "0");
-  const endDateString = `${endYear}-${endMonth}-${endDay}`;
+  const startISO = startDate.toISOString();
+  const endISO = endDate.toISOString();
 
-  const dateFilter = `date >= "${startDateString} 00:00:00.000Z" && date <= "${endDateString} 23:59:59.999Z"`;
-
-  const summaries = await pbAdmin.collection("dash_sum").getFullList({
-    filter: `website.id = "${websiteId}" && ${dateFilter}`,
-    sort: "date",
+  const sessions = await pbAdmin.collection("sessions").getFullList({
+    filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+    sort: "created",
     $autoCancel: false,
   });
-  logger.debug("Found %d summaries for website %s", summaries.length, websiteId);
-  return summaries;
+
+  logger.debug("Found %d sessions for website %s", sessions.length, websiteId);
+  return sessions;
+}
+
+async function fetchEvents(websiteId, startDate, endDate) {
+  logger.debug("Fetching events for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
+  await ensureAdminAuth();
+
+  const startISO = startDate.toISOString();
+  const endISO = endDate.toISOString();
+
+  const events = await pbAdmin.collection("events").getFullList({
+    filter: `session.website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+    sort: "created",
+    $autoCancel: false,
+  });
+
+  logger.debug("Found %d events for website %s", events.length, websiteId);
+  return events;
 }
 
 export async function showOverview(req, res) {
@@ -58,27 +68,132 @@ export async function showOverview(req, res) {
 
     const currentStartDate = subDays(today, dataPeriod - 1);
     const prevStartDate = subDays(currentStartDate, dataPeriod);
+    const prevEndDate = subDays(currentStartDate, 1);
 
     logger.debug("Calculating overview data for %d active websites.", websites.length);
     const websiteIds = websites.map((w) => w.id);
-    const allSummariesPromises = websiteIds.map((id) => fetchSummaries(id, prevStartDate, today));
-    const summariesByWebsiteRaw = await Promise.all(allSummariesPromises);
-    const allSummariesFlat = summariesByWebsiteRaw.flat();
-    logger.debug("Total summaries fetched for overview: %d", allSummariesFlat.length);
 
-    const currentSummaries = allSummariesFlat.filter((s) => new Date(s.date) >= currentStartDate);
-    const prevSummaries = allSummariesFlat.filter((s) => {
-      const d = new Date(s.date);
-      return d >= prevStartDate && d < currentStartDate;
-    });
+    const currentMetricsPromises = websiteIds.map((id) => calculateMetricsFromRecords(id, currentStartDate, today));
+    const prevMetricsPromises = websiteIds.map((id) => calculateMetricsFromRecords(id, prevStartDate, prevEndDate));
+
+    const [currentMetricsArray, prevMetricsArray] = await Promise.all([Promise.all(currentMetricsPromises), Promise.all(prevMetricsPromises)]);
+
+    const currentMetrics = {
+      pageViews: currentMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
+      visitors: currentMetricsArray.reduce((sum, m) => sum + m.visitors, 0),
+      newVisitors: currentMetricsArray.reduce((sum, m) => sum + m.newVisitors, 0),
+      returningVisitors: currentMetricsArray.reduce((sum, m) => sum + m.returningVisitors, 0),
+      engagementRate: 0,
+      avgSessionDuration: { formatted: "00:00", raw: 0 },
+      bounceRate: 0,
+      jsErrors: currentMetricsArray.reduce((sum, m) => sum + m.jsErrors, 0),
+    };
+
+    const totalEngagedSessions = currentMetricsArray.reduce((sum, m) => Math.round((m.engagementRate / 100) * m.visitors), 0);
+    currentMetrics.engagementRate = currentMetrics.visitors > 0 ? Math.round((totalEngagedSessions / currentMetrics.visitors) * 100) : 0;
+
+    let totalDurationSeconds = 0;
+    for (const m of currentMetricsArray) {
+      totalDurationSeconds += m.avgSessionDuration.raw * m.visitors;
+    }
+    const avgDuration = currentMetrics.visitors > 0 ? Math.round(totalDurationSeconds / currentMetrics.visitors) : 0;
+    const minutes = Math.floor(avgDuration / 60)
+      .toString()
+      .padStart(2, "0");
+    const seconds = (avgDuration % 60).toString().padStart(2, "0");
+    currentMetrics.avgSessionDuration = { formatted: `${minutes}:${seconds}`, raw: avgDuration };
+
+    const prevMetrics = {
+      pageViews: prevMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
+      visitors: prevMetricsArray.reduce((sum, m) => sum + m.visitors, 0),
+      engagementRate: 0,
+      avgSessionDuration: { raw: 0 },
+    };
+
+    const prevTotalEngagedSessions = prevMetricsArray.reduce((sum, m) => Math.round((m.engagementRate / 100) * m.visitors), 0);
+    prevMetrics.engagementRate = prevMetrics.visitors > 0 ? Math.round((prevTotalEngagedSessions / prevMetrics.visitors) * 100) : 0;
+
+    let prevTotalDurationSeconds = 0;
+    for (const m of prevMetricsArray) {
+      prevTotalDurationSeconds += m.avgSessionDuration.raw * m.visitors;
+    }
+    prevMetrics.avgSessionDuration.raw = prevMetrics.visitors > 0 ? Math.round(prevTotalDurationSeconds / prevMetrics.visitors) : 0;
+
+    const allSessionsPromises = websiteIds.map((id) => fetchSessions(id, currentStartDate, today));
+    const allEventsPromises = websiteIds.map((id) => fetchEvents(id, currentStartDate, today));
+    const [allSessions, allEvents] = await Promise.all([Promise.all(allSessionsPromises), Promise.all(allEventsPromises)]);
+
+    const flatSessions = allSessions.flat();
+    const flatEvents = allEvents.flat();
+    const trends = getMetricTrends(flatSessions, flatEvents, trendDays);
+
+    const mergedMetrics = {
+      topPages: new Map(),
+      entryPages: new Map(),
+      exitPages: new Map(),
+      topReferrers: new Map(),
+      deviceBreakdown: new Map(),
+      browserBreakdown: new Map(),
+      languageBreakdown: new Map(),
+      countryBreakdown: new Map(),
+      stateBreakdown: new Map(),
+      topCustomEvents: new Map(),
+      topJsErrors: new Map(),
+    };
+
+    for (const m of currentMetricsArray) {
+      for (const item of m.topPages) mergedMetrics.topPages.set(item.key, (mergedMetrics.topPages.get(item.key) || 0) + item.count);
+      for (const item of m.entryPages) mergedMetrics.entryPages.set(item.key, (mergedMetrics.entryPages.get(item.key) || 0) + item.count);
+      for (const item of m.exitPages) mergedMetrics.exitPages.set(item.key, (mergedMetrics.exitPages.get(item.key) || 0) + item.count);
+      for (const item of m.topReferrers) mergedMetrics.topReferrers.set(item.key, (mergedMetrics.topReferrers.get(item.key) || 0) + item.count);
+      for (const item of m.deviceBreakdown) mergedMetrics.deviceBreakdown.set(item.key, (mergedMetrics.deviceBreakdown.get(item.key) || 0) + item.count);
+      for (const item of m.browserBreakdown) mergedMetrics.browserBreakdown.set(item.key, (mergedMetrics.browserBreakdown.get(item.key) || 0) + item.count);
+      for (const item of m.languageBreakdown) mergedMetrics.languageBreakdown.set(item.key, (mergedMetrics.languageBreakdown.get(item.key) || 0) + item.count);
+      for (const item of m.countryBreakdown) mergedMetrics.countryBreakdown.set(item.key, (mergedMetrics.countryBreakdown.get(item.key) || 0) + item.count);
+      for (const item of m.stateBreakdown) mergedMetrics.stateBreakdown.set(item.key, (mergedMetrics.stateBreakdown.get(item.key) || 0) + item.count);
+      for (const item of m.topCustomEvents) mergedMetrics.topCustomEvents.set(item.key, (mergedMetrics.topCustomEvents.get(item.key) || 0) + item.count);
+      for (const item of m.topJsErrors) mergedMetrics.topJsErrors.set(item.key, (mergedMetrics.topJsErrors.get(item.key) || 0) + item.count);
+    }
+
+    const sortedMetrics = {
+      topPages: Array.from(mergedMetrics.topPages.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+      entryPages: Array.from(mergedMetrics.entryPages.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+      exitPages: Array.from(mergedMetrics.exitPages.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+      topReferrers: Array.from(mergedMetrics.topReferrers.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+      deviceBreakdown: Array.from(mergedMetrics.deviceBreakdown.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+      browserBreakdown: Array.from(mergedMetrics.browserBreakdown.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+      languageBreakdown: Array.from(mergedMetrics.languageBreakdown.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+      countryBreakdown: Array.from(mergedMetrics.countryBreakdown.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+      stateBreakdown: Array.from(mergedMetrics.stateBreakdown.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+      topCustomEvents: Array.from(mergedMetrics.topCustomEvents.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+      topJsErrors: Array.from(mergedMetrics.topJsErrors.entries())
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count),
+    };
 
     const activeUsersPromises = websiteIds.map((id) => calculateActiveUsers(id));
     const activeUsersCounts = await Promise.all(activeUsersPromises);
     const activeUsers = activeUsersCounts.reduce((sum, count) => sum + count, 0);
-
-    const currentMetrics = aggregateSummaries(currentSummaries);
-    const prevMetrics = aggregateSummaries(prevSummaries);
-    const trends = getMetricTrends(currentSummaries, trendDays);
 
     const metrics = {
       ...currentMetrics,
@@ -91,7 +206,7 @@ export async function showOverview(req, res) {
       },
     };
 
-    const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
+    const reports = getReportsFromMetrics(sortedMetrics, resultsLimit);
     logger.debug("Overview data calculated successfully. Rendering page.");
 
     res.render("overview", {
@@ -128,20 +243,15 @@ export async function showDashboard(req, res) {
 
     const currentStartDate = subDays(today, dataPeriod - 1);
     const prevStartDate = subDays(currentStartDate, dataPeriod);
+    const prevEndDate = subDays(currentStartDate, 1);
 
-    const allSummaries = await fetchSummaries(websiteId, prevStartDate, today);
+    const [currentMetrics, prevMetrics] = await Promise.all([calculateMetricsFromRecords(websiteId, currentStartDate, today), calculateMetricsFromRecords(websiteId, prevStartDate, prevEndDate)]);
 
-    const currentSummaries = allSummaries.filter((s) => new Date(s.date) >= currentStartDate);
-    const prevSummaries = allSummaries.filter((s) => {
-      const d = new Date(s.date);
-      return d >= prevStartDate && d < currentStartDate;
-    });
+    const [sessions, events] = await Promise.all([fetchSessions(websiteId, currentStartDate, today), fetchEvents(websiteId, currentStartDate, today)]);
+
+    const trends = getMetricTrends(sessions, events, trendDays);
 
     const activeUsers = currentWebsite.isArchived ? 0 : await calculateActiveUsers(websiteId);
-
-    const currentMetrics = aggregateSummaries(currentSummaries);
-    const prevMetrics = aggregateSummaries(prevSummaries);
-    const trends = getMetricTrends(currentSummaries, trendDays);
 
     const metrics = {
       ...currentMetrics,
@@ -158,7 +268,7 @@ export async function showDashboard(req, res) {
       metrics.change = {};
     }
 
-    const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
+    const reports = getReportsFromMetrics(currentMetrics, resultsLimit);
 
     logger.debug("Dashboard data for website %s calculated successfully. Rendering page.", websiteId);
 

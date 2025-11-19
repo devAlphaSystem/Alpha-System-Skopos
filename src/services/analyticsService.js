@@ -1,5 +1,6 @@
 import { eachDayOfInterval, format, subDays } from "date-fns";
 import { pbAdmin } from "./pocketbase.js";
+import logger from "../utils/logger.js";
 
 function processAndSort(map, total) {
   if (total === 0) return [];
@@ -12,111 +13,176 @@ function processAndSort(map, total) {
     .sort((a, b) => b.count - a.count);
 }
 
-export function aggregateSummaries(summaries) {
-  let totalPageViews = 0;
-  let totalVisitors = 0;
-  let totalNewVisitors = 0;
-  let totalReturningVisitors = 0;
-  let totalEngagedSessions = 0;
-  let totalDurationSeconds = 0;
-  let finalizedVisitorsCount = 0;
+function normalizeReferrer(referrer) {
+  if (!referrer) {
+    return "Direct";
+  }
+  try {
+    const host = new URL(referrer).hostname.replace(/^www\./, "");
+    return host || "Direct";
+  } catch (error) {
+    return referrer;
+  }
+}
+
+function parseDuration(value) {
+  if (typeof value === "number" && !Number.isNaN(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
+async function fetchRecordsForPeriod(websiteId, startDate, endDate) {
+  logger.debug("Fetching records for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
+
+  const startISO = startDate.toISOString();
+  const endISO = endDate.toISOString();
+
+  const [sessions, events, jsErrors] = await Promise.all([
+    pbAdmin.collection("sessions").getFullList({
+      filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+      sort: "created",
+      $autoCancel: false,
+    }),
+    pbAdmin.collection("events").getFullList({
+      filter: `session.website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+      sort: "created",
+      $autoCancel: false,
+    }),
+    pbAdmin.collection("js_errors").getFullList({
+      filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+      $autoCancel: false,
+    }),
+  ]);
+
+  logger.debug("Fetched %d sessions, %d events, %d js_errors for website %s", sessions.length, events.length, jsErrors.length, websiteId);
+  return { sessions, events, jsErrors };
+}
+
+export async function calculateMetricsFromRecords(websiteId, startDate, endDate) {
+  const { sessions, events, jsErrors } = await fetchRecordsForPeriod(websiteId, startDate, endDate);
+
+  const topPages = new Map();
+  const entryPages = new Map();
+  const exitPages = new Map();
+  const topReferrers = new Map();
+  const deviceBreakdown = new Map();
+  const browserBreakdown = new Map();
+  const languageBreakdown = new Map();
+  const countryBreakdown = new Map();
+  const stateBreakdown = new Map();
+  const topCustomEvents = new Map();
+  const topJsErrors = new Map();
+
+  let newVisitors = 0;
+  let returningVisitors = 0;
+  let engagedSessions = 0;
+
+  for (const session of sessions) {
+    if (session.isNewVisitor) {
+      newVisitors++;
+    } else {
+      returningVisitors++;
+    }
+
+    const sessionEvents = events.filter((e) => e.session === session.id).sort((a, b) => new Date(a.created) - new Date(b.created));
+
+    if (sessionEvents.length > 0) {
+      const firstEvent = sessionEvents[0];
+      const lastEvent = sessionEvents[sessionEvents.length - 1];
+
+      const entryPath = firstEvent.path || session.entryPath;
+      if (entryPath) {
+        entryPages.set(entryPath, (entryPages.get(entryPath) || 0) + 1);
+      }
+
+      const exitPath = lastEvent.path || session.exitPath;
+      if (exitPath) {
+        exitPages.set(exitPath, (exitPages.get(exitPath) || 0) + 1);
+      }
+
+      for (const event of sessionEvents) {
+        if (event.type === "pageView" && event.path) {
+          topPages.set(event.path, (topPages.get(event.path) || 0) + 1);
+        } else if (event.type === "custom" && event.eventName) {
+          topCustomEvents.set(event.eventName, (topCustomEvents.get(event.eventName) || 0) + 1);
+        }
+      }
+
+      const engagementTimeline = sessionEvents.map((e) => ({
+        created: e.created,
+        duration: parseDuration(e.eventData?.duration),
+      }));
+
+      let isEngaged = false;
+      for (let i = 0; i < engagementTimeline.length; i++) {
+        const isDurationTrigger = engagementTimeline[i].duration !== null && engagementTimeline[i].duration > 10;
+        if (i >= 1 || isDurationTrigger) {
+          isEngaged = true;
+          break;
+        }
+      }
+      if (isEngaged) {
+        engagedSessions++;
+      }
+    }
+
+    const referrerKey = normalizeReferrer(session.referrer);
+    topReferrers.set(referrerKey, (topReferrers.get(referrerKey) || 0) + 1);
+
+    deviceBreakdown.set(session.device || "Unknown", (deviceBreakdown.get(session.device || "Unknown") || 0) + 1);
+    browserBreakdown.set(session.browser || "Unknown", (browserBreakdown.get(session.browser || "Unknown") || 0) + 1);
+    languageBreakdown.set(session.language || "Unknown", (languageBreakdown.get(session.language || "Unknown") || 0) + 1);
+    countryBreakdown.set(session.country || "Unknown", (countryBreakdown.get(session.country || "Unknown") || 0) + 1);
+    stateBreakdown.set(`${session.country || "Unknown"}|${session.state || "Unknown"}`, (stateBreakdown.get(`${session.country || "Unknown"}|${session.state || "Unknown"}`) || 0) + 1);
+  }
+
   let totalJsErrors = 0;
-
-  for (const day of summaries) {
-    const s = day.summary;
-    const dailyVisitors = s.visitors || 0;
-
-    totalPageViews += s.pageViews || 0;
-    totalVisitors += dailyVisitors;
-    totalNewVisitors += s.newVisitors || 0;
-    totalReturningVisitors += s.returningVisitors || 0;
-    totalEngagedSessions += s.engagedSessions || 0;
-    totalJsErrors += s.jsErrors || 0;
-
-    if (day.isFinalized && dailyVisitors > 0) {
-      finalizedVisitorsCount += dailyVisitors;
-      totalDurationSeconds += (s.avgSessionDuration?.raw || 0) * dailyVisitors;
+  for (const error of jsErrors) {
+    const count = error.count || 1;
+    totalJsErrors += count;
+    if (error.errorMessage) {
+      topJsErrors.set(error.errorMessage, (topJsErrors.get(error.errorMessage) || 0) + count);
     }
   }
 
-  const avgDurationSeconds = finalizedVisitorsCount > 0 ? totalDurationSeconds / finalizedVisitorsCount : 0;
-  const roundedSeconds = Math.round(avgDurationSeconds);
-  const minutes = Math.floor(roundedSeconds / 60)
-    .toString()
-    .padStart(2, "0");
-  const seconds = (roundedSeconds % 60).toString().padStart(2, "0");
+  const totalVisitors = sessions.length;
+  const totalPageViews = events.filter((e) => e.type === "pageView").length;
 
-  const engagementRate = totalVisitors > 0 ? Math.round((totalEngagedSessions / totalVisitors) * 100) : 0;
+  const metrics = calculateMetrics(sessions, events);
+
+  const engagementRate = totalVisitors > 0 ? Math.round((engagedSessions / totalVisitors) * 100) : 0;
 
   return {
     pageViews: totalPageViews,
     visitors: totalVisitors,
-    newVisitors: totalNewVisitors,
-    returningVisitors: totalReturningVisitors,
-    engagementRate: engagementRate,
-    avgSessionDuration: {
-      formatted: `${minutes}:${seconds}`,
-      raw: roundedSeconds,
-    },
+    newVisitors,
+    returningVisitors,
+    engagementRate,
+    avgSessionDuration: metrics.avgSessionDuration,
+    bounceRate: metrics.bounceRate,
     jsErrors: totalJsErrors,
+    topPages: processAndSort(topPages, totalPageViews),
+    entryPages: processAndSort(entryPages, totalVisitors),
+    exitPages: processAndSort(exitPages, totalVisitors),
+    topReferrers: processAndSort(topReferrers, totalVisitors),
+    deviceBreakdown: processAndSort(deviceBreakdown, totalVisitors),
+    browserBreakdown: processAndSort(browserBreakdown, totalVisitors),
+    languageBreakdown: processAndSort(languageBreakdown, totalVisitors),
+    countryBreakdown: processAndSort(countryBreakdown, totalVisitors),
+    stateBreakdown: processAndSort(stateBreakdown, totalVisitors),
+    topCustomEvents: processAndSort(topCustomEvents, totalVisitors),
+    topJsErrors: processAndSort(topJsErrors, totalJsErrors),
   };
 }
 
-function mergeAndSortReports(summaries, reportKey, limit) {
-  const mergedMap = new Map();
-  let total = 0;
-
-  for (const day of summaries) {
-    const reportList = day.summary?.[reportKey];
-    if (reportList) {
-      for (const item of reportList) {
-        mergedMap.set(item.key, (mergedMap.get(item.key) || 0) + item.count);
-      }
-    }
-  }
-
-  for (const count of mergedMap.values()) {
-    total += count;
-  }
-
-  return processAndSort(mergedMap, total).slice(0, limit);
-}
-
-export function getReportsFromSummaries(summaries, limit) {
-  return {
-    topPages: mergeAndSortReports(summaries, "topPages", limit),
-    entryPages: mergeAndSortReports(summaries, "entryPages", limit),
-    exitPages: mergeAndSortReports(summaries, "exitPages", limit),
-    topReferrers: mergeAndSortReports(summaries, "topReferrers", limit),
-    deviceBreakdown: mergeAndSortReports(summaries, "deviceBreakdown", limit),
-    browserBreakdown: mergeAndSortReports(summaries, "browserBreakdown", limit),
-    languageBreakdown: mergeAndSortReports(summaries, "languageBreakdown", limit),
-    countryBreakdown: mergeAndSortReports(summaries, "countryBreakdown", 1000),
-    stateBreakdown: mergeAndSortReports(summaries, "stateBreakdown", 10000),
-    topCustomEvents: mergeAndSortReports(summaries, "topCustomEvents", limit),
-    topJsErrors: mergeAndSortReports(summaries, "topJsErrors", limit),
-  };
-}
-
-export function getAllData(summaries, reportType) {
-  const keyMap = {
-    topPages: "topPages",
-    entryPages: "entryPages",
-    exitPages: "exitPages",
-    topReferrers: "topReferrers",
-    deviceBreakdown: "deviceBreakdown",
-    browserBreakdown: "browserBreakdown",
-    languageBreakdown: "languageBreakdown",
-    countryBreakdown: "countryBreakdown",
-    stateBreakdown: "stateBreakdown",
-    topCustomEvents: "topCustomEvents",
-    topJsErrors: "topJsErrors",
-  };
-  const reportKey = keyMap[reportType];
-  return reportKey ? mergeAndSortReports(summaries, reportKey, 10000) : [];
-}
-
-export function getMetricTrends(summaries, trendDays = 7) {
+export function getMetricTrends(sessions, events, trendDays = 7) {
   const trends = {
     pageViews: [],
     visitors: [],
@@ -132,29 +198,23 @@ export function getMetricTrends(summaries, trendDays = 7) {
     dateRange.map((d) => [
       format(d, "yyyy-MM-dd"),
       {
-        pageViews: 0,
-        visitors: 0,
-        engagedSessions: 0,
-        totalDurationSeconds: 0,
-        finalizedVisitorsCount: 0,
+        sessions: [],
+        events: [],
       },
     ]),
   );
 
-  for (const summary of summaries) {
-    const summaryDateString = summary.date.substring(0, 10);
-    if (dailyData.has(summaryDateString)) {
-      const dayData = dailyData.get(summaryDateString);
-      const s = summary.summary;
-      const dailyVisitors = s.visitors || 0;
+  for (const session of sessions) {
+    const sessionDateString = new Date(session.created).toISOString().substring(0, 10);
+    if (dailyData.has(sessionDateString)) {
+      dailyData.get(sessionDateString).sessions.push(session);
+    }
+  }
 
-      dayData.pageViews += s.pageViews || 0;
-      dayData.visitors += dailyVisitors;
-      dayData.engagedSessions += s.engagedSessions || 0;
-      if (summary.isFinalized && dailyVisitors > 0) {
-        dayData.finalizedVisitorsCount += dailyVisitors;
-        dayData.totalDurationSeconds += (s.avgSessionDuration?.raw || 0) * dailyVisitors;
-      }
+  for (const event of events) {
+    const eventDateString = new Date(event.created).toISOString().substring(0, 10);
+    if (dailyData.has(eventDateString)) {
+      dailyData.get(eventDateString).events.push(event);
     }
   }
 
@@ -162,13 +222,37 @@ export function getMetricTrends(summaries, trendDays = 7) {
     const dateString = format(day, "yyyy-MM-dd");
     const data = dailyData.get(dateString);
 
-    const engagementRate = data.visitors > 0 ? Math.round((data.engagedSessions / data.visitors) * 100) : 0;
-    const avgDurationSeconds = data.finalizedVisitorsCount > 0 ? data.totalDurationSeconds / data.finalizedVisitorsCount : 0;
+    const daySessions = data.sessions;
+    const dayEvents = data.events;
 
-    trends.pageViews.push(data.pageViews);
-    trends.visitors.push(data.visitors);
+    const pageViews = dayEvents.filter((e) => e.type === "pageView").length;
+    const visitors = daySessions.length;
+
+    let engagedSessions = 0;
+    for (const session of daySessions) {
+      const sessionEvents = dayEvents.filter((e) => e.session === session.id);
+      let hasEngagement = false;
+      for (let i = 0; i < sessionEvents.length; i++) {
+        const duration = parseDuration(sessionEvents[i].eventData?.duration);
+        if (i >= 1 || (duration !== null && duration > 10)) {
+          hasEngagement = true;
+          break;
+        }
+      }
+      if (hasEngagement) {
+        engagedSessions++;
+      }
+    }
+
+    const engagementRate = visitors > 0 ? Math.round((engagedSessions / visitors) * 100) : 0;
+
+    const dayMetrics = calculateMetrics(daySessions, dayEvents);
+    const avgDurationSeconds = dayMetrics.avgSessionDuration.raw;
+
+    trends.pageViews.push(pageViews);
+    trends.visitors.push(visitors);
     trends.engagementRate.push(engagementRate);
-    trends.avgSessionDuration.push(Math.round(avgDurationSeconds));
+    trends.avgSessionDuration.push(avgDurationSeconds);
   }
 
   return trends;
@@ -193,6 +277,39 @@ export function calculatePercentageChange(current, previous) {
   }
   const change = ((current - previous) / previous) * 100;
   return Math.round(change);
+}
+
+export function getReportsFromMetrics(metrics, limit) {
+  return {
+    topPages: metrics.topPages.slice(0, limit),
+    entryPages: metrics.entryPages.slice(0, limit),
+    exitPages: metrics.exitPages.slice(0, limit),
+    topReferrers: metrics.topReferrers.slice(0, limit),
+    deviceBreakdown: metrics.deviceBreakdown.slice(0, limit),
+    browserBreakdown: metrics.browserBreakdown.slice(0, limit),
+    languageBreakdown: metrics.languageBreakdown.slice(0, limit),
+    countryBreakdown: metrics.countryBreakdown,
+    stateBreakdown: metrics.stateBreakdown,
+    topCustomEvents: metrics.topCustomEvents.slice(0, limit),
+    topJsErrors: metrics.topJsErrors.slice(0, limit),
+  };
+}
+
+export function getAllData(metrics, reportType) {
+  const keyMap = {
+    topPages: "topPages",
+    entryPages: "entryPages",
+    exitPages: "exitPages",
+    topReferrers: "topReferrers",
+    deviceBreakdown: "deviceBreakdown",
+    browserBreakdown: "browserBreakdown",
+    languageBreakdown: "languageBreakdown",
+    countryBreakdown: "countryBreakdown",
+    stateBreakdown: "stateBreakdown",
+    topCustomEvents: "topCustomEvents",
+    topJsErrors: "topJsErrors",
+  };
+  return metrics[keyMap[reportType]] || [];
 }
 
 export function calculateMetrics(sessions, events) {

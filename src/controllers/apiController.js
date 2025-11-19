@@ -1,6 +1,6 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { subDays } from "date-fns";
-import { aggregateSummaries, getReportsFromSummaries, calculatePercentageChange, calculateActiveUsers, getAllData, getMetricTrends } from "../services/analyticsService.js";
+import { calculateMetricsFromRecords, calculatePercentageChange, calculateActiveUsers, getReportsFromMetrics, getAllData } from "../services/analyticsService.js";
 import { addClient } from "../services/sseManager.js";
 import logger from "../utils/logger.js";
 
@@ -45,30 +45,6 @@ async function getCommonData(userId) {
   return { websites, archivedWebsites, allWebsites };
 }
 
-async function fetchSummaries(websiteId, startDate, endDate) {
-  logger.debug("Fetching summaries for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
-  await ensureAdminAuth();
-  const startYear = startDate.getUTCFullYear();
-  const startMonth = String(startDate.getUTCMonth() + 1).padStart(2, "0");
-  const startDay = String(startDate.getUTCDate()).padStart(2, "0");
-  const startDateString = `${startYear}-${startMonth}-${startDay}`;
-
-  const endYear = endDate.getUTCFullYear();
-  const endMonth = String(endDate.getUTCMonth() + 1).padStart(2, "0");
-  const endDay = String(endDate.getUTCDate()).padStart(2, "0");
-  const endDateString = `${endYear}-${endMonth}-${endDay}`;
-
-  const dateFilter = `date >= "${startDateString} 00:00:00.000Z" && date <= "${endDateString} 23:59:59.999Z"`;
-
-  const summaries = await pbAdmin.collection("dash_sum").getFullList({
-    filter: `website.id = "${websiteId}" && ${dateFilter}`,
-    sort: "date",
-    $autoCancel: false,
-  });
-  logger.debug("Found %d summaries for website %s", summaries.length, websiteId);
-  return summaries;
-}
-
 export async function getOverviewData(req, res) {
   logger.debug("API call to getOverviewData initiated by user: %s", res.locals.user?.id);
   try {
@@ -86,34 +62,72 @@ export async function getOverviewData(req, res) {
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
     const resultsLimit = Number.parseInt(req.query.limit) || 10;
-    const trendDays = 7;
     const today = new Date();
 
     const currentStartDate = subDays(today, dataPeriod - 1);
     const prevStartDate = subDays(currentStartDate, dataPeriod);
+    const prevEndDate = subDays(currentStartDate, 1);
 
     const websiteIds = websites.map((w) => w.id);
-    const allSummariesPromises = websiteIds.map((id) => fetchSummaries(id, prevStartDate, today));
-    const summariesByWebsiteRaw = await Promise.all(allSummariesPromises);
-    const allSummariesFlat = summariesByWebsiteRaw.flat();
 
-    const currentSummaries = allSummariesFlat.filter((s) => new Date(s.date) >= currentStartDate);
-    const prevSummaries = allSummariesFlat.filter((s) => {
-      const d = new Date(s.date);
-      return d >= prevStartDate && d < currentStartDate;
-    });
+    const currentMetricsPromises = websiteIds.map((id) => calculateMetricsFromRecords(id, currentStartDate, today));
+    const prevMetricsPromises = websiteIds.map((id) => calculateMetricsFromRecords(id, prevStartDate, prevEndDate));
+
+    const [currentMetricsArray, prevMetricsArray] = await Promise.all([Promise.all(currentMetricsPromises), Promise.all(prevMetricsPromises)]);
 
     const activeUsersPromises = websiteIds.map((id) => calculateActiveUsers(id));
     const activeUsersCounts = await Promise.all(activeUsersPromises);
     const activeUsers = activeUsersCounts.reduce((sum, count) => sum + count, 0);
 
-    const currentMetrics = aggregateSummaries(currentSummaries);
-    const prevMetrics = aggregateSummaries(prevSummaries);
-    const trends = getMetricTrends(currentSummaries, trendDays);
+    const currentMetrics = {
+      pageViews: currentMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
+      visitors: currentMetricsArray.reduce((sum, m) => sum + m.visitors, 0),
+      newVisitors: currentMetricsArray.reduce((sum, m) => sum + m.newVisitors, 0),
+      returningVisitors: currentMetricsArray.reduce((sum, m) => sum + m.returningVisitors, 0),
+      engagementRate: 0,
+      avgSessionDuration: { formatted: "00:00", raw: 0 },
+      bounceRate: 0,
+      jsErrors: currentMetricsArray.reduce((sum, m) => sum + m.jsErrors, 0),
+    };
+
+    const totalEngagedSessions = currentMetricsArray.reduce((sum, m) => Math.round((m.engagementRate / 100) * m.visitors), 0);
+    currentMetrics.engagementRate = currentMetrics.visitors > 0 ? Math.round((totalEngagedSessions / currentMetrics.visitors) * 100) : 0;
+
+    let totalDurationSeconds = 0;
+    for (const m of currentMetricsArray) {
+      totalDurationSeconds += m.avgSessionDuration.raw * m.visitors;
+    }
+    const avgDuration = currentMetrics.visitors > 0 ? Math.round(totalDurationSeconds / currentMetrics.visitors) : 0;
+    const minutes = Math.floor(avgDuration / 60)
+      .toString()
+      .padStart(2, "0");
+    const seconds = (avgDuration % 60).toString().padStart(2, "0");
+    currentMetrics.avgSessionDuration = { formatted: `${minutes}:${seconds}`, raw: avgDuration };
+
+    let totalBounceRate = 0;
+    for (const m of currentMetricsArray) {
+      totalBounceRate += m.bounceRate * m.visitors;
+    }
+    currentMetrics.bounceRate = currentMetrics.visitors > 0 ? Math.round(totalBounceRate / currentMetrics.visitors) : 0;
+
+    const prevMetrics = {
+      pageViews: prevMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
+      visitors: prevMetricsArray.reduce((sum, m) => sum + m.visitors, 0),
+      engagementRate: 0,
+      avgSessionDuration: { raw: 0 },
+    };
+
+    const prevTotalEngagedSessions = prevMetricsArray.reduce((sum, m) => Math.round((m.engagementRate / 100) * m.visitors), 0);
+    prevMetrics.engagementRate = prevMetrics.visitors > 0 ? Math.round((prevTotalEngagedSessions / prevMetrics.visitors) * 100) : 0;
+
+    let prevTotalDurationSeconds = 0;
+    for (const m of prevMetricsArray) {
+      prevTotalDurationSeconds += m.avgSessionDuration.raw * m.visitors;
+    }
+    prevMetrics.avgSessionDuration.raw = prevMetrics.visitors > 0 ? Math.round(prevTotalDurationSeconds / prevMetrics.visitors) : 0;
 
     const metrics = {
       ...currentMetrics,
-      trends,
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
@@ -122,7 +136,9 @@ export async function getOverviewData(req, res) {
       },
     };
 
-    const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
+    const aggregatedMetrics = currentMetricsArray[0] || {};
+    const reports = getReportsFromMetrics(aggregatedMetrics, resultsLimit);
+
     logger.debug("API getOverviewData successful for user %s.", userId);
     res.status(200).json({ activeUsers, metrics, reports });
   } catch (error) {
@@ -146,29 +162,18 @@ export async function getDashboardData(req, res) {
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
     const resultsLimit = Number.parseInt(req.query.limit) || 10;
-    const trendDays = 7;
     const today = new Date();
 
     const currentStartDate = subDays(today, dataPeriod - 1);
     const prevStartDate = subDays(currentStartDate, dataPeriod);
+    const prevEndDate = subDays(currentStartDate, 1);
 
-    const allSummaries = await fetchSummaries(websiteId, prevStartDate, today);
-
-    const currentSummaries = allSummaries.filter((s) => new Date(s.date) >= currentStartDate);
-    const prevSummaries = allSummaries.filter((s) => {
-      const d = new Date(s.date);
-      return d >= prevStartDate && d < currentStartDate;
-    });
+    const [currentMetrics, prevMetrics] = await Promise.all([calculateMetricsFromRecords(websiteId, currentStartDate, today), calculateMetricsFromRecords(websiteId, prevStartDate, prevEndDate)]);
 
     const activeUsers = website.isArchived ? 0 : await calculateActiveUsers(websiteId);
 
-    const currentMetrics = aggregateSummaries(currentSummaries);
-    const prevMetrics = aggregateSummaries(prevSummaries);
-    const trends = getMetricTrends(currentSummaries, trendDays);
-
     const metrics = {
       ...currentMetrics,
-      trends,
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
@@ -181,7 +186,7 @@ export async function getDashboardData(req, res) {
       metrics.change = {};
     }
 
-    const reports = getReportsFromSummaries(currentSummaries, resultsLimit);
+    const reports = getReportsFromMetrics(currentMetrics, resultsLimit);
     logger.debug("API getDashboardData successful for website %s.", websiteId);
     res.status(200).json({ activeUsers, metrics, reports });
   } catch (error) {
@@ -227,18 +232,8 @@ export async function getDetailedReport(req, res) {
         stackTrace: item.stackTrace,
       }));
 
-      if (reportData.length > 0) {
-        logger.debug("Found %d unique JS errors for report (period: %d days).", reportData.length, dataPeriod);
-        return res.status(200).json({ data: reportData });
-      }
-
-      const summaries = await fetchSummaries(websiteId, startDate, today);
-      const fallbackData = getAllData(summaries, "topJsErrors").map((item) => ({
-        ...item,
-        stackTrace: null,
-      }));
-      logger.debug("No JS error records found in js_errors; falling back to summaries with %d items (period: %d days).", fallbackData.length, dataPeriod);
-      return res.status(200).json({ data: fallbackData });
+      logger.debug("Found %d unique JS errors for report (period: %d days).", reportData.length, dataPeriod);
+      return res.status(200).json({ data: reportData });
     }
 
     if (reportType === "topCustomEvents") {
@@ -297,8 +292,8 @@ export async function getDetailedReport(req, res) {
     const currentStartDate = subDays(today, dataPeriod - 1);
     const currentEndDate = today;
 
-    const summaries = await fetchSummaries(websiteId, currentStartDate, currentEndDate);
-    const allData = getAllData(summaries, reportType);
+    const metrics = await calculateMetricsFromRecords(websiteId, currentStartDate, currentEndDate);
+    const allData = getAllData(metrics, reportType);
     logger.debug("Generated report %s with %d items.", reportType, allData.length);
     res.status(200).json({ data: allData });
   } catch (error) {

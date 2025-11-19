@@ -1,6 +1,5 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import logger from "../utils/logger.js";
-import { initializeAdjustments, accumulateSessionAdjustments, accumulateJsErrorAdjustments, applyDashSummaryAdjustments } from "../services/dashSummary.js";
 import { getApiKey, listApiKeys } from "../services/apiKeyManager.js";
 
 async function getCommonData(userId) {
@@ -264,23 +263,17 @@ export async function deleteSession(req, res) {
       return res.status(403).send("You do not have permission to delete this session.");
     }
 
-    const adjustments = initializeAdjustments();
-
     const events = await pbAdmin.collection("events").getFullList({
       filter: `session.id = "${sessionId}"`,
-      fields: "id,type,path,eventName,eventData,created",
-      sort: "created",
+      fields: "id",
       $autoCancel: false,
     });
 
     const jsErrors = await pbAdmin.collection("js_errors").getFullList({
       filter: `session.id = "${sessionId}"`,
-      fields: "id,errorMessage,count,created,lastSeen",
+      fields: "id",
       $autoCancel: false,
     });
-
-    accumulateSessionAdjustments(adjustments, session, events, jsErrors);
-    accumulateJsErrorAdjustments(adjustments, jsErrors);
 
     for (const event of events) {
       await pbAdmin.collection("events").delete(event.id);
@@ -292,8 +285,6 @@ export async function deleteSession(req, res) {
 
     await pbAdmin.collection("sessions").delete(sessionId);
 
-    await applyDashSummaryAdjustments(websiteId, adjustments);
-
     const remainingSessions = await pbAdmin.collection("sessions").getList(1, 1, {
       filter: `visitor.id = "${session.visitor}"`,
       $autoCancel: false,
@@ -304,7 +295,7 @@ export async function deleteSession(req, res) {
       logger.debug("Deleted visitor record %s as no sessions remain.", session.visitor);
     }
 
-    logger.info("Successfully deleted session: %s and updated dashboard summaries.", sessionId);
+    logger.info("Successfully deleted session: %s", sessionId);
     res.redirect(`/sessions/${websiteId}`);
   } catch (error) {
     logger.error("Error deleting session %s: %o", sessionId, error);
@@ -331,30 +322,24 @@ export async function deleteVisitorSessions(req, res) {
       return res.status(403).send("You do not have permission to delete this visitor.");
     }
 
-    const adjustments = initializeAdjustments();
-
     const sessions = await pbAdmin.collection("sessions").getFullList({
       filter: `visitor.id = "${visitorId}"`,
-      fields: "id,website,isNewVisitor,device,browser,language,country,state,entryPath,exitPath,referrer,created,updated",
+      fields: "id",
       $autoCancel: false,
     });
 
     for (const session of sessions) {
       const events = await pbAdmin.collection("events").getFullList({
         filter: `session.id = "${session.id}"`,
-        fields: "id,type,path,eventName,eventData,created",
-        sort: "created",
+        fields: "id",
         $autoCancel: false,
       });
 
       const jsErrors = await pbAdmin.collection("js_errors").getFullList({
         filter: `session.id = "${session.id}"`,
-        fields: "id,errorMessage,count,created,lastSeen",
+        fields: "id",
         $autoCancel: false,
       });
-
-      accumulateSessionAdjustments(adjustments, session, events, jsErrors);
-      accumulateJsErrorAdjustments(adjustments, jsErrors);
 
       for (const event of events) {
         await pbAdmin.collection("events").delete(event.id);
@@ -369,8 +354,7 @@ export async function deleteVisitorSessions(req, res) {
 
     await pbAdmin.collection("visitors").delete(visitorId);
 
-    await applyDashSummaryAdjustments(websiteId, adjustments);
-    logger.info("Successfully deleted all sessions for visitor: %s and updated dashboard summaries.", visitorId);
+    logger.info("Successfully deleted all sessions for visitor: %s", visitorId);
     res.redirect(`/sessions/${websiteId}`);
   } catch (error) {
     logger.error("Error deleting visitor sessions %s: %o", visitorId, error);

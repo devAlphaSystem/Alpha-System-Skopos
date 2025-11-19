@@ -13,13 +13,6 @@ export async function startRealtimeService() {
   try {
     await ensureAdminAuth();
 
-    pbAdmin.collection("dash_sum").subscribe("*", (e) => {
-      logger.debug("Real-time event received: %o", e);
-      if (e.record?.website) {
-        broadcast({ type: "update", websiteId: e.record.website });
-      }
-    });
-
     pbAdmin.collection("sessions").subscribe("*", async (e) => {
       if (e.action === "create") {
         logger.debug("New session detected: %s", e.record?.id);
@@ -30,6 +23,12 @@ export async function startRealtimeService() {
 
           const userId = website.user;
           const websiteId = website.id;
+
+          broadcast({
+            type: "update",
+            websiteId: websiteId,
+            action: "session_created",
+          });
 
           await triggerNotification(userId, websiteId, "new_session", {
             websiteName: website.name,
@@ -58,8 +57,9 @@ export async function startRealtimeService() {
     });
 
     pbAdmin.collection("events").subscribe("*", async (e) => {
-      if (e.action === "create" && e.record.type === "custom" && e.record.eventName) {
-        logger.debug("Custom event detected: %s", e.record.eventName);
+      if (e.action === "create") {
+        logger.debug("Event detected: %s (type: %s)", e.record?.id, e.record?.type);
+
         try {
           const session = await pbAdmin.collection("sessions").getOne(e.record.session, {
             expand: "website,website.user",
@@ -71,20 +71,29 @@ export async function startRealtimeService() {
             return;
           }
 
-          const user = website.expand?.user;
-          if (!user) {
-            logger.warn("User not found for website %s", website.id);
-            return;
-          }
-
-          await triggerNotification(user.id, website.id, "custom_event", {
-            websiteName: website.name,
-            eventName: e.record.eventName,
-            path: e.record.path,
-            eventData: e.record.eventData,
+          broadcast({
+            type: "update",
+            websiteId: website.id,
+            action: "event_created",
+            eventType: e.record.type,
           });
+
+          if (e.record.type === "custom" && e.record.eventName) {
+            const user = website.expand?.user;
+            if (!user) {
+              logger.warn("User not found for website %s", website.id);
+              return;
+            }
+
+            await triggerNotification(user.id, website.id, "custom_event", {
+              websiteName: website.name,
+              eventName: e.record.eventName,
+              path: e.record.path,
+              eventData: e.record.eventData,
+            });
+          }
         } catch (error) {
-          logger.error("Error processing custom event notification: %o", error);
+          logger.error("Error processing event notification: %o", error);
         }
       }
     });

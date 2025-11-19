@@ -1,38 +1,10 @@
 import cron from "node-cron";
 import { subDays, startOfYesterday } from "date-fns";
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
-import { calculateMetrics } from "./analyticsService.js";
-import { cleanupOrphanedRecords } from "./dashSummary.js";
+import { calculateMetricsFromRecords } from "./analyticsService.js";
 import { triggerNotification } from "./notificationService.js";
 import { resolveRuleWebsites, createDailySummaryEventData } from "./notificationRuleUtils.js";
 import logger from "../utils/logger.js";
-
-async function pruneOldSummaries() {
-  logger.info("Running cron job: Pruning old dashboard summaries...");
-  try {
-    await ensureAdminAuth();
-    const retentionDays = Number.parseInt(process.env.DATA_RETENTION_DAYS || "180", 10);
-    const cutoffDate = subDays(new Date(), retentionDays);
-    const filterDate = cutoffDate.toISOString().split("T")[0];
-    logger.debug("Pruning summaries older than %s (Retention: %d days)", filterDate, retentionDays);
-
-    const recordsToDelete = await pbAdmin.collection("dash_sum").getFullList({
-      filter: `date < "${filterDate}"`,
-      fields: "id",
-    });
-
-    if (recordsToDelete.length > 0) {
-      logger.debug("Found %d old summary records to prune.", recordsToDelete.length);
-      for (const record of recordsToDelete) {
-        await pbAdmin.collection("dash_sum").delete(record.id);
-      }
-    }
-
-    logger.info(`Pruned ${recordsToDelete.length} old summary records.`);
-  } catch (error) {
-    logger.error("Error during summary pruning cron job: %o", error);
-  }
-}
 
 async function enforceDataRetention() {
   logger.info("Running cron job: Enforcing data retention policies...");
@@ -77,57 +49,6 @@ async function enforceDataRetention() {
     logger.info("Finished enforcing data retention.");
   } catch (error) {
     logger.error("Error during data retention cron job: %o", error);
-  }
-}
-
-async function finalizeDailySummaries() {
-  logger.info("Running cron job: Finalizing yesterday's summaries...");
-  try {
-    await ensureAdminAuth();
-    const yesterday = startOfYesterday();
-    const yesterdayStart = yesterday.toISOString();
-    const yesterdayEnd = new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString();
-
-    const summariesToFinalize = await pbAdmin.collection("dash_sum").getFullList({
-      filter: `date >= "${yesterdayStart}" && date <= "${yesterdayEnd}" && isFinalized = false`,
-    });
-
-    logger.debug("Found %d summaries to finalize for yesterday.", summariesToFinalize.length);
-
-    for (const summary of summariesToFinalize) {
-      const websiteId = summary.website;
-      const dateFilter = `created >= "${yesterdayStart}" && created <= "${yesterdayEnd}"`;
-      logger.debug("Finalizing summary for website: %s", websiteId);
-
-      const sessions = await pbAdmin.collection("sessions").getFullList({
-        filter: `website.id = "${websiteId}" && ${dateFilter}`,
-      });
-      const events = await pbAdmin.collection("events").getFullList({
-        filter: `session.website.id = "${websiteId}" && ${dateFilter}`,
-      });
-
-      if (sessions.length > 0 || events.length > 0) {
-        logger.debug("Calculating final metrics for website %s with %d sessions and %d events.", websiteId, sessions.length, events.length);
-        const finalMetrics = calculateMetrics(sessions, events);
-        const updatedSummary = {
-          ...summary.summary,
-          bounceRate: finalMetrics.bounceRate,
-          avgSessionDuration: finalMetrics.avgSessionDuration,
-        };
-
-        await pbAdmin.collection("dash_sum").update(summary.id, {
-          summary: updatedSummary,
-          isFinalized: true,
-        });
-        logger.info(`Finalized summary for website ${websiteId}`);
-      } else {
-        logger.debug("No sessions or events for website %s yesterday, marking as finalized.", websiteId);
-        await pbAdmin.collection("dash_sum").update(summary.id, { isFinalized: true });
-      }
-    }
-    logger.info("Finished finalizing daily summaries.");
-  } catch (error) {
-    logger.error("Error during summary finalization cron job: %o", error);
   }
 }
 
@@ -180,19 +101,33 @@ async function cleanupOrphanedData() {
     logger.debug("Checking %d websites for orphaned records.", websites.length);
 
     let totalOrphanedVisitors = 0;
-    let totalEmptyDashSums = 0;
 
     for (const website of websites) {
       try {
-        const result = await cleanupOrphanedRecords(website.id);
-        totalOrphanedVisitors += result.orphanedVisitors;
-        totalEmptyDashSums += result.emptyDashSums;
+        const allVisitors = await pbAdmin.collection("visitors").getFullList({
+          filter: `website.id = "${website.id}"`,
+          fields: "id,visitorId",
+          $autoCancel: false,
+        });
+
+        for (const visitor of allVisitors) {
+          const sessions = await pbAdmin.collection("sessions").getList(1, 1, {
+            filter: `visitor.id = "${visitor.id}"`,
+            $autoCancel: false,
+          });
+
+          if (sessions.totalItems === 0) {
+            await pbAdmin.collection("visitors").delete(visitor.id);
+            totalOrphanedVisitors++;
+            logger.debug("Deleted orphaned visitor: %s", visitor.id);
+          }
+        }
       } catch (error) {
         logger.error("Error cleaning up website %s: %o", website.id, error);
       }
     }
 
-    logger.info(`Cleanup complete: Removed ${totalOrphanedVisitors} orphaned visitors and ${totalEmptyDashSums} empty dash_sum records.`);
+    logger.info(`Cleanup complete: Removed ${totalOrphanedVisitors} orphaned visitors.`);
   } catch (error) {
     logger.error("Error during orphaned data cleanup cron job: %o", error);
   }
@@ -216,6 +151,7 @@ async function sendDailySummaryReports() {
     logger.debug("Found %d active daily summary notification rules.", rules.length);
 
     const yesterday = startOfYesterday();
+    const yesterdayEnd = new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1);
     const yesterdayDate = yesterday.toISOString().slice(0, 10);
 
     for (const rule of rules) {
@@ -237,15 +173,10 @@ async function sendDailySummaryReports() {
         for (const website of targetWebsites) {
           let summaryData = {};
           try {
-            const summaryRecord = await pbAdmin.collection("dash_sum").getFirstListItem(`website.id="${website.id}" && date ~ "${yesterdayDate}%"`);
-            summaryData = summaryRecord.summary || {};
+            summaryData = await calculateMetricsFromRecords(website.id, yesterday, yesterdayEnd);
           } catch (error) {
-            if (error.status === 404) {
-              logger.debug("No summary found for website %s on %s, using empty metrics", website.id, yesterdayDate);
-              summaryData = {};
-            } else {
-              throw error;
-            }
+            logger.error("Error calculating metrics for website %s on %s: %o", website.id, yesterdayDate, error);
+            summaryData = {};
           }
 
           const eventData = createDailySummaryEventData(website, summaryData, { reportDate: yesterdayDate });
@@ -448,18 +379,20 @@ async function checkTrafficSpikes() {
 
           const sevenDaysAgo = subDays(new Date(), 7);
           const yesterday = subDays(new Date(), 1);
-          const summaries = await pbAdmin.collection("dash_sum").getFullList({
-            filter: `website.id = "${website.id}" && date >= "${sevenDaysAgo.toISOString().slice(0, 10)}" && date <= "${yesterday.toISOString().slice(0, 10)}"`,
+
+          const historicalSessions = await pbAdmin.collection("sessions").getFullList({
+            filter: `website.id = "${website.id}" && created >= "${sevenDaysAgo.toISOString()}" && created <= "${yesterday.toISOString()}"`,
+            fields: "id,created",
             $autoCancel: false,
           });
 
-          if (summaries.length === 0) {
+          if (historicalSessions.length === 0) {
             logger.debug("No historical data for website %s, skipping traffic spike check", website.name);
             continue;
           }
 
-          const totalVisitors = summaries.reduce((sum, s) => sum + (s.summary?.visitors || 0), 0);
-          const averageVisitors = Math.ceil(totalVisitors / summaries.length);
+          const totalVisitors = historicalSessions.length;
+          const averageVisitors = Math.ceil(totalVisitors / 7);
 
           const averageVisitorsPerWindow = Math.max(1, Math.ceil(averageVisitors / 48));
 
@@ -495,10 +428,8 @@ export function startCronJobs() {
   cron.schedule(
     "0 0 * * *",
     async () => {
-      await finalizeDailySummaries();
       await enforceDataRetention();
       await pruneOldRawData();
-      await pruneOldSummaries();
       await cleanupOrphanedData();
       await sendDailySummaryReports();
     },
