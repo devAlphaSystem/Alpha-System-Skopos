@@ -378,3 +378,218 @@ export async function runSeoAnalysis(req, res) {
     res.status(500).json({ error: "Failed to analyze SEO. Please check if the domain is accessible." });
   }
 }
+
+function escapeCSV(value) {
+  if (value === null || value === undefined) return "";
+  const stringValue = String(value);
+  if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+  return stringValue;
+}
+
+function generateCSV(seoData, website, viewData) {
+  const lines = [];
+  const timestamp = new Date().toISOString();
+
+  lines.push("SEO Analytics Export");
+  lines.push(`Website,${escapeCSV(website.name)}`);
+  lines.push(`Domain,${escapeCSV(website.domain)}`);
+  lines.push(`Export Date,${timestamp}`);
+  lines.push(`Last Analyzed,${escapeCSV(seoData.lastAnalyzed)}`);
+  lines.push(`SEO Score,${viewData.clampScore}/100`);
+  lines.push("");
+
+  lines.push("META TAGS");
+  lines.push("Field,Value,Length");
+  lines.push(`Title,${escapeCSV(seoData.metaTags.title)},${(seoData.metaTags.title || "").length}`);
+  lines.push(`Description,${escapeCSV(seoData.metaTags.description)},${(seoData.metaTags.description || "").length}`);
+  lines.push(`Keywords,${escapeCSV(seoData.metaTags.keywords)},${(seoData.metaTags.keywords || "").length}`);
+  lines.push(`Canonical,${escapeCSV(seoData.metaTags.canonical)},`);
+  lines.push(`Robots,${escapeCSV(seoData.metaTags.robots)},`);
+  lines.push(`Viewport,${escapeCSV(seoData.metaTags.viewport)},`);
+  lines.push(`Charset,${escapeCSV(seoData.metaTags.charset)},`);
+  lines.push(`Language,${escapeCSV(seoData.metaTags.language)},`);
+  lines.push("");
+
+  lines.push("TECHNICAL SEO");
+  lines.push("Aspect,Status");
+  lines.push(`HTTPS/SSL,${seoData.technicalSeo.hasSSL ? "Yes" : "No"}`);
+  lines.push(`Sitemap.xml,${seoData.technicalSeo.hasSitemap ? "Yes" : "No"}`);
+  lines.push(`Robots.txt,${seoData.technicalSeo.hasRobotsTxt ? "Yes" : "No"}`);
+  lines.push(`Mobile Responsive,${seoData.technicalSeo.mobileResponsive ? "Yes" : "No"}`);
+  lines.push(`Structured Data,${seoData.technicalSeo.hasStructuredData ? "Yes" : "No"}`);
+  lines.push(`Compression,${seoData.technicalSeo.compression ? "Yes" : "No"}`);
+  lines.push(`Caching,${seoData.technicalSeo.caching ? "Yes" : "No"}`);
+  lines.push("");
+
+  if (seoData.performanceScores) {
+    lines.push("LIGHTHOUSE PERFORMANCE");
+    lines.push(`Strategy,${escapeCSV(seoData.performanceScores.strategy)}`);
+    lines.push("Metric,Score");
+    lines.push(`Performance,${seoData.performanceScores.performance}/100`);
+    lines.push(`Accessibility,${seoData.performanceScores.accessibility}/100`);
+    lines.push(`Best Practices,${seoData.performanceScores.bestPractices}/100`);
+    lines.push(`SEO,${seoData.performanceScores.seo}/100`);
+    lines.push("");
+
+    if (seoData.performanceScores.metrics) {
+      lines.push("CORE WEB VITALS");
+      lines.push("Metric,Value");
+      lines.push(`First Contentful Paint,${escapeCSV(seoData.performanceScores.metrics.fcp)}`);
+      lines.push(`Largest Contentful Paint,${escapeCSV(seoData.performanceScores.metrics.lcp)}`);
+      lines.push(`Total Blocking Time,${escapeCSV(seoData.performanceScores.metrics.tbt)}`);
+      lines.push(`Cumulative Layout Shift,${escapeCSV(seoData.performanceScores.metrics.cls)}`);
+      lines.push(`Speed Index,${escapeCSV(seoData.performanceScores.metrics.si)}`);
+      lines.push("");
+    }
+  }
+
+  lines.push("CONTENT STRUCTURE");
+  lines.push("Heading Level,Count");
+  lines.push(`H1,${viewData.h1Count}`);
+  lines.push(`H2,${viewData.h2Count}`);
+  lines.push(`H3,${viewData.h3Count}`);
+  lines.push("");
+
+  if ((seoData.headings.h1 || []).length > 0) {
+    lines.push("H1 HEADINGS");
+    for (const h1 of seoData.headings.h1) {
+      lines.push(escapeCSV(h1));
+    }
+    lines.push("");
+  }
+
+  lines.push("IMAGES");
+  lines.push("Metric,Value");
+  lines.push(`Total Images,${seoData.images.total}`);
+  lines.push(`With Alt Text,${seoData.images.withAlt}`);
+  lines.push(`Without Alt Text,${seoData.images.withoutAlt}`);
+  lines.push(`Alt Coverage,${viewData.altCoverage}%`);
+  lines.push("");
+
+  lines.push("LINKS");
+  lines.push("Metric,Value");
+  lines.push(`Total Links,${seoData.links.total}`);
+  lines.push(`Internal Links,${seoData.links.internal}`);
+  lines.push(`External Links,${seoData.links.external}`);
+  lines.push(`Nofollow Links,${seoData.links.nofollow}`);
+  lines.push("");
+
+  if (seoData.recommendations && seoData.recommendations.length > 0) {
+    lines.push("RECOMMENDATIONS");
+    lines.push("Priority,Category,Issue,Description");
+    for (const rec of seoData.recommendations) {
+      lines.push(`${rec.priority},${rec.category},${escapeCSV(rec.issue)},${escapeCSV(rec.description)}`);
+    }
+    lines.push("");
+  }
+
+  if (seoData.analysisWarnings && seoData.analysisWarnings.length > 0) {
+    lines.push("ANALYSIS WARNINGS");
+    for (const warning of seoData.analysisWarnings) {
+      lines.push(escapeCSV(warning));
+    }
+    lines.push("");
+  }
+
+  lines.push("PAGE PERFORMANCE");
+  lines.push(`Load Time,${(seoData.loadTime / 1000).toFixed(2)}s`);
+  lines.push(`Page Size,${(seoData.pageSize / 1024).toFixed(2)}KB`);
+
+  return lines.join("\n");
+}
+
+export async function exportSeoAnalytics(req, res) {
+  const { websiteId } = req.params;
+  const format = req.query.format || "csv";
+  logger.info("Exporting SEO analytics for website: %s, user: %s, format: %s", websiteId, res.locals.user.id, format);
+
+  try {
+    const { allWebsites } = await getCommonData(res.locals.user.id);
+    const currentWebsite = allWebsites.find((w) => w.id === websiteId);
+
+    if (!currentWebsite) {
+      logger.warn("User %s attempted to export unauthorized or non-existent website %s", res.locals.user.id, websiteId);
+      return res.status(404).json({ error: "Website not found" });
+    }
+
+    await ensureAdminAuth();
+    let seoData = null;
+
+    try {
+      const seoRecord = await pbAdmin.collection("seo_data").getFirstListItem(`website.id="${websiteId}"`);
+      seoData = {
+        metaTags: seoRecord.metaTags || {},
+        socialMetaTags: seoRecord.socialMetaTags || {},
+        headings: seoRecord.headings || {},
+        images: seoRecord.images || {},
+        links: seoRecord.links || {},
+        technicalSeo: seoRecord.technicalSeo || {},
+        performanceScores: seoRecord.performanceScores ?? null,
+        lighthouseData: seoRecord.lighthouseData ?? null,
+        analysisWarnings: seoRecord.analysisWarnings ?? [],
+        recommendations: seoRecord.recommendations ?? [],
+        loadTime: seoRecord.loadTime || 0,
+        pageSize: seoRecord.pageSize || 0,
+        lastAnalyzed: seoRecord.lastAnalyzed,
+      };
+    } catch (e) {
+      logger.debug("No existing SEO data found for website %s", websiteId);
+      return res.status(404).json({ error: "No SEO data available for this website. Please run an analysis first." });
+    }
+
+    const viewData = processSeoDataForView(seoData);
+    const timestamp = new Date().toISOString().split("T")[0];
+    const safeDomain = currentWebsite.domain.replace(/[^a-z0-9]/gi, "_");
+
+    if (format === "json") {
+      const exportData = {
+        website: {
+          id: currentWebsite.id,
+          name: currentWebsite.name,
+          domain: currentWebsite.domain,
+        },
+        exportDate: new Date().toISOString(),
+        seoScore: viewData.clampScore,
+        scoreDescriptor: viewData.scoreDescriptor,
+        lastAnalyzed: seoData.lastAnalyzed,
+        metaTags: seoData.metaTags,
+        socialMetaTags: seoData.socialMetaTags,
+        technicalSeo: seoData.technicalSeo,
+        performanceScores: seoData.performanceScores,
+        headings: seoData.headings,
+        images: seoData.images,
+        links: seoData.links,
+        recommendations: seoData.recommendations,
+        analysisWarnings: seoData.analysisWarnings,
+        loadTime: seoData.loadTime,
+        pageSize: seoData.pageSize,
+        summary: {
+          metaCoverage: viewData.metaCoverage,
+          altCoverage: viewData.altCoverage,
+          h1Count: viewData.h1Count,
+          h2Count: viewData.h2Count,
+          h3Count: viewData.h3Count,
+        },
+      };
+
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Content-Disposition", `attachment; filename="seo-analytics-${safeDomain}-${timestamp}.json"`);
+      return res.status(200).send(JSON.stringify(exportData, null, 2));
+    }
+
+    if (format === "csv") {
+      const csvContent = generateCSV(seoData, currentWebsite, viewData);
+
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="seo-analytics-${safeDomain}-${timestamp}.csv"`);
+      return res.status(200).send(csvContent);
+    }
+
+    return res.status(400).json({ error: "Invalid format. Supported formats: csv, json" });
+  } catch (error) {
+    logger.error("Error exporting SEO analytics for website %s: %o", websiteId, error);
+    res.status(500).json({ error: "Failed to export SEO analytics" });
+  }
+}

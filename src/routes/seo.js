@@ -1,5 +1,5 @@
 import express from "express";
-import { showSeoAnalytics, runSeoAnalysis } from "../controllers/seoController.js";
+import { showSeoAnalytics, runSeoAnalysis, exportSeoAnalytics } from "../controllers/seoController.js";
 
 const router = express.Router();
 
@@ -12,5 +12,6 @@ function requireAuth(req, res, next) {
 
 router.get("/dashboard/seo/:websiteId", requireAuth, showSeoAnalytics);
 router.post("/dashboard/seo/:websiteId/analyze", requireAuth, runSeoAnalysis);
+router.get("/dashboard/seo/:websiteId/export", requireAuth, exportSeoAnalytics);
 
 export default router;

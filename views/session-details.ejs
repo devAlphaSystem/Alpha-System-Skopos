@@ -231,11 +231,26 @@
                       </div>
                       <div class="timeline-details">
                         <% if (event.type === 'pageView') { %>
-                          <strong><%= event.path %></strong>
+                          <div class="timeline-pill">
+                            <i class="fa-solid fa-link"></i>
+                            <span><%= event.path || 'Unknown path' %></span>
+                          </div>
+                          <% if (event.referrer) { %>
+                            <div class="timeline-pill subtle">
+                              <i class="fa-solid fa-arrow-turn-up"></i>
+                              <span>From <%= event.referrer %></span>
+                            </div>
+                          <% } %>
                         <% } else if (event.eventName) { %>
-                          <strong><%= event.eventName %></strong>
+                          <div class="timeline-pill accent">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span><%= event.eventName %></span>
+                          </div>
                           <% if (event.eventData) { %>
-                            <pre class="event-data"><%= JSON.stringify(event.eventData, null, 2) %></pre>
+                            <details class="timeline-payload">
+                              <summary><i class="fa-solid fa-code"></i> View Payload</summary>
+                              <pre class="event-data"><%= JSON.stringify(event.eventData, null, 2) %></pre>
+                            </details>
                           <% } %>
                         <% } %>
                       </div>

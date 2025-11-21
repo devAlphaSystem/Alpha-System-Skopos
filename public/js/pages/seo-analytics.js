@@ -6,6 +6,78 @@ document.addEventListener("DOMContentLoaded", () => {
   const strategyModal = document.getElementById("strategy-modal-overlay");
   const cancelStrategyBtn = document.getElementById("cancel-strategy-btn");
   const strategyOptions = document.querySelectorAll(".strategy-option");
+  const exportBtn = document.getElementById("export-btn");
+  const exportDropdownBtn = document.getElementById("export-dropdown-btn");
+  const exportDropdown = document.getElementById("export-dropdown");
+
+  if (exportBtn && exportDropdownBtn && exportDropdown) {
+    let dropdownOpen = false;
+
+    const positionDropdown = () => {
+      const rect = exportDropdownBtn.getBoundingClientRect();
+      exportDropdown.style.top = `${rect.bottom + 8}px`;
+      exportDropdown.style.right = `${window.innerWidth - rect.right}px`;
+    };
+
+    const toggleDropdown = () => {
+      dropdownOpen = !dropdownOpen;
+      if (dropdownOpen) {
+        positionDropdown();
+        exportDropdown.style.display = "block";
+      } else {
+        exportDropdown.style.display = "none";
+      }
+    };
+
+    const closeDropdown = () => {
+      dropdownOpen = false;
+      exportDropdown.style.display = "none";
+    };
+
+    exportBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      handleExport("csv");
+    });
+
+    exportDropdownBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleDropdown();
+    });
+
+    const exportOptions = exportDropdown.querySelectorAll(".dropdown-item");
+    for (const option of exportOptions) {
+      option.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const format = option.dataset.format;
+        handleExport(format);
+        closeDropdown();
+      });
+    }
+
+    document.addEventListener("click", (e) => {
+      if (!exportBtn.contains(e.target) && !exportDropdownBtn.contains(e.target) && !exportDropdown.contains(e.target)) {
+        closeDropdown();
+      }
+    });
+  }
+
+  function handleExport(format) {
+    if (!WEBSITE_ID) {
+      console.error("Website ID not found");
+      window.customAlert("Error", "Website ID not found. Please refresh the page.");
+      return;
+    }
+
+    const exportUrl = `/dashboard/seo/${WEBSITE_ID}/export?format=${format}`;
+
+    const link = document.createElement("a");
+    link.href = exportUrl;
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
   function showStrategyModal() {
     return new Promise((resolve) => {

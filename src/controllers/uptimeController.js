@@ -104,8 +104,8 @@ export async function getUptimeData(req, res) {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
-    const stats = await getUptimeStats(websiteId, parseInt(hours));
-    const timeline = await getUptimeTimeline(websiteId, parseInt(hours));
+    const stats = await getUptimeStats(websiteId, Number.parseInt(hours));
+    const timeline = await getUptimeTimeline(websiteId, Number.parseInt(hours));
     const incidents = await getRecentIncidents(websiteId, 10);
 
     res.json({
@@ -200,7 +200,7 @@ export async function updateCheckInterval(req, res) {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
-    const intervalSeconds = Math.max(30, Math.min(3600, parseInt(interval)));
+    const intervalSeconds = Math.max(30, Math.min(3600, Number.parseInt(interval)));
 
     await pbAdmin.collection("websites").update(websiteId, {
       uptimeCheckInterval: intervalSeconds,

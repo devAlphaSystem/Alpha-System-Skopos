@@ -15,6 +15,22 @@
           <p>Comprehensive search engine optimization insights for <%= currentWebsite.domain %></p>
         </div>
         <div class="header-actions">
+          <% if (seoData) { %>
+            <div class="btn-group">
+              <button id="export-btn" class="btn btn-secondary" <%= isArchived ? 'disabled' : '' %>>
+                <i class="fa-solid fa-download"></i> Export
+              </button>
+              <button id="export-dropdown-btn" class="btn btn-secondary dropdown-toggle" <%= isArchived ? 'disabled' : '' %> aria-label="Export Options"></button>
+              <div id="export-dropdown" class="dropdown-menu">
+                <button class="dropdown-item" data-format="csv">
+                  <i class="fa-solid fa-file-csv"></i> Export as CSV
+                </button>
+                <button class="dropdown-item" data-format="json">
+                  <i class="fa-solid fa-file-code"></i> Export as JSON
+                </button>
+              </div>
+            </div>
+          <% } %>
           <button id="run-analysis-btn" class="btn btn-primary" <%= isArchived ? 'disabled' : '' %>>
             <i class="fa-solid fa-rotate"></i> Run Analysis
           </button>

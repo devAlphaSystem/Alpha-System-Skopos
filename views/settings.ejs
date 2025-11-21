@@ -568,7 +568,7 @@
                     <tr>
                       <td colspan="7" style="padding: 2rem; text-align: center; color: var(--text-muted);">
                         <i class="fa-solid fa-bell-slash" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 0.5rem;"></i>
-                        No notification rules configured yet.
+                        <span style="display: block; margin-top: 0.5rem;">No notification rules configured yet.</span>
                       </td>
                     </tr>
                   </tbody>
@@ -633,7 +633,7 @@
           <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
             Event Type <span style="color: var(--danger);">*</span>
           </label>
-          <select name="eventType" class="website-selector" required onchange="handleEventTypeChange(this.value)">
+          <select name="eventType" class="settings-select" required onchange="handleEventTypeChange(this.value)" style="width: 100%;">
             <option value="">Select an event type...</option>
             <option value="new_visitor">New Visitor Registered</option>
             <option value="custom_event">Custom Event Triggered</option>
@@ -659,7 +659,7 @@
           <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
             Uptime Alert Options
           </label>
-          <select name="uptimeNotifyOn" id="uptime-notify-on" class="website-selector">
+          <select name="uptimeNotifyOn" id="uptime-notify-on" class="settings-select" style="width: 100%;">
             <option value="down" selected>Notify when the website goes down</option>
             <option value="up">Notify when the website recovers</option>
             <option value="both">Notify for both downtime and recovery</option>
@@ -681,7 +681,7 @@
           <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
             Website
           </label>
-          <select name="website" class="website-selector">
+          <select name="website" class="settings-select" style="width: 100%;">
             <option value="">All Websites</option>
             <% if (websites && websites.length > 0) { %>
               <% websites.forEach(site => { %>
