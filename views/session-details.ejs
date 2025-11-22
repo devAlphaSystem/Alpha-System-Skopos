@@ -70,6 +70,7 @@
             <span>IP Intelligence</span>
           </button>
           <% } %>
+          <% if (typeof isMobile === 'undefined' || !isMobile) { %>
           <button class="tab-button" data-tab="pages-visited" data-tooltip="Pages Visited">
             <i class="fa-solid fa-file-lines"></i>
             <span>Pages Visited</span>
@@ -78,6 +79,7 @@
             <i class="fa-solid fa-bolt"></i>
             <span>Custom Events</span>
           </button>
+          <% } %>
           <button class="tab-button" data-tab="event-timeline" data-tooltip="Event Timeline">
             <i class="fa-solid fa-timeline"></i>
             <span>Event Timeline</span>
@@ -186,6 +188,7 @@
             </div>
           </div>
 
+          <% if (typeof isMobile === 'undefined' || !isMobile) { %>
           <div class="tab-panel" id="pages-visited">
             <% if (reports.topPages.length > 0) { %>
               <div class="report-content">
@@ -213,6 +216,7 @@
               </div>
             <% } %>
           </div>
+          <% } %>
 
           <div class="tab-panel" id="event-timeline">
             <div class="timeline-container">

@@ -22,7 +22,9 @@
               <span>Active Users</span>
             </div>
             <button id="manual-refresh-btn" class="btn-icon" title="Refresh Dashboard" <%= isArchived ? 'disabled' : '' %>><i class="fa-solid fa-rotate"></i></button>
+            <% if (typeof isMobile === 'undefined' || !isMobile) { %>
             <button id="website-settings-btn" class="btn-icon" title="Website Settings" <%= isArchived ? 'disabled' : '' %>><i class="fa-solid fa-sliders"></i></button>
+            <% } %>
           <% } %>
         </div>
       </div>
@@ -267,7 +269,9 @@
   </div>
 </div>
 
+<% if (typeof isMobile === 'undefined' || !isMobile) { %>
 <%- include('partials/website-settings', { currentWebsite, isArchived }) %>
+<% } %>
 
 <script>
   window.__INITIAL_METRICS__ = <%- JSON.stringify(metrics) %>;

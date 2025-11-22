@@ -17,12 +17,14 @@
           <span>Overview</span>
         </a>
       </li>
+      <% if (typeof isMobile === 'undefined' || !isMobile) { %>
       <li class="<%= (currentPage === 'websites') ? 'active' : '' %>">
         <a href="/websites">
           <i class="fa-solid fa-globe icon"></i>
           <span>Websites</span>
         </a>
       </li>
+      <% } %>
       <li class="<%= (currentPage === 'settings') ? 'active' : '' %>">
         <a href="/settings">
           <i class="fa-solid fa-gear icon"></i>
@@ -52,24 +54,28 @@
               <span>Dashboard</span>
             </a>
           </li>
+          <% if (typeof isMobile === 'undefined' || !isMobile) { %>
           <li class="<%= (currentPage === 'seo') ? 'active' : '' %>">
             <a href="/dashboard/seo/<%= currentWebsite.id %>">
               <i class="fa-solid fa-magnifying-glass-chart icon"></i>
               <span>Analytics</span>
             </a>
           </li>
+          <% } %>
           <li class="<%= (currentPage === 'sessions') ? 'active' : '' %>">
             <a href="/sessions/<%= currentWebsite.id %>">
               <i class="fa-solid fa-clock-rotate-left icon"></i>
               <span>Sessions</span>
             </a>
           </li>
+          <% if (typeof isMobile === 'undefined' || !isMobile) { %>
           <li class="<%= (currentPage === 'uptime') ? 'active' : '' %>">
             <a href="/uptime/<%= currentWebsite.id %>">
               <i class="fa-solid fa-signal icon"></i>
               <span>Uptime</span>
             </a>
           </li>
+          <% } %>
         <% } %>
       </ul>
     <% } %>
