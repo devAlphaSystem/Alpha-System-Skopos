@@ -2,6 +2,7 @@ import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { subDays } from "date-fns";
 import { calculateMetricsFromRecords, calculatePercentageChange, calculateActiveUsers, getReportsFromMetrics, getAllData } from "../services/analyticsService.js";
 import { addClient } from "../services/sseManager.js";
+import cacheService from "../services/cacheService.js";
 import logger from "../utils/logger.js";
 
 export function handleSseConnection(req, res) {
@@ -31,18 +32,23 @@ export function handleSseConnection(req, res) {
 }
 
 async function getCommonData(userId) {
-  logger.debug("Fetching common data for user: %s", userId);
-  await ensureAdminAuth();
-  const allWebsites = await pbAdmin.collection("websites").getFullList({
-    filter: `user.id = "${userId}"`,
-    sort: "created",
+  const cacheKey = cacheService.key("websites", userId);
+
+  return cacheService.getOrCompute(cacheKey, cacheService.TTL.WEBSITES, async () => {
+    logger.debug("Fetching common data for user: %s", userId);
+    await ensureAdminAuth();
+    const allWebsites = await pbAdmin.collection("websites").getFullList({
+      filter: `user.id = "${userId}"`,
+      sort: "created",
+      fields: "id,domain,name,trackingId,isArchived,created,disableLocalhostTracking,dataRetentionDays,uptimeMonitoring,uptimeCheckInterval",
+    });
+
+    const websites = allWebsites.filter((w) => !w.isArchived);
+    const archivedWebsites = allWebsites.filter((w) => w.isArchived);
+    logger.debug("Found %d active and %d archived websites for user %s.", websites.length, archivedWebsites.length, userId);
+
+    return { websites, archivedWebsites, allWebsites };
   });
-
-  const websites = allWebsites.filter((w) => !w.isArchived);
-  const archivedWebsites = allWebsites.filter((w) => w.isArchived);
-  logger.debug("Found %d active and %d archived websites for user %s.", websites.length, archivedWebsites.length, userId);
-
-  return { websites, archivedWebsites, allWebsites };
 }
 
 export async function getOverviewData(req, res) {

@@ -1,25 +1,34 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import logger from "../utils/logger.js";
 import { getApiKey, listApiKeys } from "../services/apiKeyManager.js";
+import cacheService from "../services/cacheService.js";
 
 async function getCommonData(userId) {
-  logger.debug("Fetching common data for user: %s", userId);
-  await ensureAdminAuth();
-  const allWebsites = await pbAdmin.collection("websites").getFullList({
-    filter: `user.id = "${userId}"`,
-    sort: "created",
+  const cacheKey = cacheService.key("websites", userId);
+
+  return cacheService.getOrCompute(cacheKey, cacheService.TTL.WEBSITES, async () => {
+    logger.debug("Fetching common data for user: %s", userId);
+    await ensureAdminAuth();
+    const allWebsites = await pbAdmin.collection("websites").getFullList({
+      filter: `user.id = "${userId}"`,
+      sort: "created",
+      fields: "id,domain,name,trackingId,isArchived,created,disableLocalhostTracking,dataRetentionDays,uptimeMonitoring,uptimeCheckInterval",
+    });
+
+    const websites = allWebsites.filter((w) => !w.isArchived);
+    const archivedWebsites = allWebsites.filter((w) => w.isArchived);
+    logger.debug("Found %d active and %d archived websites for user %s.", websites.length, archivedWebsites.length, userId);
+
+    return { websites, archivedWebsites, allWebsites };
   });
-
-  const websites = allWebsites.filter((w) => !w.isArchived);
-  const archivedWebsites = allWebsites.filter((w) => w.isArchived);
-  logger.debug("Found %d active and %d archived websites for user %s.", websites.length, archivedWebsites.length, userId);
-
-  return { websites, archivedWebsites, allWebsites };
 }
 
 export async function showSessions(req, res) {
   const { websiteId } = req.params;
-  logger.info("Rendering sessions page for website: %s, user: %s", websiteId, res.locals.user.id);
+  const page = Math.max(1, Number.parseInt(req.query.page) || 1);
+  const perPage = Math.max(1, Math.min(100, Number.parseInt(req.query.perPage) || 25));
+
+  logger.info("Rendering sessions page for website: %s, user: %s (page: %d, perPage: %d)", websiteId, res.locals.user.id, page, perPage);
   try {
     const { websites, archivedWebsites, allWebsites } = await getCommonData(res.locals.user.id);
 
@@ -31,55 +40,92 @@ export async function showSessions(req, res) {
 
     await ensureAdminAuth();
 
-    const visitors = await pbAdmin.collection("visitors").getFullList({
+    const sessionsResult = await pbAdmin.collection("sessions").getList(page, perPage, {
       filter: `website.id = "${websiteId}"`,
       sort: "-created",
+      fields: "id,visitor,created,updated,browser,os,device,country,state,isNewVisitor,ipAddress",
       $autoCancel: false,
     });
 
-    const sessionsData = [];
+    const paginatedSessions = sessionsResult.items;
+    const totalSessions = sessionsResult.totalItems;
+    const totalPages = sessionsResult.totalPages;
 
-    for (const visitor of visitors) {
-      const sessions = await pbAdmin.collection("sessions").getFullList({
-        filter: `visitor.id = "${visitor.id}"`,
-        sort: "-created",
+    const visitorIds = [...new Set(paginatedSessions.map((s) => s.visitor).filter(Boolean))];
+
+    let visitors = [];
+    if (visitorIds.length > 0) {
+      const visitorFilter = visitorIds.map((id) => `id = "${id}"`).join(" || ");
+      visitors = await pbAdmin.collection("visitors").getFullList({
+        filter: visitorFilter,
+        fields: "id,visitorId,userId,name,email,metadata",
         $autoCancel: false,
       });
+    }
 
-      for (const session of sessions) {
-        const eventsCount = await pbAdmin.collection("events").getList(1, 1, {
-          filter: `session.id = "${session.id}" && type = "pageView"`,
-          $autoCancel: false,
-        });
+    const visitorMap = new Map(visitors.map((v) => [v.id, v]));
 
-        const startTime = new Date(session.created);
-        const endTime = new Date(session.updated);
-        const durationMs = endTime - startTime;
-        const durationMinutes = Math.floor(durationMs / 60000);
-        const durationSeconds = Math.floor((durationMs % 60000) / 1000);
+    const sessionIds = paginatedSessions.map((s) => s.id);
 
-        sessionsData.push({
-          sessionId: session.id,
-          visitorId: visitor.visitorId,
-          visitorRecordId: visitor.id,
-          userId: visitor.userId,
-          userName: visitor.name,
-          userEmail: visitor.email,
-          userMetadata: visitor.metadata,
-          ipAddress: session.ipAddress,
-          startTime: session.created,
-          endTime: session.updated,
-          duration: `${durationMinutes}m ${durationSeconds}s`,
-          durationMs,
-          pagesVisited: eventsCount.totalItems,
-          browser: session.browser,
-          os: session.os,
-          device: session.device,
-          country: session.country,
-          state: session.state,
-          isNewVisitor: session.isNewVisitor,
-        });
+    const eventCounts = new Map();
+    if (sessionIds.length > 0) {
+      const BATCH_SIZE = 100;
+      const batches = [];
+      for (let i = 0; i < sessionIds.length; i += BATCH_SIZE) {
+        batches.push(sessionIds.slice(i, i + BATCH_SIZE));
       }
+
+      const batchResults = await Promise.all(
+        batches.map(async (batch) => {
+          const filter = batch.map((id) => `session.id = "${id}"`).join(" || ");
+          return pbAdmin.collection("events").getFullList({
+            filter: `(${filter}) && type = "pageView"`,
+            fields: "session",
+            $autoCancel: false,
+          });
+        }),
+      );
+
+      for (const events of batchResults) {
+        for (const event of events) {
+          eventCounts.set(event.session, (eventCounts.get(event.session) || 0) + 1);
+        }
+      }
+    }
+
+    const sessionsData = [];
+
+    for (const session of paginatedSessions) {
+      const visitor = visitorMap.get(session.visitor);
+      if (!visitor) continue;
+
+      const startTime = new Date(session.created);
+      const endTime = new Date(session.updated);
+      const durationMs = endTime - startTime;
+      const durationMinutes = Math.floor(durationMs / 60000);
+      const durationSeconds = Math.floor((durationMs % 60000) / 1000);
+
+      sessionsData.push({
+        sessionId: session.id,
+        visitorId: visitor.visitorId,
+        visitorRecordId: visitor.id,
+        userId: visitor.userId,
+        userName: visitor.name,
+        userEmail: visitor.email,
+        userMetadata: visitor.metadata,
+        ipAddress: session.ipAddress,
+        startTime: session.created,
+        endTime: session.updated,
+        duration: `${durationMinutes}m ${durationSeconds}s`,
+        durationMs,
+        pagesVisited: eventCounts.get(session.id) || 0,
+        browser: session.browser,
+        os: session.os,
+        device: session.device,
+        country: session.country,
+        state: session.state,
+        isNewVisitor: session.isNewVisitor,
+      });
     }
 
     const groupedSessions = new Map();
@@ -100,6 +146,17 @@ export async function showSessions(req, res) {
 
     const visitorsWithSessions = Array.from(groupedSessions.values());
 
+    const pagination = {
+      currentPage: page,
+      totalPages,
+      totalSessions,
+      perPage,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+      startItem: (page - 1) * perPage + 1,
+      endItem: Math.min(page * perPage, totalSessions),
+    };
+
     logger.debug("Sessions page data for website %s calculated successfully. Rendering page.", websiteId);
 
     res.render("sessions", {
@@ -107,6 +164,7 @@ export async function showSessions(req, res) {
       archivedWebsites,
       currentWebsite,
       visitorsWithSessions,
+      pagination,
       currentPage: "sessions",
     });
   } catch (error) {
@@ -263,26 +321,22 @@ export async function deleteSession(req, res) {
       return res.status(403).send("You do not have permission to delete this session.");
     }
 
-    const events = await pbAdmin.collection("events").getFullList({
-      filter: `session.id = "${sessionId}"`,
-      fields: "id",
-      $autoCancel: false,
-    });
+    const [events, jsErrors] = await Promise.all([
+      pbAdmin.collection("events").getFullList({
+        filter: `session.id = "${sessionId}"`,
+        fields: "id",
+        $autoCancel: false,
+      }),
+      pbAdmin.collection("js_errors").getFullList({
+        filter: `session.id = "${sessionId}"`,
+        fields: "id",
+        $autoCancel: false,
+      }),
+    ]);
 
-    const jsErrors = await pbAdmin.collection("js_errors").getFullList({
-      filter: `session.id = "${sessionId}"`,
-      fields: "id",
-      $autoCancel: false,
-    });
+    const deletePromises = [...events.map((event) => pbAdmin.collection("events").delete(event.id)), ...jsErrors.map((jsError) => pbAdmin.collection("js_errors").delete(jsError.id))];
 
-    for (const event of events) {
-      await pbAdmin.collection("events").delete(event.id);
-    }
-
-    for (const jsError of jsErrors) {
-      await pbAdmin.collection("js_errors").delete(jsError.id);
-    }
-
+    await Promise.all(deletePromises);
     await pbAdmin.collection("sessions").delete(sessionId);
 
     const remainingSessions = await pbAdmin.collection("sessions").getList(1, 1, {
@@ -294,6 +348,8 @@ export async function deleteSession(req, res) {
       await pbAdmin.collection("visitors").delete(session.visitor);
       logger.debug("Deleted visitor record %s as no sessions remain.", session.visitor);
     }
+
+    cacheService.invalidateWebsite(websiteId);
 
     logger.info("Successfully deleted session: %s", sessionId);
     res.redirect(`/sessions/${websiteId}`);
@@ -328,31 +384,32 @@ export async function deleteVisitorSessions(req, res) {
       $autoCancel: false,
     });
 
+    const deletePromises = [];
+
     for (const session of sessions) {
-      const events = await pbAdmin.collection("events").getFullList({
-        filter: `session.id = "${session.id}"`,
-        fields: "id",
-        $autoCancel: false,
-      });
+      const [events, jsErrors] = await Promise.all([
+        pbAdmin.collection("events").getFullList({
+          filter: `session.id = "${session.id}"`,
+          fields: "id",
+          $autoCancel: false,
+        }),
+        pbAdmin.collection("js_errors").getFullList({
+          filter: `session.id = "${session.id}"`,
+          fields: "id",
+          $autoCancel: false,
+        }),
+      ]);
 
-      const jsErrors = await pbAdmin.collection("js_errors").getFullList({
-        filter: `session.id = "${session.id}"`,
-        fields: "id",
-        $autoCancel: false,
-      });
-
-      for (const event of events) {
-        await pbAdmin.collection("events").delete(event.id);
-      }
-
-      for (const jsError of jsErrors) {
-        await pbAdmin.collection("js_errors").delete(jsError.id);
-      }
-
-      await pbAdmin.collection("sessions").delete(session.id);
+      deletePromises.push(...events.map((event) => pbAdmin.collection("events").delete(event.id)), ...jsErrors.map((jsError) => pbAdmin.collection("js_errors").delete(jsError.id)));
     }
 
+    await Promise.all(deletePromises);
+
+    await Promise.all(sessions.map((session) => pbAdmin.collection("sessions").delete(session.id)));
+
     await pbAdmin.collection("visitors").delete(visitorId);
+
+    cacheService.invalidateWebsite(websiteId);
 
     logger.info("Successfully deleted all sessions for visitor: %s", visitorId);
     res.redirect(`/sessions/${websiteId}`);

@@ -971,7 +971,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function updateWebsiteSetting(payload) {
-    if (!WEBSITE_ID) return;
+    if (!WEBSITE_ID) return false;
     try {
       const response = await fetch(`/dashboard/settings/${WEBSITE_ID}`, {
         method: "POST",
@@ -981,8 +981,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!response.ok) {
         throw new Error("Failed to update setting");
       }
+      return true;
     } catch (error) {
       console.error("Error updating website setting:", error);
+      return false;
     }
   }
 
@@ -1039,22 +1041,31 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (disableLocalhostToggle) {
-    disableLocalhostToggle.addEventListener("change", (e) => {
-      updateWebsiteSetting({
+    disableLocalhostToggle.addEventListener("change", async (e) => {
+      const success = await updateWebsiteSetting({
         disableLocalhostTracking: e.target.checked,
       });
-      showToast("Tracking Updated", `Localhost tracking ${e.target.checked ? "disabled" : "enabled"}`, "success");
+      if (success) {
+        showToast("Tracking Updated", `Localhost tracking ${e.target.checked ? "disabled" : "enabled"}`, "success");
+      } else {
+        e.target.checked = !e.target.checked;
+        showToast("Error", "Failed to update setting", "error");
+      }
     });
   }
 
   if (dataRetentionInput) {
-    dataRetentionInput.addEventListener("change", (e) => {
-      updateWebsiteSetting({
+    dataRetentionInput.addEventListener("change", async (e) => {
+      const success = await updateWebsiteSetting({
         dataRetentionDays: e.target.value,
       });
-      const days = e.target.value;
-      const message = days > 0 ? `Data retention set to ${days} days` : "Data retention set to forever";
-      showToast("Data Retention Updated", message, "success");
+      if (success) {
+        const days = e.target.value;
+        const message = days > 0 ? `Data retention set to ${days} days` : "Data retention set to forever";
+        showToast("Data Retention Updated", message, "success");
+      } else {
+        showToast("Error", "Failed to update setting", "error");
+      }
     });
   }
 

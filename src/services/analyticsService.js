@@ -1,6 +1,7 @@
 import { eachDayOfInterval, format, subDays } from "date-fns";
 import { pbAdmin } from "./pocketbase.js";
 import logger from "../utils/logger.js";
+import cacheService from "./cacheService.js";
 
 function processAndSort(map, total) {
   if (total === 0) return [];
@@ -39,34 +40,51 @@ function parseDuration(value) {
 }
 
 async function fetchRecordsForPeriod(websiteId, startDate, endDate) {
-  logger.debug("Fetching records for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
-
   const startISO = startDate.toISOString();
   const endISO = endDate.toISOString();
 
-  const [sessions, events, jsErrors] = await Promise.all([
-    pbAdmin.collection("sessions").getFullList({
-      filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
-      sort: "created",
-      $autoCancel: false,
-    }),
-    pbAdmin.collection("events").getFullList({
-      filter: `session.website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
-      sort: "created",
-      $autoCancel: false,
-    }),
-    pbAdmin.collection("js_errors").getFullList({
-      filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
-      $autoCancel: false,
-    }),
-  ]);
+  const startKey = startISO.substring(0, 16);
+  const endKey = endISO.substring(0, 16);
+  const cacheKey = cacheService.key("records", websiteId, startKey, endKey);
 
-  logger.debug("Fetched %d sessions, %d events, %d js_errors for website %s", sessions.length, events.length, jsErrors.length, websiteId);
-  return { sessions, events, jsErrors };
+  return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
+    logger.debug("Fetching records for website %s from %s to %s", websiteId, startISO, endISO);
+
+    const [sessions, events, jsErrors] = await Promise.all([
+      pbAdmin.collection("sessions").getFullList({
+        filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+        sort: "created",
+        fields: "id,created,updated,isNewVisitor,referrer,device,browser,language,country,state,entryPath,exitPath",
+        $autoCancel: false,
+      }),
+      pbAdmin.collection("events").getFullList({
+        filter: `session.website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+        sort: "created",
+        fields: "id,session,type,path,eventName,eventData,created",
+        $autoCancel: false,
+      }),
+      pbAdmin.collection("js_errors").getFullList({
+        filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+        fields: "id,errorMessage,count",
+        $autoCancel: false,
+      }),
+    ]);
+
+    logger.debug("Fetched %d sessions, %d events, %d js_errors for website %s", sessions.length, events.length, jsErrors.length, websiteId);
+    return { sessions, events, jsErrors };
+  });
 }
 
 export async function calculateMetricsFromRecords(websiteId, startDate, endDate) {
   const { sessions, events, jsErrors } = await fetchRecordsForPeriod(websiteId, startDate, endDate);
+
+  const sessionEventsMap = new Map();
+  for (const event of events) {
+    if (!sessionEventsMap.has(event.session)) {
+      sessionEventsMap.set(event.session, []);
+    }
+    sessionEventsMap.get(event.session).push(event);
+  }
 
   const topPages = new Map();
   const entryPages = new Map();
@@ -91,9 +109,11 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
       returningVisitors++;
     }
 
-    const sessionEvents = events.filter((e) => e.session === session.id).sort((a, b) => new Date(a.created) - new Date(b.created));
+    const sessionEvents = sessionEventsMap.get(session.id) || [];
 
     if (sessionEvents.length > 0) {
+      sessionEvents.sort((a, b) => new Date(a.created) - new Date(b.created));
+
       const firstEvent = sessionEvents[0];
       const lastEvent = sessionEvents[sessionEvents.length - 1];
 
@@ -107,27 +127,23 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
         exitPages.set(exitPath, (exitPages.get(exitPath) || 0) + 1);
       }
 
-      for (const event of sessionEvents) {
+      let isEngaged = false;
+      for (let i = 0; i < sessionEvents.length; i++) {
+        const event = sessionEvents[i];
         if (event.type === "pageView" && event.path) {
           topPages.set(event.path, (topPages.get(event.path) || 0) + 1);
         } else if (event.type === "custom" && event.eventName) {
           topCustomEvents.set(event.eventName, (topCustomEvents.get(event.eventName) || 0) + 1);
         }
-      }
 
-      const engagementTimeline = sessionEvents.map((e) => ({
-        created: e.created,
-        duration: parseDuration(e.eventData?.duration),
-      }));
-
-      let isEngaged = false;
-      for (let i = 0; i < engagementTimeline.length; i++) {
-        const isDurationTrigger = engagementTimeline[i].duration !== null && engagementTimeline[i].duration > 10;
-        if (i >= 1 || isDurationTrigger) {
-          isEngaged = true;
-          break;
+        if (!isEngaged) {
+          const duration = parseDuration(event.eventData?.duration);
+          if (i >= 1 || (duration !== null && duration > 10)) {
+            isEngaged = true;
+          }
         }
       }
+
       if (isEngaged) {
         engagedSessions++;
       }
@@ -155,7 +171,7 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
   const totalVisitors = sessions.length;
   const totalPageViews = events.filter((e) => e.type === "pageView").length;
 
-  const metrics = calculateMetrics(sessions, events);
+  const metrics = calculateMetrics(sessions, events, sessionEventsMap);
 
   const engagementRate = totalVisitors > 0 ? Math.round((engagedSessions / totalVisitors) * 100) : 0;
 
@@ -204,17 +220,22 @@ export function getMetricTrends(sessions, events, trendDays = 7) {
     ]),
   );
 
-  for (const session of sessions) {
-    const sessionDateString = new Date(session.created).toISOString().substring(0, 10);
-    if (dailyData.has(sessionDateString)) {
-      dailyData.get(sessionDateString).sessions.push(session);
-    }
-  }
-
+  const sessionEventsMap = new Map();
   for (const event of events) {
     const eventDateString = new Date(event.created).toISOString().substring(0, 10);
     if (dailyData.has(eventDateString)) {
       dailyData.get(eventDateString).events.push(event);
+    }
+    if (!sessionEventsMap.has(event.session)) {
+      sessionEventsMap.set(event.session, []);
+    }
+    sessionEventsMap.get(event.session).push(event);
+  }
+
+  for (const session of sessions) {
+    const sessionDateString = new Date(session.created).toISOString().substring(0, 10);
+    if (dailyData.has(sessionDateString)) {
+      dailyData.get(sessionDateString).sessions.push(session);
     }
   }
 
@@ -230,7 +251,7 @@ export function getMetricTrends(sessions, events, trendDays = 7) {
 
     let engagedSessions = 0;
     for (const session of daySessions) {
-      const sessionEvents = dayEvents.filter((e) => e.session === session.id);
+      const sessionEvents = sessionEventsMap.get(session.id) || [];
       let hasEngagement = false;
       for (let i = 0; i < sessionEvents.length; i++) {
         const duration = parseDuration(sessionEvents[i].eventData?.duration);
@@ -246,7 +267,7 @@ export function getMetricTrends(sessions, events, trendDays = 7) {
 
     const engagementRate = visitors > 0 ? Math.round((engagedSessions / visitors) * 100) : 0;
 
-    const dayMetrics = calculateMetrics(daySessions, dayEvents);
+    const dayMetrics = calculateMetrics(daySessions, dayEvents, sessionEventsMap);
     const avgDurationSeconds = dayMetrics.avgSessionDuration.raw;
 
     trends.pageViews.push(pageViews);
@@ -259,16 +280,21 @@ export function getMetricTrends(sessions, events, trendDays = 7) {
 }
 
 export async function calculateActiveUsers(websiteId) {
-  const date = new Date();
-  date.setMinutes(date.getMinutes() - 5);
-  const fiveMinutesAgoUTC = date.toISOString().slice(0, 19).replace("T", " ");
+  const cacheKey = cacheService.key("activeUsers", websiteId);
 
-  const result = await pbAdmin.collection("sessions").getList(1, 1, {
-    filter: `website.id = "${websiteId}" && updated >= "${fiveMinutesAgoUTC}"`,
-    $autoCancel: false,
+  return cacheService.getOrCompute(cacheKey, cacheService.TTL.ACTIVE_USERS, async () => {
+    const date = new Date();
+    date.setMinutes(date.getMinutes() - 5);
+    const fiveMinutesAgoUTC = date.toISOString().slice(0, 19).replace("T", " ");
+
+    const result = await pbAdmin.collection("sessions").getList(1, 1, {
+      filter: `website.id = "${websiteId}" && updated >= "${fiveMinutesAgoUTC}"`,
+      fields: "id",
+      $autoCancel: false,
+    });
+
+    return result.totalItems;
   });
-
-  return result.totalItems;
 }
 
 export function calculatePercentageChange(current, previous) {
@@ -312,19 +338,26 @@ export function getAllData(metrics, reportType) {
   return metrics[keyMap[reportType]] || [];
 }
 
-export function calculateMetrics(sessions, events) {
-  const getSessionEventCounts = (ev) => {
+export function calculateMetrics(sessions, events, sessionEventsMap = null) {
+  const getSessionEventCounts = () => {
+    if (sessionEventsMap) {
+      const counts = new Map();
+      for (const [sessionId, evts] of sessionEventsMap.entries()) {
+        counts.set(sessionId, evts.length);
+      }
+      return counts;
+    }
     const sessionEventCounts = new Map();
-    for (const event of ev) {
+    for (const event of events) {
       const count = sessionEventCounts.get(event.session) || 0;
       sessionEventCounts.set(event.session, count + 1);
     }
     return sessionEventCounts;
   };
 
-  const calculateBounceRate = (sess, ev) => {
+  const calculateBounceRate = (sess) => {
     if (sess.length === 0) return 0;
-    const sessionEventCounts = getSessionEventCounts(ev);
+    const sessionEventCounts = getSessionEventCounts();
     let bouncedSessions = 0;
     for (const session of sess) {
       if (sessionEventCounts.get(session.id) === 1) {
@@ -354,6 +387,6 @@ export function calculateMetrics(sessions, events) {
 
   return {
     avgSessionDuration: calculateAverageSessionDuration(sessions),
-    bounceRate: calculateBounceRate(sessions, events),
+    bounceRate: calculateBounceRate(sessions),
   };
 }

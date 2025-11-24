@@ -1,6 +1,7 @@
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { broadcast } from "./sseManager.js";
 import { triggerNotification } from "./notificationService.js";
+import cacheService from "./cacheService.js";
 import logger from "../utils/logger.js";
 
 let isSubscribed = false;
@@ -65,6 +66,9 @@ export async function startRealtimeService() {
           const userId = website.user;
           const websiteId = website.id;
 
+          cacheService.invalidateWebsite(websiteId);
+          cacheService.invalidateUser(userId);
+
           broadcast({
             type: "update",
             websiteId: websiteId,
@@ -102,6 +106,10 @@ export async function startRealtimeService() {
           logger.warn("Session delete event without website id for session %s", e.record?.id);
         }
 
+        if (websiteId) {
+          cacheService.invalidateWebsite(websiteId);
+        }
+
         broadcast({
           type: "update",
           websiteId: websiteId || null,
@@ -125,6 +133,11 @@ export async function startRealtimeService() {
           if (!website) {
             logger.warn("Website not found for session %s", session.id);
             return;
+          }
+
+          cacheService.invalidateWebsite(website.id);
+          if (user) {
+            cacheService.invalidateUser(user.id);
           }
 
           broadcast({
@@ -159,6 +172,10 @@ export async function startRealtimeService() {
           const websiteId = context?.website?.id;
           if (!websiteId) {
             logger.warn("Unable to resolve website for deleted event %s", e.record?.id);
+          }
+
+          if (websiteId) {
+            cacheService.invalidateWebsite(websiteId);
           }
 
           broadcast({

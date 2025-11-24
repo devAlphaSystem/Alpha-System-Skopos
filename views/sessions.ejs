@@ -16,7 +16,7 @@
     </header>
     
     <main class="main-content" style="padding-top: 1rem;">
-      <% if (visitorsWithSessions.length === 0) { %>
+      <% if (visitorsWithSessions.length === 0 && pagination.currentPage === 1) { %>
         <div class="card no-data-card">
           <i class="fa-solid fa-triangle-exclamation"></i>
           <h2>No Sessions Available</h2>
@@ -24,8 +24,17 @@
         </div>
       <% } else { %>
         <div class="card">
-          <div class="card-header">
-            <h2>All Visitor Sessions (<%= visitorsWithSessions.reduce((sum, v) => sum + v.sessions.length, 0) %> sessions from <%= visitorsWithSessions.length %> visitors)</h2>
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <h2>All Visitor Sessions (<%= pagination.totalSessions %> total sessions)</h2>
+            <div class="pagination-controls" style="display: flex; align-items: center; gap: 0.5rem;">
+              <label for="per-page-select" style="font-size: 0.875rem; color: var(--text-secondary);">Per page:</label>
+              <select id="per-page-select" class="settings-select">
+                <option value="10" <%= pagination.perPage === 10 ? 'selected' : '' %>>10</option>
+                <option value="25" <%= pagination.perPage === 25 ? 'selected' : '' %>>25</option>
+                <option value="50" <%= pagination.perPage === 50 ? 'selected' : '' %>>50</option>
+                <option value="100" <%= pagination.perPage === 100 ? 'selected' : '' %>>100</option>
+              </select>
+            </div>
           </div>
           <div class="sessions-container">
             <% for (const visitorData of visitorsWithSessions) { %>
@@ -125,6 +134,64 @@
               </div>
             <% } %>
           </div>
+          
+          <% if (pagination.totalPages > 1) { %>
+          <div class="pagination-wrapper" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 1rem;">
+            <div class="pagination-info" style="font-size: 0.875rem; color: var(--text-secondary);">
+              Showing <%= pagination.startItem %>-<%= pagination.endItem %> of <%= pagination.totalSessions %> sessions
+            </div>
+            <div class="pagination-buttons" style="display: flex; gap: 0.25rem; align-items: center;">
+              <% if (pagination.hasPrevPage) { %>
+                <a href="/sessions/<%= currentWebsite.id %>?page=1&perPage=<%= pagination.perPage %>" class="btn btn-sm btn-secondary" title="First page">
+                  <i class="fa-solid fa-angles-left"></i>
+                </a>
+                <a href="/sessions/<%= currentWebsite.id %>?page=<%= pagination.currentPage - 1 %>&perPage=<%= pagination.perPage %>" class="btn btn-sm btn-secondary" title="Previous page">
+                  <i class="fa-solid fa-chevron-left"></i>
+                </a>
+              <% } else { %>
+                <button class="btn btn-sm btn-secondary" disabled><i class="fa-solid fa-angles-left"></i></button>
+                <button class="btn btn-sm btn-secondary" disabled><i class="fa-solid fa-chevron-left"></i></button>
+              <% } %>
+              
+              <% 
+                const maxVisiblePages = 5;
+                let startPage = Math.max(1, pagination.currentPage - Math.floor(maxVisiblePages / 2));
+                let endPage = Math.min(pagination.totalPages, startPage + maxVisiblePages - 1);
+                if (endPage - startPage + 1 < maxVisiblePages) {
+                  startPage = Math.max(1, endPage - maxVisiblePages + 1);
+                }
+              %>
+              
+              <% if (startPage > 1) { %>
+                <span style="padding: 0 0.5rem; color: var(--text-muted);">...</span>
+              <% } %>
+              
+              <% for (let p = startPage; p <= endPage; p++) { %>
+                <a href="/sessions/<%= currentWebsite.id %>?page=<%= p %>&perPage=<%= pagination.perPage %>" 
+                   class="btn btn-sm <%= p === pagination.currentPage ? 'btn-primary' : 'btn-secondary' %>"
+                   style="min-width: 2.5rem;">
+                  <%= p %>
+                </a>
+              <% } %>
+              
+              <% if (endPage < pagination.totalPages) { %>
+                <span style="padding: 0 0.5rem; color: var(--text-muted);">...</span>
+              <% } %>
+              
+              <% if (pagination.hasNextPage) { %>
+                <a href="/sessions/<%= currentWebsite.id %>?page=<%= pagination.currentPage + 1 %>&perPage=<%= pagination.perPage %>" class="btn btn-sm btn-secondary" title="Next page">
+                  <i class="fa-solid fa-chevron-right"></i>
+                </a>
+                <a href="/sessions/<%= currentWebsite.id %>?page=<%= pagination.totalPages %>&perPage=<%= pagination.perPage %>" class="btn btn-sm btn-secondary" title="Last page">
+                  <i class="fa-solid fa-angles-right"></i>
+                </a>
+              <% } else { %>
+                <button class="btn btn-sm btn-secondary" disabled><i class="fa-solid fa-chevron-right"></i></button>
+                <button class="btn btn-sm btn-secondary" disabled><i class="fa-solid fa-angles-right"></i></button>
+              <% } %>
+            </div>
+          </div>
+          <% } %>
         </div>
       <% } %>
     </main>

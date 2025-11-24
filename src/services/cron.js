@@ -294,7 +294,7 @@ async function discardShortSessions() {
 
     for (const website of websites) {
       try {
-        const fiveMinutesAgo = subDays(new Date(), 5 / (24 * 60)).toISOString();
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
         const oldSessions = await pbAdmin.collection("sessions").getFullList({
           filter: `website.id = "${website.id}" && updated < "${fiveMinutesAgo}"`,
@@ -310,6 +310,26 @@ async function discardShortSessions() {
           const durationSeconds = (sessionEnd - sessionStart) / 1000;
 
           if (durationSeconds < 1) {
+            const events = await pbAdmin.collection("events").getFullList({
+              filter: `session.id = "${session.id}"`,
+              fields: "id",
+              $autoCancel: false,
+            });
+
+            for (const event of events) {
+              await pbAdmin.collection("events").delete(event.id);
+            }
+
+            const jsErrors = await pbAdmin.collection("js_errors").getFullList({
+              filter: `session.id = "${session.id}"`,
+              fields: "id",
+              $autoCancel: false,
+            });
+
+            for (const jsError of jsErrors) {
+              await pbAdmin.collection("js_errors").delete(jsError.id);
+            }
+
             await pbAdmin.collection("sessions").delete(session.id);
             discardedForWebsite++;
           }

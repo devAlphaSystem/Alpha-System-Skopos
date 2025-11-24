@@ -1,55 +1,75 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { subDays } from "date-fns";
 import { calculateMetricsFromRecords, calculatePercentageChange, calculateActiveUsers, getMetricTrends, getReportsFromMetrics } from "../services/analyticsService.js";
+import cacheService from "../services/cacheService.js";
 import logger from "../utils/logger.js";
 
 async function getCommonData(userId) {
-  logger.debug("Fetching common data for user: %s", userId);
-  await ensureAdminAuth();
-  const allWebsites = await pbAdmin.collection("websites").getFullList({
-    filter: `user.id = "${userId}"`,
-    sort: "created",
+  const cacheKey = cacheService.key("websites", userId);
+
+  return cacheService.getOrCompute(cacheKey, cacheService.TTL.WEBSITES, async () => {
+    logger.debug("Fetching common data for user: %s", userId);
+    await ensureAdminAuth();
+    const allWebsites = await pbAdmin.collection("websites").getFullList({
+      filter: `user.id = "${userId}"`,
+      sort: "created",
+      fields: "id,domain,name,trackingId,isArchived,created,disableLocalhostTracking,dataRetentionDays,uptimeMonitoring,uptimeCheckInterval",
+    });
+
+    const websites = allWebsites.filter((w) => !w.isArchived);
+    const archivedWebsites = allWebsites.filter((w) => w.isArchived);
+    logger.debug("Found %d active and %d archived websites for user %s.", websites.length, archivedWebsites.length, userId);
+
+    return { websites, archivedWebsites, allWebsites };
   });
-
-  const websites = allWebsites.filter((w) => !w.isArchived);
-  const archivedWebsites = allWebsites.filter((w) => w.isArchived);
-  logger.debug("Found %d active and %d archived websites for user %s.", websites.length, archivedWebsites.length, userId);
-
-  return { websites, archivedWebsites, allWebsites };
 }
 
 async function fetchSessions(websiteId, startDate, endDate) {
-  logger.debug("Fetching sessions for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
-  await ensureAdminAuth();
+  const startKey = startDate.toISOString().substring(0, 16);
+  const endKey = endDate.toISOString().substring(0, 16);
+  const cacheKey = cacheService.key("sessions", websiteId, startKey, endKey);
 
-  const startISO = startDate.toISOString();
-  const endISO = endDate.toISOString();
+  return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
+    logger.debug("Fetching sessions for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
+    await ensureAdminAuth();
 
-  const sessions = await pbAdmin.collection("sessions").getFullList({
-    filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
-    sort: "created",
-    $autoCancel: false,
+    const startISO = startDate.toISOString();
+    const endISO = endDate.toISOString();
+
+    const sessions = await pbAdmin.collection("sessions").getFullList({
+      filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+      sort: "created",
+      fields: "id,created,updated,isNewVisitor,referrer,device,browser,language,country,state,entryPath,exitPath",
+      $autoCancel: false,
+    });
+
+    logger.debug("Found %d sessions for website %s", sessions.length, websiteId);
+    return sessions;
   });
-
-  logger.debug("Found %d sessions for website %s", sessions.length, websiteId);
-  return sessions;
 }
 
 async function fetchEvents(websiteId, startDate, endDate) {
-  logger.debug("Fetching events for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
-  await ensureAdminAuth();
+  const startKey = startDate.toISOString().substring(0, 16);
+  const endKey = endDate.toISOString().substring(0, 16);
+  const cacheKey = cacheService.key("events", websiteId, startKey, endKey);
 
-  const startISO = startDate.toISOString();
-  const endISO = endDate.toISOString();
+  return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
+    logger.debug("Fetching events for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
+    await ensureAdminAuth();
 
-  const events = await pbAdmin.collection("events").getFullList({
-    filter: `session.website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
-    sort: "created",
-    $autoCancel: false,
+    const startISO = startDate.toISOString();
+    const endISO = endDate.toISOString();
+
+    const events = await pbAdmin.collection("events").getFullList({
+      filter: `session.website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+      sort: "created",
+      fields: "id,session,type,path,eventName,eventData,created",
+      $autoCancel: false,
+    });
+
+    logger.debug("Found %d events for website %s", events.length, websiteId);
+    return events;
   });
-
-  logger.debug("Found %d events for website %s", events.length, websiteId);
-  return events;
 }
 
 export async function showOverview(req, res) {
@@ -73,10 +93,9 @@ export async function showOverview(req, res) {
     logger.debug("Calculating overview data for %d active websites.", websites.length);
     const websiteIds = websites.map((w) => w.id);
 
-    const currentMetricsPromises = websiteIds.map((id) => calculateMetricsFromRecords(id, currentStartDate, today));
-    const prevMetricsPromises = websiteIds.map((id) => calculateMetricsFromRecords(id, prevStartDate, prevEndDate));
+    const [currentMetricsArray, prevMetricsArray, allSessions, allEvents, activeUsersCounts] = await Promise.all([Promise.all(websiteIds.map((id) => calculateMetricsFromRecords(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => calculateMetricsFromRecords(id, prevStartDate, prevEndDate))), Promise.all(websiteIds.map((id) => fetchSessions(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => fetchEvents(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => calculateActiveUsers(id)))]);
 
-    const [currentMetricsArray, prevMetricsArray] = await Promise.all([Promise.all(currentMetricsPromises), Promise.all(prevMetricsPromises)]);
+    const activeUsers = activeUsersCounts.reduce((sum, count) => sum + count, 0);
 
     const currentMetrics = {
       pageViews: currentMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
@@ -118,10 +137,6 @@ export async function showOverview(req, res) {
       prevTotalDurationSeconds += m.avgSessionDuration.raw * m.visitors;
     }
     prevMetrics.avgSessionDuration.raw = prevMetrics.visitors > 0 ? Math.round(prevTotalDurationSeconds / prevMetrics.visitors) : 0;
-
-    const allSessionsPromises = websiteIds.map((id) => fetchSessions(id, currentStartDate, today));
-    const allEventsPromises = websiteIds.map((id) => fetchEvents(id, currentStartDate, today));
-    const [allSessions, allEvents] = await Promise.all([Promise.all(allSessionsPromises), Promise.all(allEventsPromises)]);
 
     const flatSessions = allSessions.flat();
     const flatEvents = allEvents.flat();
@@ -191,10 +206,6 @@ export async function showOverview(req, res) {
         .sort((a, b) => b.count - a.count),
     };
 
-    const activeUsersPromises = websiteIds.map((id) => calculateActiveUsers(id));
-    const activeUsersCounts = await Promise.all(activeUsersPromises);
-    const activeUsers = activeUsersCounts.reduce((sum, count) => sum + count, 0);
-
     const metrics = {
       ...currentMetrics,
       trends,
@@ -245,13 +256,9 @@ export async function showDashboard(req, res) {
     const prevStartDate = subDays(currentStartDate, dataPeriod);
     const prevEndDate = subDays(currentStartDate, 1);
 
-    const [currentMetrics, prevMetrics] = await Promise.all([calculateMetricsFromRecords(websiteId, currentStartDate, today), calculateMetricsFromRecords(websiteId, prevStartDate, prevEndDate)]);
-
-    const [sessions, events] = await Promise.all([fetchSessions(websiteId, currentStartDate, today), fetchEvents(websiteId, currentStartDate, today)]);
+    const [currentMetrics, prevMetrics, sessions, events, activeUsers] = await Promise.all([calculateMetricsFromRecords(websiteId, currentStartDate, today), calculateMetricsFromRecords(websiteId, prevStartDate, prevEndDate), fetchSessions(websiteId, currentStartDate, today), fetchEvents(websiteId, currentStartDate, today), currentWebsite.isArchived ? Promise.resolve(0) : calculateActiveUsers(websiteId)]);
 
     const trends = getMetricTrends(sessions, events, trendDays);
-
-    const activeUsers = currentWebsite.isArchived ? 0 : await calculateActiveUsers(websiteId);
 
     const metrics = {
       ...currentMetrics,

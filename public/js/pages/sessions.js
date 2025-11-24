@@ -1,3 +1,17 @@
+document.addEventListener("DOMContentLoaded", () => {
+  const perPageSelect = document.getElementById("per-page-select");
+
+  if (perPageSelect) {
+    perPageSelect.addEventListener("change", (e) => {
+      const perPage = e.target.value;
+      const url = new URL(window.location.href);
+      url.searchParams.set("perPage", perPage);
+      url.searchParams.set("page", "1");
+      window.location.href = url.toString();
+    });
+  }
+});
+
 document.body.addEventListener("click", async (e) => {
   const deleteSessionButton = e.target.closest(".delete-session-btn");
   const deleteVisitorButton = e.target.closest(".delete-visitor-btn");

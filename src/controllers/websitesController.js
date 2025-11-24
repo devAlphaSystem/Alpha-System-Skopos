@@ -3,27 +3,32 @@ import { randomUUID } from "node:crypto";
 import logger from "../utils/logger.js";
 import { analyzeSeo } from "../services/seoAnalyzer.js";
 import { getLatestSdkVersion, checkSdkUpdate } from "../services/updateChecker.js";
+import cacheService from "../services/cacheService.js";
 
 async function getCommonData(userId) {
-  logger.debug("Fetching common data for user: %s", userId);
-  await ensureAdminAuth();
-  const allWebsites = await pbAdmin.collection("websites").getFullList({
-    filter: `user.id = "${userId}"`,
-    sort: "created",
-  });
+  const cacheKey = cacheService.key("websites", userId);
 
-  const websites = allWebsites.filter((w) => !w.isArchived);
-  const archivedWebsites = allWebsites.filter((w) => w.isArchived);
-  logger.debug("Found %d active and %d archived websites for user %s.", websites.length, archivedWebsites.length, userId);
+  return cacheService.getOrCompute(cacheKey, cacheService.TTL.WEBSITES, async () => {
+    logger.debug("Fetching common data for user: %s", userId);
+    await ensureAdminAuth();
+    const allWebsites = await pbAdmin.collection("websites").getFullList({
+      filter: `user.id = "${userId}"`,
+      sort: "created",
+    });
 
-  const latestSdkVersion = await getLatestSdkVersion();
-  for (const website of websites) {
-    if (website.sdkVersion) {
-      website.hasSdkUpdate = await checkSdkUpdate(website.sdkVersion);
+    const websites = allWebsites.filter((w) => !w.isArchived);
+    const archivedWebsites = allWebsites.filter((w) => w.isArchived);
+    logger.debug("Found %d active and %d archived websites for user %s.", websites.length, archivedWebsites.length, userId);
+
+    const latestSdkVersion = await getLatestSdkVersion();
+    for (const website of websites) {
+      if (website.sdkVersion) {
+        website.hasSdkUpdate = await checkSdkUpdate(website.sdkVersion);
+      }
     }
-  }
 
-  return { websites, archivedWebsites, allWebsites, latestSdkVersion };
+    return { websites, archivedWebsites, allWebsites, latestSdkVersion };
+  });
 }
 
 export async function showWebsites(req, res) {
@@ -63,7 +68,10 @@ export async function addWebsite(req, res) {
 
     logger.info("Website %s created successfully. Triggering background SEO analysis.", newWebsite.id);
 
-    runSeoAnalysisInBackground(newWebsite.id, domain);
+    cacheService.invalidateUser(res.locals.user.id);
+
+    const userId = res.locals.user?.id;
+    runSeoAnalysisInBackground(newWebsite.id, domain, userId);
 
     res.redirect("/websites");
   } catch (error) {
@@ -72,10 +80,10 @@ export async function addWebsite(req, res) {
   }
 }
 
-async function runSeoAnalysisInBackground(websiteId, domain) {
+async function runSeoAnalysisInBackground(websiteId, domain, userId) {
   try {
     logger.info("Starting background SEO analysis for website %s (%s)", websiteId, domain);
-    const seoData = await analyzeSeo(domain, null, res.locals.user?.id);
+    const seoData = await analyzeSeo(domain, null, userId);
 
     await ensureAdminAuth();
     await pbAdmin.collection("seo_data").create({
@@ -109,6 +117,8 @@ export async function archiveWebsite(req, res) {
     const record = await pbAdmin.collection("websites").getOne(id);
     if (record.user === res.locals.user.id) {
       await pbAdmin.collection("websites").update(id, { isArchived: true });
+      cacheService.invalidateUser(res.locals.user.id);
+      cacheService.invalidateWebsite(id);
       logger.info("Successfully archived website: %s", id);
     } else {
       logger.warn("User %s attempted to archive unauthorized website %s", res.locals.user.id, id);
@@ -128,6 +138,8 @@ export async function restoreWebsite(req, res) {
     const record = await pbAdmin.collection("websites").getOne(id);
     if (record.user === res.locals.user.id) {
       await pbAdmin.collection("websites").update(id, { isArchived: false });
+      cacheService.invalidateUser(res.locals.user.id);
+      cacheService.invalidateWebsite(id);
       logger.info("Successfully restored website: %s", id);
     } else {
       logger.warn("User %s attempted to restore unauthorized website %s", res.locals.user.id, id);
@@ -154,6 +166,7 @@ export async function deleteWebsite(req, res) {
     if (deleteData === "true") {
       logger.info("Deleting associated data for website %s", id);
       const relatedCollections = ["events", "js_errors", "sessions", "visitors"];
+
       for (const collection of relatedCollections) {
         let items;
         do {
@@ -163,8 +176,11 @@ export async function deleteWebsite(req, res) {
             fields: "id",
             perPage: 200,
           });
-          for (const item of items) {
-            await pbAdmin.collection(collection).delete(item.id);
+
+          const BATCH_SIZE = 50;
+          for (let i = 0; i < items.length; i += BATCH_SIZE) {
+            const batch = items.slice(i, i + BATCH_SIZE);
+            await Promise.all(batch.map((item) => pbAdmin.collection(collection).delete(item.id)));
           }
           logger.debug("Deleted %d items from %s for website %s", items.length, collection, id);
         } while (items.length > 0);
@@ -181,6 +197,10 @@ export async function deleteWebsite(req, res) {
     }
 
     await pbAdmin.collection("websites").delete(id);
+
+    cacheService.invalidateUser(res.locals.user.id);
+    cacheService.invalidateWebsite(id);
+
     logger.info("Successfully deleted website: %s", id);
     res.redirect("/websites");
   } catch (error) {
@@ -222,6 +242,10 @@ export async function updateWebsiteSettings(req, res) {
     }
 
     await pbAdmin.collection("websites").update(website.id, dataToUpdate);
+
+    cacheService.invalidateUser(userId);
+    cacheService.invalidateWebsite(websiteId);
+
     logger.info("Successfully updated settings for website %s", websiteId);
     res.status(200).json({ success: true });
   } catch (error) {
