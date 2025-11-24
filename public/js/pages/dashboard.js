@@ -394,7 +394,8 @@ document.addEventListener("DOMContentLoaded", () => {
           console.warn("Ignoring non-JSON SSE payload", event.data);
           return;
         }
-        if (data.type === "update" && (!WEBSITE_ID || data.websiteId === WEBSITE_ID)) {
+        const matchesWebsite = !WEBSITE_ID || !data.websiteId || data.websiteId === WEBSITE_ID;
+        if (data.type === "update" && matchesWebsite) {
           fetchDashboardData();
         }
       };

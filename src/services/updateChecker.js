@@ -158,7 +158,7 @@ export async function checkForUpdates(currentVersion) {
 export async function getLatestSdkVersion() {
   const now = Date.now();
 
-  if (sdkUpdateCache.lastChecked && now - sdkUpdateCache.lastChecked < sdkUpdateCache.cacheExpiry && sdkUpdateCache.latestVersion) {
+  if (sdkUpdateCache.lastChecked && now - sdkUpdateCache.lastChecked < sdkUpdateCache.cacheExpiry) {
     logger.debug("Using cached SDK version");
     return sdkUpdateCache.latestVersion;
   }
@@ -169,7 +169,15 @@ export async function getLatestSdkVersion() {
 
     if (!latestCommit || !latestCommit.version) {
       logger.debug("No SDK version information available from GitHub");
-      return null;
+
+      sdkUpdateCache = {
+        ...sdkUpdateCache,
+        latestCommitSha: latestCommit?.sha || null,
+        latestCommitDate: latestCommit?.date || null,
+        lastChecked: now,
+      };
+
+      return sdkUpdateCache.latestVersion ?? null;
     }
 
     sdkUpdateCache = {
@@ -184,7 +192,15 @@ export async function getLatestSdkVersion() {
     return latestCommit.version;
   } catch (error) {
     logger.debug("Error getting latest SDK version:", error.message);
-    return null;
+
+    sdkUpdateCache = {
+      ...sdkUpdateCache,
+      latestCommitSha: null,
+      latestCommitDate: null,
+      lastChecked: now,
+    };
+
+    return sdkUpdateCache.latestVersion ?? null;
   }
 }
 

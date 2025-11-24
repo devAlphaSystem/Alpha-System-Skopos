@@ -143,7 +143,7 @@
               <div class="settings-option">
                 <div class="settings-option-info">
                   <div class="settings-option-label">Discard Short Sessions</div>
-                  <div class="settings-option-description">When enabled, sessions with a duration of less than 1 second will be automatically discarded and not stored in the database.</div>
+                  <div class="settings-option-description">When enabled, sessions with a duration of less than 1 second will be detected within 5 minutes and discarded.</div>
                 </div>
                 <label class="toggle-switch">
                   <input type="checkbox" id="discard-short-sessions-toggle" <%= appSettings?.discardShortSessions ? 'checked' : '' %>>

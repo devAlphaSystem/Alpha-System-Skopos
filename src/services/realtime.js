@@ -5,6 +5,45 @@ import logger from "../utils/logger.js";
 
 let isSubscribed = false;
 
+async function fetchSessionContext(sessionId) {
+  if (!sessionId) {
+    logger.warn("Missing session id while resolving context.");
+    return null;
+  }
+
+  try {
+    const session = await pbAdmin.collection("sessions").getOne(sessionId, {
+      expand: "website,website.user",
+    });
+    const website = session.expand?.website;
+    const user = website?.expand?.user;
+    if (!website) {
+      logger.warn("Website relation missing on session %s", sessionId);
+      return { session };
+    }
+    return { session, website, user };
+  } catch (error) {
+    logger.warn("Failed to fetch session context for %s: %s", sessionId, error.message);
+    return null;
+  }
+}
+
+async function fetchWebsiteWithUser(websiteId) {
+  if (!websiteId) {
+    logger.warn("Missing website id while resolving website context.");
+    return null;
+  }
+
+  try {
+    return await pbAdmin.collection("websites").getOne(websiteId, {
+      expand: "user",
+    });
+  } catch (error) {
+    logger.warn("Failed to fetch website %s: %s", websiteId, error.message);
+    return null;
+  }
+}
+
 export async function startRealtimeService() {
   if (isSubscribed) {
     return;
@@ -17,9 +56,11 @@ export async function startRealtimeService() {
       if (e.action === "create") {
         logger.debug("New session detected: %s", e.record?.id);
         try {
-          const website = await pbAdmin.collection("websites").getOne(e.record.website, {
-            expand: "user",
-          });
+          const website = await fetchWebsiteWithUser(e.record.website);
+          if (!website) {
+            logger.warn("Unable to resolve website for session %s", e.record?.id);
+            return;
+          }
 
           const userId = website.user;
           const websiteId = website.id;
@@ -54,6 +95,19 @@ export async function startRealtimeService() {
           logger.error("Error processing session notification: %o", error);
         }
       }
+
+      if (e.action === "delete") {
+        const websiteId = e.record?.website;
+        if (!websiteId) {
+          logger.warn("Session delete event without website id for session %s", e.record?.id);
+        }
+
+        broadcast({
+          type: "update",
+          websiteId: websiteId || null,
+          action: "session_deleted",
+        });
+      }
     });
 
     pbAdmin.collection("events").subscribe("*", async (e) => {
@@ -61,11 +115,13 @@ export async function startRealtimeService() {
         logger.debug("Event detected: %s (type: %s)", e.record?.id, e.record?.type);
 
         try {
-          const session = await pbAdmin.collection("sessions").getOne(e.record.session, {
-            expand: "website,website.user",
-          });
+          const context = await fetchSessionContext(e.record.session);
+          if (!context?.website) {
+            logger.warn("Unable to resolve website for event %s", e.record?.id);
+            return;
+          }
 
-          const website = session.expand?.website;
+          const { session, website, user } = context;
           if (!website) {
             logger.warn("Website not found for session %s", session.id);
             return;
@@ -79,7 +135,6 @@ export async function startRealtimeService() {
           });
 
           if (e.record.type === "custom" && e.record.eventName) {
-            const user = website.expand?.user;
             if (!user) {
               logger.warn("User not found for website %s", website.id);
               return;
@@ -94,6 +149,26 @@ export async function startRealtimeService() {
           }
         } catch (error) {
           logger.error("Error processing event notification: %o", error);
+        }
+      }
+
+      if (e.action === "delete") {
+        logger.debug("Event deleted: %s (type: %s)", e.record?.id, e.record?.type);
+        try {
+          const context = await fetchSessionContext(e.record?.session);
+          const websiteId = context?.website?.id;
+          if (!websiteId) {
+            logger.warn("Unable to resolve website for deleted event %s", e.record?.id);
+          }
+
+          broadcast({
+            type: "update",
+            websiteId: websiteId || null,
+            action: "event_deleted",
+            eventType: e.record?.type,
+          });
+        } catch (error) {
+          logger.error("Error processing event deletion notification: %o", error);
         }
       }
     });
