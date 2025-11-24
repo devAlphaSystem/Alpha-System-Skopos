@@ -328,7 +328,10 @@
         "type": "autodate"
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE INDEX `idx_038Wm4OymW` ON `api_keys` (\n  `user`,\n  `service`,\n  `isActive`\n)",
+      "CREATE INDEX `idx_M3BnGAHZ5o` ON `api_keys` (\n  `user`,\n  `service`,\n  `label`\n)"
+    ],
     "system": false
   },
   {
@@ -444,7 +447,11 @@
         "type": "autodate"
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE INDEX `idx_VqysCmloVt` ON `events` (\n  `session`,\n  `created`\n)",
+      "CREATE INDEX `idx_CNuF9yqoSR` ON `events` (\n  `session`,\n  `type`,\n  `created`\n)",
+      "CREATE INDEX `idx_CcWW4w5tS8` ON `events` (\n  `type`,\n  `eventName`\n)"
+    ],
     "system": false
   },
   {
@@ -597,7 +604,10 @@
         "type": "autodate"
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE INDEX `idx_SxHXlHML8B` ON `js_errors` (\n  `website`,\n  `lastSeen`\n)",
+      "CREATE INDEX `idx_rJAQlEwQIa` ON `js_errors` (`session`)"
+    ],
     "system": false
   },
   {
@@ -770,7 +780,10 @@
         "type": "autodate"
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE INDEX `idx_CxmvFpwnre` ON `notyf_rules` (\n  `user`,\n  `isActive`,\n  `eventType`\n)",
+      "CREATE INDEX `idx_4ViQp1G5sc` ON `notyf_rules` (\n  `eventType`,\n  `isActive`\n)"
+    ],
     "system": false
   },
   {
@@ -1219,7 +1232,12 @@
         "type": "autodate"
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE INDEX `idx_BBjn5D3Idx` ON `sessions` (\n  `website`,\n  `created`\n)",
+      "CREATE INDEX `idx_7RNsRkdQi5` ON `sessions` (`visitor`)",
+      "CREATE INDEX `idx_i9mVA5cWI0` ON `sessions` (\n  `website`,\n  `country`\n)",
+      "CREATE INDEX `idx_tqBOVCl59Z` ON `sessions` (\n  `website`,\n  `updated`\n)"
+    ],
     "system": false
   },
   {
@@ -1492,7 +1510,7 @@
       }
     ],
     "indexes": [
-      "CREATE INDEX `idx_p40E75XFaq` ON `uptime_incidents` (\n  `website`,\n  `isResolved`\n)",
+      "CREATE INDEX `idx_p40E75XFaq` ON `uptime_incidents` (\n  `website`,\n  `isResolved`,\n  `startTime`\n)",
       "CREATE INDEX `idx_l89NrDTVh6` ON `uptime_incidents` (`startTime`)"
     ],
     "system": false
@@ -1706,7 +1724,8 @@
       }
     ],
     "indexes": [
-      "CREATE INDEX `idx_hnQBpD5jHQ` ON `visitors` (\n  `visitorId`,\n  `website`\n)"
+      "CREATE INDEX `idx_hnQBpD5jHQ` ON `visitors` (\n  `visitorId`,\n  `website`\n)",
+      "CREATE INDEX `idx_H60ZpWCkNl` ON `visitors` (`website`)"
     ],
     "system": false
   },
@@ -1929,7 +1948,8 @@
       }
     ],
     "indexes": [
-      "CREATE INDEX `idx_EbvgIwQP1t` ON `websites` (`trackingId`)"
+      "CREATE INDEX `idx_EbvgIwQP1t` ON `websites` (`trackingId`)",
+      "CREATE INDEX `idx_f5hXNFf9SV` ON `websites` (\n  `user`,\n  `isArchived`\n)"
     ],
     "system": false
   }

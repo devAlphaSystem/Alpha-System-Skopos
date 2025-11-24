@@ -62,7 +62,7 @@ export async function showOverview(req, res) {
     }
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
-    const resultsLimit = 10;
+    const resultsLimit = Number.parseInt(req.query.limit) || 10;
     const trendDays = Math.min(dataPeriod, 7);
     const today = new Date();
 
@@ -237,7 +237,7 @@ export async function showDashboard(req, res) {
     }
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
-    const resultsLimit = 10;
+    const resultsLimit = Number.parseInt(req.query.limit) || 10;
     const trendDays = Math.min(dataPeriod, 7);
     const today = new Date();
 

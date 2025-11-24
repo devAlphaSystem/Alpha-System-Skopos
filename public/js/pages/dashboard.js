@@ -1010,7 +1010,7 @@ document.addEventListener("DOMContentLoaded", () => {
     websiteSelector.addEventListener("change", (e) => {
       const selectedWebsiteId = e.target.value;
       if (selectedWebsiteId) {
-        window.location.href = `/dashboard/${selectedWebsiteId}`;
+        window.location.href = `/dashboard/${selectedWebsiteId}?period=${settings.dataPeriod}&limit=${settings.resultsLimit}`;
       }
     });
   }

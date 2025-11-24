@@ -69,7 +69,12 @@ document.addEventListener("DOMContentLoaded", () => {
     websiteSelector.addEventListener("change", (e) => {
       const selectedWebsiteId = e.target.value;
       if (selectedWebsiteId) {
-        window.location.href = `/dashboard/${selectedWebsiteId}`;
+        let settings = { dataPeriod: 7, resultsLimit: 10 };
+        try {
+          const stored = localStorage.getItem("skopos-settings");
+          if (stored) settings = { ...settings, ...JSON.parse(stored) };
+        } catch (e) {}
+        window.location.href = `/dashboard/${selectedWebsiteId}?period=${settings.dataPeriod}&limit=${settings.resultsLimit}`;
       }
     });
   }

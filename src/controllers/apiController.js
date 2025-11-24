@@ -136,8 +136,75 @@ export async function getOverviewData(req, res) {
       },
     };
 
-    const aggregatedMetrics = currentMetricsArray[0] || {};
-    const reports = getReportsFromMetrics(aggregatedMetrics, resultsLimit);
+    const mergedMetrics = {
+      topPages: new Map(),
+      entryPages: new Map(),
+      exitPages: new Map(),
+      topReferrers: new Map(),
+      deviceBreakdown: new Map(),
+      browserBreakdown: new Map(),
+      languageBreakdown: new Map(),
+      countryBreakdown: new Map(),
+      stateBreakdown: new Map(),
+      topCustomEvents: new Map(),
+      topJsErrors: new Map(),
+    };
+
+    for (const m of currentMetricsArray) {
+      for (const item of m.topPages) mergedMetrics.topPages.set(item.key, (mergedMetrics.topPages.get(item.key) || 0) + item.count);
+      for (const item of m.entryPages) mergedMetrics.entryPages.set(item.key, (mergedMetrics.entryPages.get(item.key) || 0) + item.count);
+      for (const item of m.exitPages) mergedMetrics.exitPages.set(item.key, (mergedMetrics.exitPages.get(item.key) || 0) + item.count);
+      for (const item of m.topReferrers) mergedMetrics.topReferrers.set(item.key, (mergedMetrics.topReferrers.get(item.key) || 0) + item.count);
+      for (const item of m.deviceBreakdown) mergedMetrics.deviceBreakdown.set(item.key, (mergedMetrics.deviceBreakdown.get(item.key) || 0) + item.count);
+      for (const item of m.browserBreakdown) mergedMetrics.browserBreakdown.set(item.key, (mergedMetrics.browserBreakdown.get(item.key) || 0) + item.count);
+      for (const item of m.languageBreakdown) mergedMetrics.languageBreakdown.set(item.key, (mergedMetrics.languageBreakdown.get(item.key) || 0) + item.count);
+      for (const item of m.countryBreakdown) mergedMetrics.countryBreakdown.set(item.key, (mergedMetrics.countryBreakdown.get(item.key) || 0) + item.count);
+      for (const item of m.stateBreakdown) mergedMetrics.stateBreakdown.set(item.key, (mergedMetrics.stateBreakdown.get(item.key) || 0) + item.count);
+      for (const item of m.topCustomEvents) mergedMetrics.topCustomEvents.set(item.key, (mergedMetrics.topCustomEvents.get(item.key) || 0) + item.count);
+      for (const item of m.topJsErrors) mergedMetrics.topJsErrors.set(item.key, (mergedMetrics.topJsErrors.get(item.key) || 0) + item.count);
+    }
+
+    const totalPageViews = currentMetrics.pageViews;
+    const totalVisitors = currentMetrics.visitors;
+    const totalJsErrors = currentMetrics.jsErrors;
+
+    const sortedMetrics = {
+      topPages: Array.from(mergedMetrics.topPages.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalPageViews > 0 ? Math.round((count / totalPageViews) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+      entryPages: Array.from(mergedMetrics.entryPages.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+      exitPages: Array.from(mergedMetrics.exitPages.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+      topReferrers: Array.from(mergedMetrics.topReferrers.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+      deviceBreakdown: Array.from(mergedMetrics.deviceBreakdown.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+      browserBreakdown: Array.from(mergedMetrics.browserBreakdown.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+      languageBreakdown: Array.from(mergedMetrics.languageBreakdown.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+      countryBreakdown: Array.from(mergedMetrics.countryBreakdown.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+      stateBreakdown: Array.from(mergedMetrics.stateBreakdown.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+      topCustomEvents: Array.from(mergedMetrics.topCustomEvents.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+      topJsErrors: Array.from(mergedMetrics.topJsErrors.entries())
+        .map(([key, count]) => ({ key, count, percentage: totalJsErrors > 0 ? Math.round((count / totalJsErrors) * 100) : 0 }))
+        .sort((a, b) => b.count - a.count),
+    };
+
+    const reports = getReportsFromMetrics(sortedMetrics, resultsLimit);
 
     logger.debug("API getOverviewData successful for user %s.", userId);
     res.status(200).json({ activeUsers, metrics, reports });

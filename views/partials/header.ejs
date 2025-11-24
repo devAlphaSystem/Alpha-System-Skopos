@@ -42,6 +42,24 @@
         if (settings.sidebarCollapsed) {
           document.documentElement.classList.add('sidebar-collapsed-init');
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+          document.addEventListener('click', function(e) {
+            const link = e.target.closest('a');
+            if (link && !link.dataset.noIntercept) {
+              const href = link.getAttribute('href');
+              if (href && !href.includes('?')) {
+                if (href === '/overview' || (href.startsWith('/dashboard/') && !href.includes('/dashboard/seo') && !href.includes('/dashboard/report'))) {
+                  e.preventDefault();
+                  const url = new URL(href, window.location.origin);
+                  url.searchParams.set('period', settings.dataPeriod);
+                  url.searchParams.set('limit', settings.resultsLimit);
+                  window.location.href = url.toString();
+                }
+              }
+            }
+          });
+        });
       })();
     </script>
   </head>
