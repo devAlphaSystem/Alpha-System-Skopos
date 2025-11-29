@@ -1,6 +1,6 @@
 {
   "name": "alpha-system-skopos",
-  "version": "0.41.0",
+  "version": "0.41.1",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -26,7 +26,7 @@
     "dotenv": "^16.6.1",
     "ejs": "^3.1.10",
     "eventsource": "^4.1.0",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
     "node-cron": "^4.2.1",
     "pocketbase": "^0.26.3",
     "resend": "^6.5.2",
@@ -36,6 +36,6 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.11",
-    "prettier": "^3.6.2"
+    "prettier": "^3.7.3"
   }
 }

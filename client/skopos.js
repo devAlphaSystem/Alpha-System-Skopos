@@ -1,5 +1,5 @@
 /**
- * Skopos Analytics Script v0.2.0
+ * Skopos Analytics Script v0.3.0
  *
  * A lightweight client-side analytics utility for tracking pageviews and custom events
  * using the `navigator.sendBeacon` API (when available) or `fetch` as a fallback.
@@ -23,6 +23,12 @@
   const endpoint = scriptElement.getAttribute("data-endpoint") || "/api/event";
   const autoTrackPageviews = scriptElement.getAttribute("data-auto-track-pageviews") !== "false";
   const observeDom = scriptElement.getAttribute("data-observe-dom") !== "false";
+
+  let pageEntryTime = Date.now();
+  let totalActiveTime = 0;
+  let lastActiveTime = Date.now();
+  let isPageVisible = !document.hidden;
+  let hasTrackedExit = false;
 
   /**
    * Sends data to the analytics endpoint using sendBeacon (preferred) or fetch.
@@ -49,6 +55,38 @@
   }
 
   /**
+   * Updates the total active time when the page visibility changes or user leaves.
+   * Only counts time when the page is visible.
+   */
+  function updateActiveTime() {
+    if (isPageVisible) {
+      const now = Date.now();
+      totalActiveTime += now - lastActiveTime;
+      lastActiveTime = now;
+    }
+  }
+
+  /**
+   * Gets the current duration in seconds that the user has been on the page.
+   * @returns {number} Duration in seconds.
+   */
+  function getCurrentDuration() {
+    updateActiveTime();
+    return Math.round(totalActiveTime / 1000);
+  }
+
+  /**
+   * Resets timing for a new page (used in SPA navigation).
+   */
+  function resetTiming() {
+    pageEntryTime = Date.now();
+    totalActiveTime = 0;
+    lastActiveTime = Date.now();
+    isPageVisible = !document.hidden;
+    hasTrackedExit = false;
+  }
+
+  /**
    * Tracks an event and sends it to the analytics server.
    *
    * @param {string} eventName - The name of the event (e.g., "signup_button_click").
@@ -68,6 +106,36 @@
       screenHeight: window.screen.height,
       language: navigator.language,
       customData: customData,
+    };
+
+    sendData(payload);
+  }
+
+  /**
+   * Sends the page exit event with duration data.
+   * @param {string} [exitReason="leave"] - The reason for exit (leave, navigate, hidden).
+   */
+  function trackPageExit(exitReason = "leave") {
+    if (hasTrackedExit) return;
+    hasTrackedExit = true;
+
+    const duration = getCurrentDuration();
+
+    if (duration < 1) return;
+
+    const url = new URL(window.location.href);
+    const payload = {
+      type: "custom",
+      name: "page_exit",
+      url: url.href,
+      referrer: document.referrer,
+      screenWidth: window.screen.width,
+      screenHeight: window.screen.height,
+      language: navigator.language,
+      customData: {
+        duration: duration,
+        exitReason: exitReason,
+      },
     };
 
     sendData(payload);
@@ -204,17 +272,41 @@
   if (autoTrackPageviews) {
     const originalPushState = history.pushState;
     history.pushState = function (...args) {
+      trackPageExit("navigate");
       originalPushState.apply(this, args);
+      resetTiming();
       setTimeout(trackPageView, 50);
     };
 
-    window.addEventListener("popstate", trackPageView);
+    window.addEventListener("popstate", () => {
+      trackPageExit("navigate");
+      resetTiming();
+      trackPageView();
+    });
 
     if (document.readyState === "complete") {
       trackPageView();
     } else {
       window.addEventListener("load", trackPageView, { once: true });
     }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        updateActiveTime();
+        isPageVisible = false;
+      } else {
+        isPageVisible = true;
+        lastActiveTime = Date.now();
+      }
+    });
+
+    window.addEventListener("beforeunload", () => {
+      trackPageExit("leave");
+    });
+
+    window.addEventListener("pagehide", () => {
+      trackPageExit("leave");
+    });
   }
 
   document.addEventListener("DOMContentLoaded", () => {

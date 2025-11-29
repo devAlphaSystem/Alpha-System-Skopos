@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import { subDays, startOfYesterday } from "date-fns";
+import { subDays, startOfDay, endOfDay } from "date-fns";
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { calculateMetricsFromRecords } from "./analyticsService.js";
 import { triggerNotification } from "./notificationService.js";
@@ -150,9 +150,13 @@ async function sendDailySummaryReports() {
 
     logger.debug("Found %d active daily summary notification rules.", rules.length);
 
-    const yesterday = startOfYesterday();
-    const yesterdayEnd = new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1);
-    const yesterdayDate = yesterday.toISOString().slice(0, 10);
+    const now = new Date();
+    const yesterdayDate = subDays(now, 1);
+    const yesterday = startOfDay(yesterdayDate);
+    const yesterdayEnd = endOfDay(yesterdayDate);
+    const yesterdayDateString = yesterday.toISOString().slice(0, 10);
+
+    logger.debug("Daily summary date range: %s to %s", yesterday.toISOString(), yesterdayEnd.toISOString());
 
     for (const rule of rules) {
       try {
@@ -175,11 +179,11 @@ async function sendDailySummaryReports() {
           try {
             summaryData = await calculateMetricsFromRecords(website.id, yesterday, yesterdayEnd);
           } catch (error) {
-            logger.error("Error calculating metrics for website %s on %s: %o", website.id, yesterdayDate, error);
+            logger.error("Error calculating metrics for website %s on %s: %o", website.id, yesterdayDateString, error);
             summaryData = {};
           }
 
-          const eventData = createDailySummaryEventData(website, summaryData, { reportDate: yesterdayDate });
+          const eventData = createDailySummaryEventData(website, summaryData, { reportDate: yesterdayDateString });
 
           await triggerNotification(userId, website.id, "daily_summary", eventData);
 

@@ -334,6 +334,19 @@ document.addEventListener("DOMContentLoaded", () => {
     Unknown: "Unknown",
   };
 
+  const countryCodes = {};
+  for (const [code, name] of Object.entries(countryNames)) {
+    countryCodes[name] = code;
+    countryCodes[name.toLowerCase()] = code;
+  }
+
+  function getCountryCode(countryKeyOrName) {
+    if (countryKeyOrName && countryKeyOrName.length === 2 && countryNames[countryKeyOrName.toUpperCase()]) {
+      return countryKeyOrName.toUpperCase();
+    }
+    return countryCodes[countryKeyOrName] || countryCodes[countryKeyOrName?.toLowerCase()] || null;
+  }
+
   function updateDashboardSettings(skipInitialFetch = false) {
     settings = window.__SKOPOS_SETTINGS__;
     try {
@@ -351,7 +364,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (IS_ARCHIVED) return;
 
-    if (!skipInitialFetch) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlPeriod = urlParams.get("period");
+    const needsFreshFetch = !urlPeriod || Number.parseInt(urlPeriod) !== settings.dataPeriod;
+
+    if (!skipInitialFetch || needsFreshFetch) {
       fetchDashboardData();
     }
     setupRefreshInterval();
@@ -584,7 +601,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const mapValues = {};
     for (const item of countryData) {
-      mapValues[item.key] = item.count;
+      const isoCode = getCountryCode(item.key);
+      if (isoCode) {
+        mapValues[isoCode] = item.count;
+      }
     }
 
     if (worldMap) {
@@ -702,7 +722,10 @@ document.addEventListener("DOMContentLoaded", () => {
         currentCountryData = data.reports.countryBreakdown;
         const mapValues = {};
         for (const item of data.reports.countryBreakdown) {
-          mapValues[item.key] = item.count;
+          const isoCode = getCountryCode(item.key);
+          if (isoCode) {
+            mapValues[isoCode] = item.count;
+          }
         }
         worldMap.series.regions[0].setValues(mapValues);
       }
