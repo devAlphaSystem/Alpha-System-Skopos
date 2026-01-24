@@ -16,6 +16,7 @@ import settingsRoutes from "./src/routes/settings.js";
 import seoRoutes from "./src/routes/seo.js";
 import uptimeRoutes from "./src/routes/uptime.js";
 import apiRoutes from "./src/routes/api.js";
+import collectRoutes from "./src/routes/collect.js";
 import { pb } from "./src/services/pocketbase.js";
 import { startCronJobs } from "./src/services/cron.js";
 import { initialize as initializeAppState, doesUserExist } from "./src/services/appState.js";
@@ -55,6 +56,8 @@ async function initializeApp() {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
   app.use(deviceDetectionMiddleware);
+
+  app.use("/", collectRoutes);
 
   app.use((req, res, next) => {
     const allowedPaths = ["/register", "/login"];

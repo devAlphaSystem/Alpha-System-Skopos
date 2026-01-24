@@ -216,33 +216,3 @@ export async function checkSdkUpdate(currentSdkVersion) {
 
   return isNewerVersion(currentSdkVersion, latestVersion);
 }
-
-export function clearUpdateCache() {
-  dashboardUpdateCache = {
-    hasUpdate: false,
-    latestVersion: null,
-    currentVersion: null,
-    lastChecked: null,
-    cacheExpiry: 3600000,
-  };
-  logger.debug("Dashboard update cache cleared");
-}
-
-export function clearSdkUpdateCache() {
-  sdkUpdateCache = {
-    latestVersion: null,
-    latestCommitSha: null,
-    latestCommitDate: null,
-    lastChecked: null,
-    cacheExpiry: 3600000,
-  };
-  logger.debug("SDK update cache cleared");
-}
-
-export default {
-  checkForUpdates,
-  getLatestSdkVersion,
-  checkSdkUpdate,
-  clearUpdateCache,
-  clearSdkUpdateCache,
-};

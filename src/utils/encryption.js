@@ -64,13 +64,3 @@ export function decrypt(encryptedData) {
     throw new Error("Failed to decrypt data");
   }
 }
-
-export function maskApiKey(key) {
-  if (!key || key.length < 12) {
-    return "••••••••";
-  }
-  const start = key.substring(0, 4);
-  const end = key.substring(key.length - 4);
-  const middle = "•".repeat(Math.max(8, key.length - 8));
-  return `${start}${middle}${end}`;
-}

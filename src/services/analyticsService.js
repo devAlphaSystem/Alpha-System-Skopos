@@ -314,7 +314,7 @@ export function getReportsFromMetrics(metrics, limit) {
     deviceBreakdown: metrics.deviceBreakdown.slice(0, limit),
     browserBreakdown: metrics.browserBreakdown.slice(0, limit),
     languageBreakdown: metrics.languageBreakdown.slice(0, limit),
-    countryBreakdown: metrics.countryBreakdown.slice(0, limit),
+    countryBreakdown: metrics.countryBreakdown,
     stateBreakdown: metrics.stateBreakdown.slice(0, limit),
     topCustomEvents: metrics.topCustomEvents.slice(0, limit),
     topJsErrors: metrics.topJsErrors.slice(0, limit),

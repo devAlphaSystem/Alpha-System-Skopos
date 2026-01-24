@@ -593,17 +593,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
     currentCountryData = countryData;
 
-    const colors = getThemeColors();
-    const regionInitialFill = colors.borderColor;
-    const regionHoverFill = colors.primary;
-    const minScale = colors.mapScaleMin;
-    const maxScale = colors.mapScaleMax;
+    const isDarkTheme = document.documentElement.getAttribute("data-theme") === "dark";
+    const regionInitialFill = isDarkTheme ? "#1f2937" : "#e5e7eb";
+    const regionHoverFill = "#ef4444";
+
+    const startColor = isDarkTheme ? "#374151" : "#fee2e2";
+    const endColor = "#ef4444";
+
+    function pickColor(p) {
+      const c1 = startColor.match(/[A-Za-z0-9]{2}/g).map((x) => Number.parseInt(x, 16));
+      const c2 = endColor.match(/[A-Za-z0-9]{2}/g).map((x) => Number.parseInt(x, 16));
+      const r = [Math.round(c1[0] + (c2[0] - c1[0]) * p), Math.round(c1[1] + (c2[1] - c1[1]) * p), Math.round(c1[2] + (c2[2] - c1[2]) * p)];
+      return `#${r.map((x) => x.toString(16).padStart(2, "0")).join("")}`;
+    }
 
     const mapValues = {};
+    const colorScale = {};
+    const maxCount = Math.max(...countryData.map((d) => d.count), 1);
+
     for (const item of countryData) {
       const isoCode = getCountryCode(item.key);
-      if (isoCode) {
-        mapValues[isoCode] = item.count;
+      if (isoCode && item.count > 0) {
+        const color = pickColor(item.count / maxCount);
+        mapValues[isoCode] = color;
+        colorScale[color] = color;
       }
     }
 
@@ -613,30 +626,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     mapElement.innerHTML = "";
 
-    worldMap = new jsVectorMap({
-      selector: "#world-map",
-      map: "world",
-      backgroundColor: "transparent",
-      zoomButtons: false,
-      regionStyle: {
-        initial: { fill: regionInitialFill },
-        hover: { fill: regionHoverFill },
-      },
-      series: {
-        regions: [
-          {
-            values: mapValues,
-            scale: [minScale, maxScale],
-            normalizeFunction: "linear",
+    try {
+      worldMap = new jsVectorMap({
+        selector: "#world-map",
+        map: "world",
+        backgroundColor: "transparent",
+        zoomButtons: false,
+        regionStyle: {
+          initial: {
+            fill: regionInitialFill,
+            stroke: isDarkTheme ? "#374151" : "#d1d5db",
+            strokeWidth: 0.5,
           },
-        ],
-      },
-      onRegionTooltipShow(event, tooltip, code) {
-        const countryName = countryNames[code] || code;
-        const visitorCount = mapValues[code] || 0;
-        tooltip.text(`${countryName}: ${visitorCount} visitors`);
-      },
-    });
+          hover: {
+            fill: regionHoverFill,
+            fillOpacity: 1,
+          },
+        },
+        series: {
+          regions: [
+            {
+              attribute: "fill",
+              values: mapValues,
+              scale: colorScale,
+            },
+          ],
+        },
+        onRegionTooltipShow(event, tooltip, code) {
+          const countryName = countryNames[code] || code;
+          const item = currentCountryData.find((d) => getCountryCode(d.key) === code);
+          const visitorCount = item ? item.count : 0;
+          tooltip.text(`${countryName}: ${visitorCount} visitors`);
+        },
+      });
+    } catch (err) {
+      console.error("[Skopos Map] Initialization failed:", err);
+    }
   }
 
   const initialMetrics = window.__INITIAL_METRICS__;
@@ -719,15 +744,7 @@ document.addEventListener("DOMContentLoaded", () => {
       updateReportCard("report-countries", data.reports.countryBreakdown);
       updateReportCard("report-js-errors", data.reports.topJsErrors);
       if (worldMap && data.reports.countryBreakdown) {
-        currentCountryData = data.reports.countryBreakdown;
-        const mapValues = {};
-        for (const item of data.reports.countryBreakdown) {
-          const isoCode = getCountryCode(item.key);
-          if (isoCode) {
-            mapValues[isoCode] = item.count;
-          }
-        }
-        worldMap.series.regions[0].setValues(mapValues);
+        initializeWorldMap(data.reports.countryBreakdown);
       }
     }
   }
