@@ -167,7 +167,7 @@ export async function toggleUptimeMonitoring(req, res) {
     });
 
     if (enabled) {
-      const checkInterval = (website.uptimeCheckInterval || 60) * 1000;
+      const checkInterval = (website.uptimeCheckInterval || 300) * 1000;
       startMonitoring(websiteId, website.domain, checkInterval);
     } else {
       stopMonitoring(websiteId);

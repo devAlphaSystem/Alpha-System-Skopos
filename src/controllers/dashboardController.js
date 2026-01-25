@@ -24,54 +24,6 @@ async function getCommonData(userId) {
   });
 }
 
-async function fetchSessions(websiteId, startDate, endDate) {
-  const startKey = startDate.toISOString().substring(0, 16);
-  const endKey = endDate.toISOString().substring(0, 16);
-  const cacheKey = cacheService.key("sessions", websiteId, startKey, endKey);
-
-  return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
-    logger.debug("Fetching sessions for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
-    await ensureAdminAuth();
-
-    const startISO = startDate.toISOString();
-    const endISO = endDate.toISOString();
-
-    const sessions = await pbAdmin.collection("sessions").getFullList({
-      filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
-      sort: "created",
-      fields: "id,created,updated,isNewVisitor,referrer,device,browser,language,country,state,entryPath,exitPath",
-      $autoCancel: false,
-    });
-
-    logger.debug("Found %d sessions for website %s", sessions.length, websiteId);
-    return sessions;
-  });
-}
-
-async function fetchEvents(websiteId, startDate, endDate) {
-  const startKey = startDate.toISOString().substring(0, 16);
-  const endKey = endDate.toISOString().substring(0, 16);
-  const cacheKey = cacheService.key("events", websiteId, startKey, endKey);
-
-  return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
-    logger.debug("Fetching events for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
-    await ensureAdminAuth();
-
-    const startISO = startDate.toISOString();
-    const endISO = endDate.toISOString();
-
-    const events = await pbAdmin.collection("events").getFullList({
-      filter: `session.website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
-      sort: "created",
-      fields: "id,session,type,path,eventName,eventData,created",
-      $autoCancel: false,
-    });
-
-    logger.debug("Found %d events for website %s", events.length, websiteId);
-    return events;
-  });
-}
-
 export async function showOverview(req, res) {
   logger.info("Rendering global overview for user: %s", res.locals.user.id);
   try {
@@ -86,16 +38,25 @@ export async function showOverview(req, res) {
     const trendDays = Math.min(dataPeriod, 7);
     const today = new Date();
 
-    const currentStartDate = subDays(today, dataPeriod - 1);
+    const currentStartDate = subDays(today, dataPeriod - (dataPeriod === 1 ? 0 : 1));
+    if (dataPeriod === 1) {
+      currentStartDate.setHours(0, 0, 0, 0);
+    }
     const prevStartDate = subDays(currentStartDate, dataPeriod);
     const prevEndDate = subDays(currentStartDate, 1);
+    if (dataPeriod === 1) {
+      prevEndDate.setHours(23, 59, 59, 999);
+    }
 
     logger.debug("Calculating overview data for %d active websites.", websites.length);
     const websiteIds = websites.map((w) => w.id);
 
-    const [currentMetricsArray, prevMetricsArray, allSessions, allEvents, activeUsersCounts] = await Promise.all([Promise.all(websiteIds.map((id) => calculateMetricsFromRecords(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => calculateMetricsFromRecords(id, prevStartDate, prevEndDate))), Promise.all(websiteIds.map((id) => fetchSessions(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => fetchEvents(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => calculateActiveUsers(id)))]);
+    const [currentMetricsArray, prevMetricsArray, activeUsersCounts] = await Promise.all([Promise.all(websiteIds.map((id) => calculateMetricsFromRecords(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => calculateMetricsFromRecords(id, prevStartDate, prevEndDate))), Promise.all(websiteIds.map((id) => calculateActiveUsers(id)))]);
 
     const activeUsers = activeUsersCounts.reduce((sum, count) => sum + count, 0);
+
+    const allSessions = currentMetricsArray.map((m) => m._raw.sessions);
+    const allEvents = currentMetricsArray.map((m) => m._raw.events);
 
     const currentMetrics = {
       pageViews: currentMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
@@ -108,7 +69,7 @@ export async function showOverview(req, res) {
       jsErrors: currentMetricsArray.reduce((sum, m) => sum + m.jsErrors, 0),
     };
 
-    const totalEngagedSessions = currentMetricsArray.reduce((sum, m) => Math.round((m.engagementRate / 100) * m.visitors), 0);
+    const totalEngagedSessions = currentMetricsArray.reduce((sum, m) => sum + (m.engagedSessions || 0), 0);
     currentMetrics.engagementRate = currentMetrics.visitors > 0 ? Math.round((totalEngagedSessions / currentMetrics.visitors) * 100) : 0;
 
     let totalDurationSeconds = 0;
@@ -129,7 +90,7 @@ export async function showOverview(req, res) {
       avgSessionDuration: { raw: 0 },
     };
 
-    const prevTotalEngagedSessions = prevMetricsArray.reduce((sum, m) => Math.round((m.engagementRate / 100) * m.visitors), 0);
+    const prevTotalEngagedSessions = prevMetricsArray.reduce((sum, m) => sum + (m.engagedSessions || 0), 0);
     prevMetrics.engagementRate = prevMetrics.visitors > 0 ? Math.round((prevTotalEngagedSessions / prevMetrics.visitors) * 100) : 0;
 
     let prevTotalDurationSeconds = 0;
@@ -228,6 +189,8 @@ export async function showOverview(req, res) {
       reports,
       activeUsers,
       currentPage: "overview",
+      dataPeriod,
+      resultsLimit,
     });
   } catch (error) {
     logger.error("Error loading overview for user %s: %o", res.locals.user.id, error);
@@ -252,12 +215,19 @@ export async function showDashboard(req, res) {
     const trendDays = Math.min(dataPeriod, 7);
     const today = new Date();
 
-    const currentStartDate = subDays(today, dataPeriod - 1);
+    const currentStartDate = subDays(today, dataPeriod - (dataPeriod === 1 ? 0 : 1));
+    if (dataPeriod === 1) {
+      currentStartDate.setHours(0, 0, 0, 0);
+    }
     const prevStartDate = subDays(currentStartDate, dataPeriod);
     const prevEndDate = subDays(currentStartDate, 1);
+    if (dataPeriod === 1) {
+      prevEndDate.setHours(23, 59, 59, 999);
+    }
 
-    const [currentMetrics, prevMetrics, sessions, events, activeUsers] = await Promise.all([calculateMetricsFromRecords(websiteId, currentStartDate, today), calculateMetricsFromRecords(websiteId, prevStartDate, prevEndDate), fetchSessions(websiteId, currentStartDate, today), fetchEvents(websiteId, currentStartDate, today), currentWebsite.isArchived ? Promise.resolve(0) : calculateActiveUsers(websiteId)]);
+    const [currentMetrics, prevMetrics, activeUsers] = await Promise.all([calculateMetricsFromRecords(websiteId, currentStartDate, today), calculateMetricsFromRecords(websiteId, prevStartDate, prevEndDate), currentWebsite.isArchived ? Promise.resolve(0) : calculateActiveUsers(websiteId)]);
 
+    const { sessions, events } = currentMetrics._raw;
     const trends = getMetricTrends(sessions, events, trendDays);
 
     const metrics = {
@@ -287,6 +257,8 @@ export async function showDashboard(req, res) {
       reports,
       activeUsers,
       currentPage: "dashboard",
+      dataPeriod,
+      resultsLimit,
     });
   } catch (error) {
     logger.error("Error loading dashboard for website %s: %o", websiteId, error);

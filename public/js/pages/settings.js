@@ -126,9 +126,10 @@ document.addEventListener("DOMContentLoaded", () => {
       settings.dataPeriod = Number.parseInt(e.target.value);
       saveSettings();
 
+      const periodText = settings.dataPeriod === 1 ? "today" : `${settings.dataPeriod} days`;
       const currentPath = window.location.pathname;
       if (currentPath.includes("/dashboard") || currentPath === "/") {
-        showToast("Data Period Updated", `Data period set to ${settings.dataPeriod} days. Reloading...`, "info");
+        showToast("Data Period Updated", `Data period set to ${periodText}. Reloading...`, "info");
         const url = new URL(window.location.href);
         url.searchParams.set("period", settings.dataPeriod);
         setTimeout(() => {
@@ -136,7 +137,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 1000);
       } else {
         window.dispatchEvent(new CustomEvent("settingsChanged"));
-        showToast("Data Period Updated", `Data period set to ${settings.dataPeriod} days`, "success");
+        showToast("Data Period Updated", `Data period set to ${periodText}`, "success");
       }
     });
   }

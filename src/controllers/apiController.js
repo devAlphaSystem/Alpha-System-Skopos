@@ -1,6 +1,6 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { subDays } from "date-fns";
-import { calculateMetricsFromRecords, calculatePercentageChange, calculateActiveUsers, getReportsFromMetrics, getAllData } from "../services/analyticsService.js";
+import { calculateMetricsFromRecords, calculatePercentageChange, calculateActiveUsers, getReportsFromMetrics, getAllData, getMetricTrends } from "../services/analyticsService.js";
 import { addClient } from "../services/sseManager.js";
 import cacheService from "../services/cacheService.js";
 import logger from "../utils/logger.js";
@@ -70,20 +70,24 @@ export async function getOverviewData(req, res) {
     const resultsLimit = Number.parseInt(req.query.limit) || 10;
     const today = new Date();
 
-    const currentStartDate = subDays(today, dataPeriod - 1);
+    const currentStartDate = subDays(today, dataPeriod - (dataPeriod === 1 ? 0 : 1));
+    if (dataPeriod === 1) {
+      currentStartDate.setHours(0, 0, 0, 0);
+    }
     const prevStartDate = subDays(currentStartDate, dataPeriod);
     const prevEndDate = subDays(currentStartDate, 1);
+    if (dataPeriod === 1) {
+      prevEndDate.setHours(23, 59, 59, 999);
+    }
 
-    const websiteIds = websites.map((w) => w.id);
+    const websiteIds = websites.map((id) => id.id);
 
-    const currentMetricsPromises = websiteIds.map((id) => calculateMetricsFromRecords(id, currentStartDate, today));
-    const prevMetricsPromises = websiteIds.map((id) => calculateMetricsFromRecords(id, prevStartDate, prevEndDate));
+    const [currentMetricsArray, prevMetricsArray, activeUsersCounts] = await Promise.all([Promise.all(websiteIds.map((id) => calculateMetricsFromRecords(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => calculateMetricsFromRecords(id, prevStartDate, prevEndDate))), Promise.all(websiteIds.map((id) => calculateActiveUsers(id)))]);
 
-    const [currentMetricsArray, prevMetricsArray] = await Promise.all([Promise.all(currentMetricsPromises), Promise.all(prevMetricsPromises)]);
-
-    const activeUsersPromises = websiteIds.map((id) => calculateActiveUsers(id));
-    const activeUsersCounts = await Promise.all(activeUsersPromises);
     const activeUsers = activeUsersCounts.reduce((sum, count) => sum + count, 0);
+
+    const allSessions = currentMetricsArray.map((m) => m._raw.sessions);
+    const allEvents = currentMetricsArray.map((m) => m._raw.events);
 
     const currentMetrics = {
       pageViews: currentMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
@@ -96,7 +100,7 @@ export async function getOverviewData(req, res) {
       jsErrors: currentMetricsArray.reduce((sum, m) => sum + m.jsErrors, 0),
     };
 
-    const totalEngagedSessions = currentMetricsArray.reduce((sum, m) => Math.round((m.engagementRate / 100) * m.visitors), 0);
+    const totalEngagedSessions = currentMetricsArray.reduce((sum, m) => sum + (m.engagedSessions || 0), 0);
     currentMetrics.engagementRate = currentMetrics.visitors > 0 ? Math.round((totalEngagedSessions / currentMetrics.visitors) * 100) : 0;
 
     let totalDurationSeconds = 0;
@@ -123,7 +127,7 @@ export async function getOverviewData(req, res) {
       avgSessionDuration: { raw: 0 },
     };
 
-    const prevTotalEngagedSessions = prevMetricsArray.reduce((sum, m) => Math.round((m.engagementRate / 100) * m.visitors), 0);
+    const prevTotalEngagedSessions = prevMetricsArray.reduce((sum, m) => sum + (m.engagedSessions || 0), 0);
     prevMetrics.engagementRate = prevMetrics.visitors > 0 ? Math.round((prevTotalEngagedSessions / prevMetrics.visitors) * 100) : 0;
 
     let prevTotalDurationSeconds = 0;
@@ -132,8 +136,13 @@ export async function getOverviewData(req, res) {
     }
     prevMetrics.avgSessionDuration.raw = prevMetrics.visitors > 0 ? Math.round(prevTotalDurationSeconds / prevMetrics.visitors) : 0;
 
+    const flatSessions = allSessions.flat();
+    const flatEvents = allEvents.flat();
+    const trends = getMetricTrends(flatSessions, flatEvents, dataPeriod);
+
     const metrics = {
       ...currentMetrics,
+      trends,
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
@@ -237,16 +246,27 @@ export async function getDashboardData(req, res) {
     const resultsLimit = Number.parseInt(req.query.limit) || 10;
     const today = new Date();
 
-    const currentStartDate = subDays(today, dataPeriod - 1);
+    const currentStartDate = subDays(today, dataPeriod - (dataPeriod === 1 ? 0 : 1));
+    if (dataPeriod === 1) {
+      currentStartDate.setHours(0, 0, 0, 0);
+    }
     const prevStartDate = subDays(currentStartDate, dataPeriod);
     const prevEndDate = subDays(currentStartDate, 1);
+    if (dataPeriod === 1) {
+      prevEndDate.setHours(23, 59, 59, 999);
+    }
 
     const [currentMetrics, prevMetrics] = await Promise.all([calculateMetricsFromRecords(websiteId, currentStartDate, today), calculateMetricsFromRecords(websiteId, prevStartDate, prevEndDate)]);
 
+    const { sessions, events } = currentMetrics._raw;
+
     const activeUsers = website.isArchived ? 0 : await calculateActiveUsers(websiteId);
+
+    const trends = getMetricTrends(sessions, events, dataPeriod);
 
     const metrics = {
       ...currentMetrics,
+      trends,
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
@@ -289,7 +309,10 @@ export async function getDetailedReport(req, res) {
     if (reportType === "topJsErrors") {
       const dataPeriod = Number.parseInt(req.query.period) || 7;
       const today = new Date();
-      const startDate = subDays(today, dataPeriod - 1);
+      const startDate = subDays(today, dataPeriod - (dataPeriod === 1 ? 0 : 1));
+      if (dataPeriod === 1) {
+        startDate.setHours(0, 0, 0, 0);
+      }
       const startDateISO = startDate.toISOString();
 
       const allErrors = await pbAdmin.collection("js_errors").getFullList({
@@ -362,7 +385,10 @@ export async function getDetailedReport(req, res) {
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
     const today = new Date();
-    const currentStartDate = subDays(today, dataPeriod - 1);
+    const currentStartDate = subDays(today, dataPeriod - (dataPeriod === 1 ? 0 : 1));
+    if (dataPeriod === 1) {
+      currentStartDate.setHours(0, 0, 0, 0);
+    }
     const currentEndDate = today;
 
     const metrics = await calculateMetricsFromRecords(websiteId, currentStartDate, currentEndDate);

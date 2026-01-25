@@ -52,7 +52,9 @@ export async function addWebsite(req, res) {
       dataRetentionDays: Number(dataRetentionDays) || 0,
       trackingId: randomUUID(),
       user: res.locals.user.id,
-      disableLocalhostTracking: false,
+      disableLocalhostTracking: true,
+      uptimeMonitoring: false,
+      uptimeCheckInterval: 300,
       ipBlacklist: [],
       isArchived: false,
     });

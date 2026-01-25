@@ -1,5 +1,5 @@
 import { eachDayOfInterval, format, subDays } from "date-fns";
-import { pbAdmin } from "./pocketbase.js";
+import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import logger from "../utils/logger.js";
 import cacheService from "./cacheService.js";
 
@@ -132,13 +132,17 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
         const event = sessionEvents[i];
         if (event.type === "pageView" && event.path) {
           topPages.set(event.path, (topPages.get(event.path) || 0) + 1);
-        } else if (event.type === "custom" && event.eventName) {
+        } else if (event.type === "custom" && event.eventName && event.eventName !== "exit") {
           topCustomEvents.set(event.eventName, (topCustomEvents.get(event.eventName) || 0) + 1);
         }
 
         if (!isEngaged) {
           const duration = parseDuration(event.eventData?.duration);
-          if (i >= 1 || (duration !== null && duration > 10)) {
+          if (event.eventName === "exit") {
+            if (duration !== null && duration > 10) {
+              isEngaged = true;
+            }
+          } else if (i >= 1 || (duration !== null && duration > 10)) {
             isEngaged = true;
           }
         }
@@ -180,6 +184,7 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
     visitors: totalVisitors,
     newVisitors,
     returningVisitors,
+    engagedSessions,
     engagementRate,
     avgSessionDuration: metrics.avgSessionDuration,
     bounceRate: metrics.bounceRate,
@@ -195,6 +200,7 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
     stateBreakdown: processAndSort(stateBreakdown, totalVisitors),
     topCustomEvents: processAndSort(topCustomEvents, totalVisitors),
     topJsErrors: processAndSort(topJsErrors, totalJsErrors),
+    _raw: { sessions, events },
   };
 }
 
@@ -254,8 +260,14 @@ export function getMetricTrends(sessions, events, trendDays = 7) {
       const sessionEvents = sessionEventsMap.get(session.id) || [];
       let hasEngagement = false;
       for (let i = 0; i < sessionEvents.length; i++) {
-        const duration = parseDuration(sessionEvents[i].eventData?.duration);
-        if (i >= 1 || (duration !== null && duration > 10)) {
+        const event = sessionEvents[i];
+        const duration = parseDuration(event.eventData?.duration);
+        if (event.eventName === "exit") {
+          if (duration !== null && duration > 10) {
+            hasEngagement = true;
+            break;
+          }
+        } else if (i >= 1 || (duration !== null && duration > 10)) {
           hasEngagement = true;
           break;
         }
@@ -343,12 +355,14 @@ export function calculateMetrics(sessions, events, sessionEventsMap = null) {
     if (sessionEventsMap) {
       const counts = new Map();
       for (const [sessionId, evts] of sessionEventsMap.entries()) {
-        counts.set(sessionId, evts.length);
+        const filteredCount = evts.filter((e) => e.eventName !== "exit").length;
+        counts.set(sessionId, filteredCount);
       }
       return counts;
     }
     const sessionEventCounts = new Map();
     for (const event of events) {
+      if (event.eventName === "exit") continue;
       const count = sessionEventCounts.get(event.session) || 0;
       sessionEventCounts.set(event.session, count + 1);
     }
@@ -389,4 +403,52 @@ export function calculateMetrics(sessions, events, sessionEventsMap = null) {
     avgSessionDuration: calculateAverageSessionDuration(sessions),
     bounceRate: calculateBounceRate(sessions),
   };
+}
+
+export async function fetchSessions(websiteId, startDate, endDate) {
+  const startKey = startDate.toISOString().substring(0, 16);
+  const endKey = endDate.toISOString().substring(0, 16);
+  const cacheKey = cacheService.key("sessions", websiteId, startKey, endKey);
+
+  return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
+    logger.debug("Fetching sessions for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
+    await ensureAdminAuth();
+
+    const startISO = startDate.toISOString();
+    const endISO = endDate.toISOString();
+
+    const sessions = await pbAdmin.collection("sessions").getFullList({
+      filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+      sort: "created",
+      fields: "id,created,updated,isNewVisitor,referrer,device,browser,language,country,state,entryPath,exitPath",
+      $autoCancel: false,
+    });
+
+    logger.debug("Found %d sessions for website %s", sessions.length, websiteId);
+    return sessions;
+  });
+}
+
+export async function fetchEvents(websiteId, startDate, endDate) {
+  const startKey = startDate.toISOString().substring(0, 16);
+  const endKey = endDate.toISOString().substring(0, 16);
+  const cacheKey = cacheService.key("events", websiteId, startKey, endKey);
+
+  return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
+    logger.debug("Fetching events for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
+    await ensureAdminAuth();
+
+    const startISO = startDate.toISOString();
+    const endISO = endDate.toISOString();
+
+    const events = await pbAdmin.collection("events").getFullList({
+      filter: `session.website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
+      sort: "created",
+      fields: "id,session,type,path,eventName,eventData,created",
+      $autoCancel: false,
+    });
+
+    logger.debug("Found %d events for website %s", events.length, websiteId);
+    return events;
+  });
 }

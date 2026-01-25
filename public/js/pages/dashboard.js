@@ -361,16 +361,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (dataPeriodLabel) {
-      dataPeriodLabel.textContent = `Displaying data for the last ${settings.dataPeriod} days`;
+      const periodText = settings.dataPeriod === 1 ? "today" : `the last ${settings.dataPeriod} days`;
+      dataPeriodLabel.textContent = `Displaying data for ${periodText}`;
     }
 
     if (IS_ARCHIVED) return;
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlPeriod = urlParams.get("period");
-    const needsFreshFetch = !urlPeriod || Number.parseInt(urlPeriod) !== settings.dataPeriod;
-
-    if (!skipInitialFetch || needsFreshFetch) {
+    if (!skipInitialFetch) {
       fetchDashboardData();
     }
     setupRefreshInterval();
@@ -1354,13 +1351,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  window.addEventListener("load", () => {
-    const loadingCards = document.querySelectorAll(".loading");
-    for (const card of loadingCards) {
-      card.classList.remove("loading");
-    }
-  });
-
   window.addEventListener("settingsChanged", updateDashboardSettings);
 
   window.addEventListener("themeChanged", () => {
@@ -1372,7 +1362,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (websiteSettingsBtn) websiteSettingsBtn.disabled = true;
   }
 
-  (() => {
+  window.addEventListener("load", () => {
+    const loadingCards = document.querySelectorAll(".loading");
+    for (const card of loadingCards) {
+      card.classList.remove("loading");
+    }
     updateDashboardSettings(true);
-  })();
+  });
 });

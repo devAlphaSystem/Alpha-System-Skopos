@@ -276,6 +276,8 @@
 <script>
   window.__INITIAL_METRICS__ = <%- JSON.stringify(metrics) %>;
   window.__INITIAL_REPORT_DATA__ = <%- JSON.stringify(reports) %>;
+  window.__INITIAL_PERIOD__ = <%= dataPeriod %>;
+  window.__INITIAL_LIMIT__ = <%= resultsLimit %>;
 </script>
 
 <%- include('partials/footer', { scripts: ['dashboard'] }) %>

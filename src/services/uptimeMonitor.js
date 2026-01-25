@@ -353,7 +353,7 @@ async function monitorWebsite(websiteId, domain, checkInterval, triggeredByRecov
   }
 }
 
-export function startMonitoring(websiteId, domain, checkInterval = 60000) {
+export function startMonitoring(websiteId, domain, checkInterval = 300000) {
   if (activeMonitors.has(websiteId)) {
     logger.debug("Monitor already running for website %s", websiteId);
     return;
@@ -406,7 +406,7 @@ export async function initializeUptimeMonitoring() {
     logger.info("Initializing uptime monitoring for %d websites", websites.length);
 
     for (const website of websites) {
-      const checkInterval = (website.uptimeCheckInterval || 60) * 1000;
+      const checkInterval = (website.uptimeCheckInterval || 300) * 1000;
       startMonitoring(website.id, website.domain, checkInterval);
     }
   } catch (error) {

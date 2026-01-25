@@ -54,9 +54,9 @@
           </div>
           <select id="uptime-check-interval-select" class="settings-select">
             <option value="30" <%= currentWebsite.uptimeCheckInterval === 30 ? 'selected' : '' %>>30 seconds</option>
-            <option value="60" <%= (!currentWebsite.uptimeCheckInterval || currentWebsite.uptimeCheckInterval === 60) ? 'selected' : '' %>>1 minute</option>
+            <option value="60" <%= currentWebsite.uptimeCheckInterval === 60 ? 'selected' : '' %>>1 minute</option>
             <option value="120" <%= currentWebsite.uptimeCheckInterval === 120 ? 'selected' : '' %>>2 minutes</option>
-            <option value="300" <%= currentWebsite.uptimeCheckInterval === 300 ? 'selected' : '' %>>5 minutes</option>
+            <option value="300" <%= (!currentWebsite.uptimeCheckInterval || currentWebsite.uptimeCheckInterval === 300) ? 'selected' : '' %>>5 minutes</option>
             <option value="600" <%= currentWebsite.uptimeCheckInterval === 600 ? 'selected' : '' %>>10 minutes</option>
             <option value="1800" <%= currentWebsite.uptimeCheckInterval === 1800 ? 'selected' : '' %>>30 minutes</option>
             <option value="3600" <%= currentWebsite.uptimeCheckInterval === 3600 ? 'selected' : '' %>>1 hour</option>

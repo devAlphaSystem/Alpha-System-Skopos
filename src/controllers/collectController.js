@@ -350,6 +350,13 @@ export async function handleCollect(req, res) {
       } else if (payload.type === "errors" && Array.isArray(payload.errors)) {
         await processErrors(payload.errors, sessionRecordId, website.id, payload.url);
       } else if (payload.type === "exit") {
+        await pbAdmin.collection("events").create({
+          session: sessionRecordId,
+          type: "custom",
+          eventName: "exit",
+          path: path,
+          eventData: { duration: payload.dur },
+        });
         logger.debug("Exit event processed for session %s", sessionRecordId);
       } else if (payload.type === "identify") {
         await processIdentify(payload, visitorRecordId);
@@ -429,10 +436,15 @@ async function processEvent(event, sessionRecordId, currentPath, websiteId) {
 }
 
 async function processErrors(errors, sessionRecordId, websiteId, url) {
+  if (!Array.isArray(errors) || errors.length === 0) {
+    logger.debug("No errors to process or invalid errors array");
+    return;
+  }
+
   for (const error of errors.slice(0, 10)) {
     try {
-      const errorMessage = sanitize(error.msg, 512);
-      const stackTrace = sanitize(error.stack, 2048);
+      const errorMessage = sanitize(error.msg || error.message || "Unknown error", 512);
+      const stackTrace = sanitize(error.stack || "", 2048);
       const errorIdentifier = `${errorMessage}\n${(stackTrace || "").split("\n")[1] || ""}`;
       const errorHash = createHash("sha256").update(errorIdentifier).digest("hex");
 
@@ -442,9 +454,10 @@ async function processErrors(errors, sessionRecordId, websiteId, url) {
           "count+": error.count || 1,
           lastSeen: new Date().toISOString(),
         });
+        logger.debug("Updated existing error %s, count incremented by %d", existing.id, error.count || 1);
       } catch (e) {
         if (e.status === 404) {
-          await pbAdmin.collection("js_errors").create({
+          const newError = await pbAdmin.collection("js_errors").create({
             website: websiteId,
             session: sessionRecordId,
             errorHash: errorHash,
@@ -454,6 +467,9 @@ async function processErrors(errors, sessionRecordId, websiteId, url) {
             count: error.count || 1,
             lastSeen: new Date().toISOString(),
           });
+          logger.debug("Created new error record %s: %s", newError.id, errorMessage.substring(0, 100));
+        } else {
+          logger.error("Failed to check for existing error: %o", e);
         }
       }
     } catch (e) {
