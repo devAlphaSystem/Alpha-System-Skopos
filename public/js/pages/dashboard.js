@@ -340,6 +340,8 @@ document.addEventListener("DOMContentLoaded", () => {
     countryCodes[name.toLowerCase()] = code;
   }
 
+  const languageDisplayNameResolver = new Intl.DisplayNames(["en"], { type: "language" });
+
   function getCountryCode(countryKeyOrName) {
     if (countryKeyOrName && countryKeyOrName.length === 2 && countryNames[countryKeyOrName.toUpperCase()]) {
       return countryKeyOrName.toUpperCase();
@@ -565,7 +567,7 @@ document.addEventListener("DOMContentLoaded", () => {
       chart: {
         type: "line",
         height: 40,
-        width: 120,
+        width: "100%",
         fontFamily: INTER_FONT_STACK,
         sparkline: { enabled: true },
         animations: { enabled: false },
@@ -699,14 +701,23 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const truncateText = (text, maxLength = 35) => {
+    const truncateText = (text, maxLength = 30) => {
       if (text.length <= maxLength) return text;
       return `${text.substring(0, maxLength)}...`;
     };
 
-    let html = '<div class="report-table-header"><span>Item</span><span>Count</span></div><ul class="report-table-list">';
+    let html = '<div class="report-table-header"><span>Item</span><span>Views</span></div><ul class="report-table-list">';
     for (const item of data) {
-      const displayKey = countryNames[item.key] || item.key;
+      let displayKey = item.key;
+      if (reportId === "report-countries") {
+        displayKey = countryNames[item.key] || item.key;
+      } else if (reportId === "report-languages") {
+        try {
+          displayKey = languageDisplayNameResolver.of(item.key) || item.key;
+        } catch (e) {
+          displayKey = item.key;
+        }
+      }
       const truncatedKey = truncateText(displayKey);
       html += `<li><div class="list-item-info"><span class="list-item-key" title="${displayKey}">${truncatedKey}</span><span class="list-item-count">${item.count}</span></div><div class="progress-bar-container"><div class="progress-bar" style="width: ${item.percentage}%"></div></div></li>`;
     }
@@ -882,12 +893,23 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function applySort() {
+    const reportType = detailDrawer.dataset.reportType;
     filteredData.sort((a, b) => {
       let aVal = a[sortColumn];
       let bVal = b[sortColumn];
       if (sortColumn === "key") {
-        aVal = (countryNames[aVal] || aVal).toLowerCase();
-        bVal = (countryNames[bVal] || bVal).toLowerCase();
+        if (reportType === "countryBreakdown") {
+          aVal = (countryNames[aVal] || aVal).toLowerCase();
+          bVal = (countryNames[bVal] || bVal).toLowerCase();
+        } else if (reportType === "languageBreakdown") {
+          try {
+            aVal = (languageDisplayNameResolver.of(aVal) || aVal).toLowerCase();
+            bVal = (languageDisplayNameResolver.of(bVal) || bVal).toLowerCase();
+          } catch (e) {}
+        } else {
+          aVal = aVal.toLowerCase();
+          bVal = bVal.toLowerCase();
+        }
         return sortDirection === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
       }
       return sortDirection === "asc" ? aVal - bVal : bVal - aVal;
@@ -895,7 +917,20 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function applySearch(query) {
-    filteredData = query ? detailTableData.filter((item) => (countryNames[item.key] || item.key).toLowerCase().includes(query.toLowerCase())) : [...detailTableData];
+    const reportType = detailDrawer.dataset.reportType;
+    filteredData = query
+      ? detailTableData.filter((item) => {
+          let searchStr = item.key;
+          if (reportType === "countryBreakdown") {
+            searchStr = countryNames[item.key] || item.key;
+          } else if (reportType === "languageBreakdown") {
+            try {
+              searchStr = languageDisplayNameResolver.of(item.key) || item.key;
+            } catch (e) {}
+          }
+          return searchStr.toLowerCase().includes(query.toLowerCase());
+        })
+      : [...detailTableData];
     currentPage = 1;
     applySort();
     updateTable();
@@ -906,6 +941,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const isErrorLog = reportType === "topJsErrors";
     const isCustomEvents = reportType === "topCustomEvents";
     const isCountryBreakdown = reportType === "countryBreakdown";
+    const isLanguageBreakdown = reportType === "languageBreakdown";
 
     const tableContainer = document.getElementById("detail-table-container");
     const paginationInfo = document.getElementById("detail-pagination-info");
@@ -920,7 +956,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
     const pageData = filteredData.slice(startIndex, endIndex);
-    let tableHTML = `<table class="detail-table"><thead><tr><th data-column="key">Item ${sortColumn === "key" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="count">Count ${sortColumn === "count" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="percentage">Percentage ${sortColumn === "percentage" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th></tr></thead><tbody>`;
+    let tableHTML = `<table class="detail-table"><thead><tr><th data-column="key">Item ${sortColumn === "key" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="count">Views ${sortColumn === "count" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th><th data-column="percentage">Percentage ${sortColumn === "percentage" ? (sortDirection === "asc" ? '<i class="fa-solid fa-sort-up"></i>' : '<i class="fa-solid fa-sort-down"></i>') : '<i class="fa-solid fa-sort"></i>'}</th></tr></thead><tbody>`;
     for (const item of pageData) {
       const isClickable = isErrorLog || (isCustomEvents && item.hasData) || isCountryBreakdown;
       const rowClass = isClickable ? "clickable" : "";
@@ -928,7 +964,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const dataAttr = isErrorLog ? `data-stacktrace="${stackTraceText.replace(/"/g, "&quot;")}"` : "";
       const eventNameAttr = isCustomEvents ? `data-event-name="${item.key}"` : "";
       const countryCodeAttr = isCountryBreakdown ? `data-country-code="${item.key}"` : "";
-      const keyDisplay = countryNames[item.key] || item.key;
+      let keyDisplay = item.key;
+      if (isCountryBreakdown) {
+        keyDisplay = countryNames[item.key] || item.key;
+      } else if (isLanguageBreakdown) {
+        try {
+          keyDisplay = languageDisplayNameResolver.of(item.key) || item.key;
+        } catch (e) {}
+      }
       const icon = isCustomEvents && item.hasData ? ' <i class="fa-solid fa-circle-info"></i>' : "";
       tableHTML += `<tr class="${rowClass}" ${dataAttr} ${eventNameAttr} ${countryCodeAttr}><td>${keyDisplay}${icon}</td><td>${item.count}</td><td>${item.percentage}%</td></tr>`;
     }

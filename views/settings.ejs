@@ -25,11 +25,11 @@
             <i class="fa-solid fa-chart-line"></i>
             <span>Dashboard</span>
           </button>
+          <% if (typeof isMobile === 'undefined' || !isMobile) { %>
           <button class="tab-button" data-tab="privacy">
             <i class="fa-solid fa-shield-halved"></i>
             <span>Privacy</span>
           </button>
-          <% if (typeof isMobile === 'undefined' || !isMobile) { %>
           <button class="tab-button" data-tab="api-keys">
             <i class="fa-solid fa-key"></i>
             <span>API Keys</span>
@@ -124,6 +124,7 @@
             </div>
           </section>
 
+          <% if (typeof isMobile === 'undefined' || !isMobile) { %>
           <section class="tab-panel" id="privacy-panel">
             <div class="settings-group">
               <div class="settings-option">
@@ -149,7 +150,6 @@
             </div>
           </section>
 
-          <% if (typeof isMobile === 'undefined' || !isMobile) { %>
           <section class="tab-panel" id="api-keys-panel">
             <div class="settings-group">
               <div class="api-key-section">

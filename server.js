@@ -24,6 +24,7 @@ import { startRealtimeService } from "./src/services/realtime.js";
 import { initializeUptimeMonitoring } from "./src/services/uptimeMonitor.js";
 import { deviceDetectionMiddleware } from "./src/utils/deviceDetection.js";
 import { checkForUpdates } from "./src/services/updateChecker.js";
+import { countryNames } from "./src/utils/countries.js";
 import logger from "./src/utils/logger.js";
 import { readFileSync } from "node:fs";
 
@@ -92,6 +93,7 @@ async function initializeApp() {
     res.locals.appVersion = packageJson.version;
     res.locals.hasUpdate = updateStatus.hasUpdate;
     res.locals.latestVersion = updateStatus.latestVersion;
+    res.locals.countryNames = countryNames;
 
     next();
   });

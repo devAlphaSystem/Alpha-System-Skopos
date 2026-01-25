@@ -71,9 +71,11 @@
                       </div>
                     <% } %>
                   </div>
+                  <% if (typeof isMobile === 'undefined' || !isMobile) { %>
                   <form action="/sessions/<%= currentWebsite.id %>/visitor/<%= visitorData.visitorRecordId %>/delete" method="POST" style="display: inline;">
                     <button type="submit" class="btn-icon btn-danger delete-visitor-btn" data-visitor-id="<%= visitorData.visitorId %>" title="Delete all sessions for this visitor"><i class="fa-solid fa-trash"></i></button>
                   </form>
+                  <% } %>
                 </div>
                 <div class="sessions-list">
                   <% for (const session of visitorData.sessions) { %>
@@ -123,11 +125,13 @@
                         </div>
                         <% } %>
                       </div>
+                      <% if (typeof isMobile === 'undefined' || !isMobile) { %>
                       <div class="session-actions">
                         <form action="/sessions/<%= currentWebsite.id %>/session/<%= session.sessionId %>/delete" method="POST">
                           <button type="submit" class="btn-icon btn-danger delete-session-btn" data-session-id="<%= session.sessionId %>" title="Delete this session"><i class="fa-solid fa-trash"></i></button>
                         </form>
                       </div>
+                      <% } %>
                     </div>
                   <% } %>
                 </div>
@@ -136,11 +140,11 @@
           </div>
           
           <% if (pagination.totalPages > 1) { %>
-          <div class="pagination-wrapper" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); flex-wrap: wrap; gap: 1rem;">
-            <div class="pagination-info" style="font-size: 0.875rem; color: var(--text-secondary);">
+          <div class="pagination-wrapper">
+            <div class="pagination-info">
               Showing <%= pagination.startItem %>-<%= pagination.endItem %> of <%= pagination.totalSessions %> sessions
             </div>
-            <div class="pagination-buttons" style="display: flex; gap: 0.25rem; align-items: center;">
+            <div class="pagination-buttons">
               <% if (pagination.hasPrevPage) { %>
                 <a href="/sessions/<%= currentWebsite.id %>?page=1&perPage=<%= pagination.perPage %>" class="btn btn-sm btn-secondary" title="First page">
                   <i class="fa-solid fa-angles-left"></i>

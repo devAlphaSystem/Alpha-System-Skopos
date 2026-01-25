@@ -38,6 +38,7 @@
         }
         document.documentElement.setAttribute('data-theme', settings.theme);
         window.__SKOPOS_SETTINGS__ = settings;
+        window.__COUNTRY_NAMES__ = <%- typeof countryNames !== 'undefined' ? JSON.stringify(countryNames) : '{}' %>;
         
         if (settings.sidebarCollapsed) {
           document.documentElement.classList.add('sidebar-collapsed-init');

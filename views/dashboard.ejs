@@ -135,7 +135,7 @@
             <div class="spinner-container">
               <div class="spinner"></div>
             </div>
-            <div class="report-content" id="report-countries"><%- include('partials/report-table', { data: reports.countryBreakdown }) %></div>
+            <div class="report-content" id="report-countries"><%- include('partials/report-table', { data: reports.countryBreakdown, isCountries: true }) %></div>
           </div>
 
           <div class="card report-card loading" data-report-type="topPages" data-report-title="Top Pages">
@@ -225,7 +225,7 @@
             <div class="spinner-container">
               <div class="spinner"></div>
             </div>
-            <div class="report-content" id="report-languages"><%- include('partials/report-table', { data: reports.languageBreakdown }) %></div>
+            <div class="report-content" id="report-languages"><%- include('partials/report-table', { data: reports.languageBreakdown, isLanguages: true }) %></div>
           </div>
         </div>
       <% } %>

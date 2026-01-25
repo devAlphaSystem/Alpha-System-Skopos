@@ -1,6 +1,6 @@
 <div class="report-table-container">
   <% if (data && data.length > 0) { %>
-    <% const truncate = (text, maxLen = 45) => text.length <= maxLen ? text : text.substring(0, maxLen) + '...'; %>
+    <% const truncate = (text, maxLen = 30) => text.length <= maxLen ? text : text.substring(0, maxLen) + '...'; %>
     <div class="report-table-header">
       <span>Item</span>
       <span>Views</span>
@@ -9,7 +9,19 @@
       <% for (const item of data) { %>
         <li>
           <div class="list-item-info">
-            <span class="list-item-key" title="<%= item.key %>"><%= truncate(item.key) %></span>
+            <% 
+              let displayKey = item.key;
+              if (typeof isCountries !== 'undefined' && isCountries && typeof countryNames !== 'undefined') {
+                displayKey = countryNames[item.key] || item.key;
+              } else if (typeof isLanguages !== 'undefined' && isLanguages) {
+                try {
+                  displayKey = new Intl.DisplayNames(['en'], { type: 'language' }).of(item.key) || item.key;
+                } catch (e) {
+                  displayKey = item.key;
+                }
+              }
+            %>
+            <span class="list-item-key" title="<%= displayKey %>"><%= truncate(displayKey) %></span>
             <span class="list-item-count"><%= item.count %></span>
           </div>
           <div class="progress-bar-container">

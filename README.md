@@ -147,6 +147,5 @@ Pair it with the `@alphasystem/skopos` Node SDK (bundled in this workspace) to i
 ---
 
 ### Support
-- **Documentation**: Everything inside `docs/` ships with the repo and can be surfaced inside the dashboard, knowledge base, or CI pipelines.
 - **Issues & Feature Requests**: Open a ticket in the repository and include Node/PocketBase versions plus any relevant logs.
 - **Security**: Report vulnerabilities privately (do not file public issues) so maintainers can coordinate a fix.
