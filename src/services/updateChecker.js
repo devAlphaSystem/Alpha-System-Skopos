@@ -11,14 +11,6 @@ let dashboardUpdateCache = {
   cacheExpiry: 3600000,
 };
 
-let sdkUpdateCache = {
-  latestVersion: null,
-  latestCommitSha: null,
-  latestCommitDate: null,
-  lastChecked: null,
-  cacheExpiry: 3600000,
-};
-
 function isNewerVersion(current, latest) {
   if (!current || !latest) return false;
 
@@ -153,66 +145,4 @@ export async function checkForUpdates(currentVersion) {
       currentVersion,
     };
   }
-}
-
-export async function getLatestSdkVersion() {
-  const now = Date.now();
-
-  if (sdkUpdateCache.lastChecked && now - sdkUpdateCache.lastChecked < sdkUpdateCache.cacheExpiry) {
-    logger.debug("Using cached SDK version");
-    return sdkUpdateCache.latestVersion;
-  }
-
-  try {
-    logger.debug("Fetching latest SDK version from GitHub");
-    const latestCommit = await fetchLatestCommit("Alpha-System-Skopos-SDK", "Skopos-SDK-Update-Checker");
-
-    if (!latestCommit || !latestCommit.version) {
-      logger.debug("No SDK version information available from GitHub");
-
-      sdkUpdateCache = {
-        ...sdkUpdateCache,
-        latestCommitSha: latestCommit?.sha || null,
-        latestCommitDate: latestCommit?.date || null,
-        lastChecked: now,
-      };
-
-      return sdkUpdateCache.latestVersion ?? null;
-    }
-
-    sdkUpdateCache = {
-      latestVersion: latestCommit.version,
-      latestCommitSha: latestCommit.sha,
-      latestCommitDate: latestCommit.date,
-      lastChecked: now,
-      cacheExpiry: sdkUpdateCache.cacheExpiry,
-    };
-
-    logger.debug(`Latest SDK version from GitHub: ${latestCommit.version}`);
-    return latestCommit.version;
-  } catch (error) {
-    logger.debug("Error getting latest SDK version:", error.message);
-
-    sdkUpdateCache = {
-      ...sdkUpdateCache,
-      latestCommitSha: null,
-      latestCommitDate: null,
-      lastChecked: now,
-    };
-
-    return sdkUpdateCache.latestVersion ?? null;
-  }
-}
-
-export async function checkSdkUpdate(currentSdkVersion) {
-  if (!currentSdkVersion) {
-    return false;
-  }
-
-  const latestVersion = await getLatestSdkVersion();
-  if (!latestVersion) {
-    return false;
-  }
-
-  return isNewerVersion(currentSdkVersion, latestVersion);
 }

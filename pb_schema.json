@@ -1811,20 +1811,6 @@
       {
         "autogeneratePattern": "",
         "hidden": false,
-        "id": "text2671185801",
-        "max": 0,
-        "min": 0,
-        "name": "sdkVersion",
-        "pattern": "",
-        "presentable": false,
-        "primaryKey": false,
-        "required": false,
-        "system": false,
-        "type": "text"
-      },
-      {
-        "autogeneratePattern": "",
-        "hidden": false,
         "id": "text1384840114",
         "max": 0,
         "min": 0,

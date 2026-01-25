@@ -2,7 +2,6 @@ import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { randomUUID } from "node:crypto";
 import logger from "../utils/logger.js";
 import { analyzeSeo } from "../services/seoAnalyzer.js";
-import { getLatestSdkVersion, checkSdkUpdate } from "../services/updateChecker.js";
 import cacheService from "../services/cacheService.js";
 
 async function getCommonData(userId) {
@@ -20,14 +19,7 @@ async function getCommonData(userId) {
     const archivedWebsites = allWebsites.filter((w) => w.isArchived);
     logger.debug("Found %d active and %d archived websites for user %s.", websites.length, archivedWebsites.length, userId);
 
-    const latestSdkVersion = await getLatestSdkVersion();
-    for (const website of websites) {
-      if (website.sdkVersion) {
-        website.hasSdkUpdate = await checkSdkUpdate(website.sdkVersion);
-      }
-    }
-
-    return { websites, archivedWebsites, allWebsites, latestSdkVersion };
+    return { websites, archivedWebsites, allWebsites };
   });
 }
 
@@ -35,13 +27,12 @@ export async function showWebsites(req, res) {
   logger.info("Rendering websites page for user: %s", res.locals.user.id);
   try {
     await ensureAdminAuth();
-    const { websites, archivedWebsites, latestSdkVersion } = await getCommonData(res.locals.user.id);
+    const { websites, archivedWebsites } = await getCommonData(res.locals.user.id);
     res.render("websites", {
       websites,
       archivedWebsites,
       currentWebsite: null,
       currentPage: "websites",
-      latestSdkVersion,
     });
   } catch (error) {
     logger.error("Error fetching websites for user %s: %o", res.locals.user.id, error);

@@ -1649,34 +1649,6 @@ input:checked + .toggle-slider:before {
   margin-bottom: 0.25rem;
 }
 
-.sdk-version-wrapper {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.sdk-update-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.1rem;
-  height: 1.1rem;
-  padding: 0 0.2rem;
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-  color: #ffffff;
-  font-size: 0.6rem;
-  font-weight: 700;
-  border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
-  animation: pulse-bounce 2s ease-in-out infinite;
-  cursor: help;
-}
-
-.sdk-update-badge i {
-  font-size: 0.6rem;
-  color: #ffffff;
-}
-
 .website-card-footer {
   padding: 1rem 1.25rem;
   background-color: var(--background-color);

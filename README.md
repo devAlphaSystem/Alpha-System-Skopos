@@ -142,7 +142,6 @@ Pair it with the `@alphasystem/skopos` Node SDK (bundled in this workspace) to i
 
 ### Keeping Things Healthy
 - Cron jobs (see `src/services/cron.js`) enforce retention, prune orphaned visitors, send daily summaries, and enforce JS error thresholds. They launch automatically when `server.js` starts.
-- Keep the SDK version reported via `websites.sdkVersion` in sync across environments so the dashboard warns you when a site runs an outdated tracker.
 - Monitor logs (stdout or `logs/`) for auth errors, PocketBase connectivity issues, and cron output. Consider piping logs into a centralized stack like ELK or Loki.
 
 ---
