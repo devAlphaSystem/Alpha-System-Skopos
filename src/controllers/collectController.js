@@ -5,6 +5,24 @@ import geoip from "geoip-lite";
 import { UAParser } from "ua-parser-js";
 import { createHash } from "node:crypto";
 
+const OBF_KEY = "sk0p0s_4n4lyt1cs_0bf_k3y_2026";
+
+function deobfuscatePayload(encoded) {
+  try {
+    const decoded = decodeURIComponent(escape(Buffer.from(encoded, "base64").toString("binary")));
+    const keyLen = OBF_KEY.length;
+    let deobfuscated = "";
+    for (let i = 0; i < decoded.length; i++) {
+      const charCode = decoded.charCodeAt(i) ^ OBF_KEY.charCodeAt(i % keyLen);
+      deobfuscated += String.fromCharCode(charCode);
+    }
+    return JSON.parse(deobfuscated);
+  } catch (e) {
+    logger.debug("Failed to deobfuscate payload: %s", e.message);
+    return null;
+  }
+}
+
 const rateLimits = new Map();
 const RATE_LIMIT_WINDOW = 60000;
 const RATE_LIMIT_MAX_REQUESTS = 100;
@@ -249,9 +267,16 @@ export async function handleCollect(req, res) {
       return res.status(204).end();
     }
 
-    const payload = req.body;
+    let payload = req.body;
     if (!payload || typeof payload !== "object") {
       return res.status(400).json({ error: "Invalid payload" });
+    }
+
+    if (payload._d && payload._v === 1) {
+      payload = deobfuscatePayload(payload._d);
+      if (!payload) {
+        return res.status(400).json({ error: "Invalid payload encoding" });
+      }
     }
 
     const website = await getWebsiteByTrackingId(payload.sid);
