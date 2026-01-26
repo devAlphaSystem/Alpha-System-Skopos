@@ -22,11 +22,11 @@ A lightweight, privacy-focused analytics script that communicates directly with 
 
 ### CDN (Recommended)
 
-Host `dist/skopos.min.js` on your CDN and add to your site:
+Use the following script tag and add to your site:
 
 ```html
 <script
-  src="https://your-cdn.com/skopos.min.js"
+  src="https://cdn.alphasystem.dev/skopos/latest/skopos.min.js"
   data-site-id="YOUR_TRACKING_ID"
   data-host="https://your-skopos-dashboard.com"
   defer

@@ -121,10 +121,10 @@ function extractHeadings(html) {
   const headings = { h1: [], h2: [], h3: [], h4: [], h5: [], h6: [] };
 
   for (let i = 1; i <= 6; i++) {
-    const regex = new RegExp(`<h${i}[^>]*>([^<]*)<\/h${i}>`, "gi");
+    const regex = new RegExp(`<h${i}[^>]*>(.*?)<\/h${i}>`, "gis");
     const matches = html.matchAll(regex);
     for (const match of matches) {
-      const text = match[1].trim().replace(/<[^>]*>/g, "");
+      const text = match[1].replace(/<[^>]*>/g, "").trim();
       if (text) {
         headings[`h${i}`].push(text);
       }
@@ -209,11 +209,10 @@ function analyzeLinks(html, baseUrl) {
     links.total++;
     const href = match[1];
     const fullMatch = match[0];
-    const anchorText =
-      html
-        .substring(match.index, match.index + 200)
-        .match(/<a[^>]*>([^<]*)<\/a>/i)?.[1]
-        ?.trim() || "";
+
+    const linkSubstring = html.substring(match.index, match.index + 500);
+    const anchorMatch = linkSubstring.match(/<a[^>]*>(.*?)<\/a>/is);
+    const anchorText = anchorMatch ? anchorMatch[1].replace(/<[^>]*>/g, "").trim() : "";
 
     if (!anchorText || anchorText.length === 0) {
       links.emptyAnchors.push(href);
