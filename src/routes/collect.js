@@ -7,6 +7,7 @@ const router = express.Router();
 
 let allowedDomainsCache = new Set();
 let lastCacheUpdate = 0;
+let refreshInProgress = null;
 const CACHE_TTL = 5 * 60 * 1000;
 
 async function refreshAllowedDomains() {
@@ -40,6 +41,9 @@ async function refreshAllowedDomains() {
     logger.debug("Refreshed allowed domains cache: %d domains", domains.size);
   } catch (error) {
     logger.error("Failed to refresh allowed domains cache: %o", error);
+    if (lastCacheUpdate === 0) {
+      lastCacheUpdate = Date.now() - CACHE_TTL + 30000;
+    }
   }
 }
 
@@ -56,28 +60,46 @@ function isOriginAllowed(origin) {
 
 async function ensureCacheFresh() {
   if (Date.now() - lastCacheUpdate > CACHE_TTL) {
-    await refreshAllowedDomains();
+    if (!refreshInProgress) {
+      refreshInProgress = refreshAllowedDomains().finally(() => {
+        refreshInProgress = null;
+      });
+    }
+    await refreshInProgress;
   }
 }
 
-refreshAllowedDomains();
+function setCorsHeaders(res, origin) {
+  res.header("Access-Control-Allow-Origin", origin);
+  res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Max-Age", "86400");
+  res.header("Vary", "Origin");
+}
+
+const cacheReady = refreshAllowedDomains();
 
 const collectCors = async (req, res, next) => {
   const origin = req.headers.origin;
 
-  await ensureCacheFresh();
+  if (!origin) {
+    return next();
+  }
 
-  if (origin && isOriginAllowed(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.header("Access-Control-Allow-Headers", "Content-Type");
-    res.header("Access-Control-Allow-Credentials", "true");
-    res.header("Access-Control-Max-Age", "86400");
-    res.header("Vary", "Origin");
-  } else if (origin) {
-    logger.debug("CORS denied for origin: %s", origin);
+  try {
+    await cacheReady;
+    await ensureCacheFresh();
+  } catch (error) {
+    logger.error("Cache refresh error in CORS middleware: %o", error);
+  }
+
+  if (!isOriginAllowed(origin)) {
+    logger.warn("CORS denied for origin: %s (allowed domains: %s)", origin, Array.from(allowedDomainsCache).join(", "));
     return res.status(403).json({ error: "Origin not allowed" });
   }
+
+  setCorsHeaders(res, origin);
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
