@@ -17,32 +17,32 @@
 
   <%- include('toast') %>
   
-  <script src="/js/main.js"></script>
+  <script src="/js/main.js?v=<%= appUpdated %>"></script>
   <% if (scripts && (scripts.includes('dashboard') || scripts.includes('uptime'))) { %>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@5.3.5/dist/apexcharts.min.js"></script>
   <% } %>
   <% if (scripts && scripts.includes('dashboard')) { %>
     <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.7.0/dist/jsvectormap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.7.0/dist/maps/world.js"></script>
-    <script src="/js/pages/dashboard.js"></script>
+    <script src="/js/pages/dashboard.js?v=<%= appUpdated %>"></script>
   <% } %>
   <% if (scripts && scripts.includes('seo')) { %>
-    <script src="/js/pages/seo-analytics.js"></script>
+    <script src="/js/pages/seo-analytics.js?v=<%= appUpdated %>"></script>
   <% } %>
   <% if (scripts && scripts.includes('settings')) { %>
-    <script src="/js/pages/settings.js"></script>
+    <script src="/js/pages/settings.js?v=<%= appUpdated %>"></script>
   <% } %>
   <% if (scripts && scripts.includes('sessions')) { %>
-    <script src="/js/pages/sessions.js"></script>
+    <script src="/js/pages/sessions.js?v=<%= appUpdated %>"></script>
   <% } %>
   <% if (scripts && scripts.includes('session-details')) { %>
-    <script src="/js/pages/session-details.js"></script>
+    <script src="/js/pages/session-details.js?v=<%= appUpdated %>"></script>
   <% } %>
   <% if (scripts && scripts.includes('websites')) { %>
-    <script src="/js/pages/websites.js"></script>
+    <script src="/js/pages/websites.js?v=<%= appUpdated %>"></script>
   <% } %>
   <% if (scripts && scripts.includes('uptime')) { %>
-    <script src="/js/pages/uptime.js"></script>
+    <script src="/js/pages/uptime.js?v=<%= appUpdated %>"></script>
   <% } %>
   </body>
 </html>

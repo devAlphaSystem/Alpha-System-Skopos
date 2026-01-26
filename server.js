@@ -91,6 +91,7 @@ async function initializeApp() {
     }
     res.locals.user = pb.authStore.isValid ? pb.authStore.record : null;
     res.locals.appVersion = packageJson.version;
+    res.locals.appUpdated = packageJson.updated;
     res.locals.hasUpdate = updateStatus.hasUpdate;
     res.locals.latestVersion = updateStatus.latestVersion;
     res.locals.countryNames = countryNames;
@@ -107,7 +108,12 @@ async function initializeApp() {
   app.use("/", seoRoutes);
   app.use("/", uptimeRoutes);
 
-  app.use(express.static(path.join(__dirname, "public")));
+  app.use(
+    express.static(path.join(__dirname, "public"), {
+      maxAge: "1y",
+      immutable: true,
+    }),
+  );
 
   app.use((req, res, next) => {
     res.status(404).render("404");

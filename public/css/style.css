@@ -994,7 +994,10 @@ body {
 }
 
 .loading .chart-container,
-.loading .report-content {
+.loading .report-content,
+.loading .metric-content,
+.loading .metric-icon,
+.loading .metric-chart {
   visibility: hidden;
 }
 
