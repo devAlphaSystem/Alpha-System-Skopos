@@ -87,6 +87,36 @@ document.addEventListener("DOMContentLoaded", () => {
   const metricCharts = {};
   let currentCountryData = [];
 
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  function getBreadcrumbIcon(type) {
+    const icons = {
+      navigation: "fa-route",
+      click: "fa-mouse-pointer",
+      input: "fa-keyboard",
+      custom: "fa-bolt",
+      console: "fa-terminal",
+      network: "fa-wifi",
+    };
+    return icons[type] || "fa-circle";
+  }
+
+  function getBreadcrumbClass(type) {
+    const classes = {
+      navigation: "breadcrumb-navigation",
+      click: "breadcrumb-click",
+      input: "breadcrumb-input",
+      custom: "breadcrumb-custom",
+      console: "breadcrumb-console",
+      network: "breadcrumb-network",
+    };
+    return classes[type] || "breadcrumb-default";
+  }
+
   const countryNames = {
     AF: "Afghanistan",
     AX: "Aland Islands",
@@ -958,7 +988,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const isClickable = isErrorLog || (isCustomEvents && item.hasData) || isCountryBreakdown;
       const rowClass = isClickable ? "clickable" : "";
       const stackTraceText = typeof item.stackTrace === "string" && item.stackTrace.length > 0 ? item.stackTrace : "Stack trace unavailable.";
-      const dataAttr = isErrorLog ? `data-stacktrace="${stackTraceText.replace(/"/g, "&quot;")}"` : "";
+      const breadcrumbsJson = isErrorLog && Array.isArray(item.breadcrumbs) && item.breadcrumbs.length > 0 ? JSON.stringify(item.breadcrumbs).replace(/"/g, "&quot;") : "";
+      const dataAttr = isErrorLog ? `data-stacktrace="${stackTraceText.replace(/"/g, "&quot;")}" data-breadcrumbs="${breadcrumbsJson}"` : "";
       const eventNameAttr = isCustomEvents ? `data-event-name="${item.key}"` : "";
       const countryCodeAttr = isCountryBreakdown ? `data-country-code="${item.key}"` : "";
       let keyDisplay = item.key;
@@ -981,7 +1012,33 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isErrorLog) {
           const stackTrace = row.dataset.stacktrace;
           const errorMessage = row.cells[0].textContent;
-          const content = `<pre class="detail-item-content pre-formatted">${stackTrace || "No stack trace available."}</pre>`;
+          const breadcrumbsJson = row.dataset.breadcrumbs;
+          let breadcrumbsHtml = "";
+          if (breadcrumbsJson) {
+            try {
+              const breadcrumbs = JSON.parse(breadcrumbsJson);
+              if (Array.isArray(breadcrumbs) && breadcrumbs.length > 0) {
+                breadcrumbsHtml = `<div class="detail-item-content"><h4 style="margin: 0 0 1rem 0; font-size: 0.875rem; color: var(--text-secondary);">Breadcrumbs (Last ${breadcrumbs.length} steps before error)</h4><div class="breadcrumb-timeline">`;
+                for (const crumb of breadcrumbs) {
+                  const time = new Date(crumb.timestamp).toLocaleTimeString();
+                  const typeIcon = getBreadcrumbIcon(crumb.type);
+                  const typeClass = getBreadcrumbClass(crumb.type);
+                  let dataHtml = "";
+                  if (crumb.data && Object.keys(crumb.data).length > 0) {
+                    const dataItems = Object.entries(crumb.data)
+                      .map(([k, v]) => `<span class="breadcrumb-data-item"><strong>${escapeHtml(k)}:</strong> ${escapeHtml(String(v))}</span>`)
+                      .join("");
+                    dataHtml = `<div class="breadcrumb-data">${dataItems}</div>`;
+                  }
+                  breadcrumbsHtml += `<div class="breadcrumb-item"><div class="breadcrumb-icon ${typeClass}"><i class="fa-solid ${typeIcon}"></i></div><div class="breadcrumb-content"><div class="breadcrumb-header"><span class="breadcrumb-type">${escapeHtml(crumb.type)}</span><span class="breadcrumb-time">${time}</span></div><div class="breadcrumb-message">${escapeHtml(crumb.message)}</div>${dataHtml}</div></div>`;
+                }
+                breadcrumbsHtml += "</div></div>";
+              }
+            } catch (e) {
+              console.error("Failed to parse breadcrumbs:", e);
+            }
+          }
+          const content = `${breadcrumbsHtml}<div class="detail-item-content"><h4 style="margin: 0 0 1rem 0; font-size: 0.875rem; color: var(--text-secondary);">Stack Trace</h4><pre class="pre-formatted" style="margin: 0;">${stackTrace || "No stack trace available."}</pre></div>`;
           openItemDetailDrawer(errorMessage, content);
         }
         if (isCustomEvents) {

@@ -1,7 +1,7 @@
 {
   "name": "alpha-system-skopos",
-  "version": "0.43.0",
-  "updated": "2026.01.25.0601",
+  "version": "0.44.0",
+  "updated": "2026.01.25.2158",
   "main": "server.js",
   "type": "module",
   "scripts": {

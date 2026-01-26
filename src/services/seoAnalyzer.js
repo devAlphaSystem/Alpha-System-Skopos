@@ -856,8 +856,9 @@ export function calculateSeoScore(seoData) {
   if (seoData.headings?.h1?.length === 1) score += 10;
   if (seoData.headings?.h2?.length > 0) score += 5;
 
-  maxScore += 15;
-  if (seoData.performanceScores?.performance) {
+  const hasPerformanceData = seoData.performanceScores?.performance !== null && seoData.performanceScores?.performance !== undefined;
+  if (hasPerformanceData) {
+    maxScore += 15;
     score += Math.round((seoData.performanceScores.performance / 100) * 15);
   }
 

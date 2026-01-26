@@ -435,6 +435,36 @@ async function processEvent(event, sessionRecordId, currentPath, websiteId) {
   }
 }
 
+function sanitizeBreadcrumbs(breadcrumbs, maxItems = 10) {
+  if (!Array.isArray(breadcrumbs)) return [];
+
+  return breadcrumbs.slice(-maxItems).map((crumb) => {
+    const sanitized = {
+      type: sanitize(crumb.t || crumb.type || "unknown", 32),
+      message: sanitize(crumb.m || crumb.message || "", 256),
+      timestamp: typeof crumb.ts === "number" ? crumb.ts : Date.now(),
+    };
+
+    if (crumb.d && typeof crumb.d === "object") {
+      const data = {};
+      const keys = Object.keys(crumb.d).slice(0, 10);
+      for (const key of keys) {
+        const val = crumb.d[key];
+        if (typeof val === "string") {
+          data[sanitize(key, 64)] = sanitize(val, 256);
+        } else if (typeof val === "number" || typeof val === "boolean") {
+          data[sanitize(key, 64)] = val;
+        }
+      }
+      if (Object.keys(data).length > 0) {
+        sanitized.data = data;
+      }
+    }
+
+    return sanitized;
+  });
+}
+
 async function processErrors(errors, sessionRecordId, websiteId, url) {
   if (!Array.isArray(errors) || errors.length === 0) {
     logger.debug("No errors to process or invalid errors array");
@@ -448,12 +478,21 @@ async function processErrors(errors, sessionRecordId, websiteId, url) {
       const errorIdentifier = `${errorMessage}\n${(stackTrace || "").split("\n")[1] || ""}`;
       const errorHash = createHash("sha256").update(errorIdentifier).digest("hex");
 
+      const breadcrumbs = sanitizeBreadcrumbs(error.bc || error.breadcrumbs);
+
       try {
         const existing = await pbAdmin.collection("js_errors").getFirstListItem(`errorHash="${errorHash}" && website="${websiteId}"`);
-        await pbAdmin.collection("js_errors").update(existing.id, {
+
+        const updateData = {
           "count+": error.count || 1,
           lastSeen: new Date().toISOString(),
-        });
+        };
+
+        if (breadcrumbs.length > 0) {
+          updateData.breadcrumbs = breadcrumbs;
+        }
+
+        await pbAdmin.collection("js_errors").update(existing.id, updateData);
         logger.debug("Updated existing error %s, count incremented by %d", existing.id, error.count || 1);
       } catch (e) {
         if (e.status === 404) {
@@ -466,8 +505,9 @@ async function processErrors(errors, sessionRecordId, websiteId, url) {
             url: sanitize(url, 2048),
             count: error.count || 1,
             lastSeen: new Date().toISOString(),
+            breadcrumbs: breadcrumbs,
           });
-          logger.debug("Created new error record %s: %s", newError.id, errorMessage.substring(0, 100));
+          logger.debug("Created new error record %s: %s (with %d breadcrumbs)", newError.id, errorMessage.substring(0, 100), breadcrumbs.length);
         } else {
           logger.error("Failed to check for existing error: %o", e);
         }

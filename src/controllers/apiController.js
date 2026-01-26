@@ -326,6 +326,7 @@ export async function getDetailedReport(req, res) {
         count: item.count,
         percentage: totalErrors > 0 ? Math.round((item.count / totalErrors) * 100) : 0,
         stackTrace: item.stackTrace,
+        breadcrumbs: item.breadcrumbs || [],
       }));
 
       logger.debug("Found %d unique JS errors for report (period: %d days).", reportData.length, dataPeriod);

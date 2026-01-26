@@ -585,6 +585,16 @@
       },
       {
         "hidden": false,
+        "id": "json8472938272",
+        "maxSize": 0,
+        "name": "breadcrumbs",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "json"
+      },
+      {
+        "hidden": false,
         "id": "autodate2990389176",
         "name": "created",
         "onCreate": true,
