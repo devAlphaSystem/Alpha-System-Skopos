@@ -1,4 +1,5 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
+import { getSetting } from "../services/appSettingsService.js";
 import { broadcast } from "../services/sseManager.js";
 import logger from "../utils/logger.js";
 import geoip from "geoip-lite";
@@ -313,6 +314,9 @@ export async function handleCollect(req, res) {
     }
 
     const path = extractPath(payload.url);
+
+    const storeRawIp = await getSetting(website.user, "storeRawIp", false);
+
     const sessionData = {
       browser: ua.browser,
       os: ua.os,
@@ -325,7 +329,7 @@ export async function handleCollect(req, res) {
       country: geo.country,
       state: geo.state,
       ip: ip,
-      storeRawIp: website.storeRawIp,
+      storeRawIp: storeRawIp,
       isNewVisitor: isNewVisitor,
     };
 

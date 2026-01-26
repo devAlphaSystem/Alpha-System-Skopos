@@ -62,15 +62,7 @@
           <div class="metric-content">
             <h3>Visitors</h3>
             <p class="metric-value" id="visitors-value"><%= metrics.visitors %></p>
-            <% if (isArchived) { %>
-              <span class="metric-change positive" id="visitors-change"><i class="fa-solid fa-arrow-up"></i> 0%</span>
-            <% } else { %>
-              <% if (metrics.change.visitors >= 0) { %>
-                <span class="metric-change positive" id="visitors-change"><i class="fa-solid fa-arrow-up"></i> <%= metrics.change.visitors %>%</span>
-              <% } else { %>
-                <span class="metric-change negative" id="visitors-change"><i class="fa-solid fa-arrow-down"></i> <%= Math.abs(metrics.change.visitors) %>%</span>
-              <% } %>
-            <% } %>
+            <span class="metric-change positive" id="visitors-change" data-visitors-change="<%= metrics.change.visitors %>" data-new-visitors-change="<%= metrics.change.newVisitors || 0 %>"></span>
           </div>
           <div class="metric-chart" id="visitors-trend-chart"></div>
         </div>

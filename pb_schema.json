@@ -903,6 +903,111 @@
     "system": false
   },
   {
+    "id": "pbc_8472938271",
+    "listRule": null,
+    "viewRule": null,
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "name": "app_settings",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "cascadeDelete": false,
+        "collectionId": "_pb_users_auth_",
+        "hidden": false,
+        "id": "relation2375276105",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "user",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text8472938272",
+        "max": 255,
+        "min": 1,
+        "name": "key",
+        "pattern": "",
+        "presentable": true,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text8472938273",
+        "max": 0,
+        "min": 0,
+        "name": "value",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text8472938274",
+        "max": 500,
+        "min": 0,
+        "name": "description",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": false,
+        "type": "autodate"
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_app_settings_user_key` ON `app_settings` (`user`, `key`)"
+    ],
+    "system": false
+  },
+  {
     "id": "pbc_1687431684",
     "listRule": null,
     "viewRule": null,
@@ -2437,15 +2542,6 @@
       },
       {
         "hidden": false,
-        "id": "bool2566381216",
-        "name": "storeRawIp",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "bool"
-      },
-      {
-        "hidden": false,
         "id": "bool226310708",
         "name": "disableLocalhostTracking",
         "presentable": false,
@@ -2457,15 +2553,6 @@
         "hidden": false,
         "id": "bool3030104185",
         "name": "uptimeMonitoring",
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "bool"
-      },
-      {
-        "hidden": false,
-        "id": "bool1947562358",
-        "name": "discardShortSessions",
         "presentable": false,
         "required": false,
         "system": false,

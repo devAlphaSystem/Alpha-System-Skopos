@@ -4,6 +4,7 @@ import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { calculateMetricsFromRecords } from "./analyticsService.js";
 import { triggerNotification } from "./notificationService.js";
 import { resolveRuleWebsites, createDailySummaryEventData } from "./notificationRuleUtils.js";
+import { getSetting } from "./appSettingsService.js";
 import logger from "../utils/logger.js";
 
 async function enforceDataRetention() {
@@ -282,69 +283,82 @@ async function discardShortSessions() {
   try {
     await ensureAdminAuth();
 
-    const websites = await pbAdmin.collection("websites").getFullList({
-      filter: "discardShortSessions = true",
-      fields: "id,name,discardShortSessions",
+    const settingsRecords = await pbAdmin.collection("app_settings").getFullList({
+      filter: `key = "discardShortSessions" && value = "true"`,
+      fields: "user",
     });
 
-    if (websites.length === 0) {
-      logger.debug("No websites with discardShortSessions enabled.");
+    if (settingsRecords.length === 0) {
+      logger.debug("No users with discardShortSessions enabled.");
       return;
     }
 
-    logger.debug("Found %d websites with discardShortSessions enabled.", websites.length);
+    const userIds = settingsRecords.map((r) => r.user);
+    logger.debug("Found %d users with discardShortSessions enabled.", userIds.length);
 
     let totalDiscarded = 0;
 
-    for (const website of websites) {
+    for (const userId of userIds) {
       try {
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-
-        const oldSessions = await pbAdmin.collection("sessions").getFullList({
-          filter: `website.id = "${website.id}" && updated < "${fiveMinutesAgo}"`,
-          fields: "id,created,updated",
+        const websites = await pbAdmin.collection("websites").getFullList({
+          filter: `user = "${userId}" && isArchived = false`,
+          fields: "id,name",
           $autoCancel: false,
         });
 
-        let discardedForWebsite = 0;
+        for (const website of websites) {
+          try {
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
-        for (const session of oldSessions) {
-          const sessionStart = new Date(session.created);
-          const sessionEnd = new Date(session.updated);
-          const durationSeconds = (sessionEnd - sessionStart) / 1000;
-
-          if (durationSeconds < 1) {
-            const events = await pbAdmin.collection("events").getFullList({
-              filter: `session.id = "${session.id}"`,
-              fields: "id",
+            const oldSessions = await pbAdmin.collection("sessions").getFullList({
+              filter: `website.id = "${website.id}" && updated < "${fiveMinutesAgo}"`,
+              fields: "id,created,updated",
               $autoCancel: false,
             });
 
-            for (const event of events) {
-              await pbAdmin.collection("events").delete(event.id);
+            let discardedForWebsite = 0;
+
+            for (const session of oldSessions) {
+              const sessionStart = new Date(session.created);
+              const sessionEnd = new Date(session.updated);
+              const durationSeconds = (sessionEnd - sessionStart) / 1000;
+
+              if (durationSeconds < 1) {
+                const events = await pbAdmin.collection("events").getFullList({
+                  filter: `session.id = "${session.id}"`,
+                  fields: "id",
+                  $autoCancel: false,
+                });
+
+                for (const event of events) {
+                  await pbAdmin.collection("events").delete(event.id);
+                }
+
+                const jsErrors = await pbAdmin.collection("js_errors").getFullList({
+                  filter: `session.id = "${session.id}"`,
+                  fields: "id",
+                  $autoCancel: false,
+                });
+
+                for (const jsError of jsErrors) {
+                  await pbAdmin.collection("js_errors").delete(jsError.id);
+                }
+
+                await pbAdmin.collection("sessions").delete(session.id);
+                discardedForWebsite++;
+              }
             }
 
-            const jsErrors = await pbAdmin.collection("js_errors").getFullList({
-              filter: `session.id = "${session.id}"`,
-              fields: "id",
-              $autoCancel: false,
-            });
-
-            for (const jsError of jsErrors) {
-              await pbAdmin.collection("js_errors").delete(jsError.id);
+            if (discardedForWebsite > 0) {
+              logger.info(`Discarded ${discardedForWebsite} short sessions for website ${website.name}`);
+              totalDiscarded += discardedForWebsite;
             }
-
-            await pbAdmin.collection("sessions").delete(session.id);
-            discardedForWebsite++;
+          } catch (error) {
+            logger.error("Error discarding short sessions for website %s: %o", website.id, error);
           }
         }
-
-        if (discardedForWebsite > 0) {
-          logger.info(`Discarded ${discardedForWebsite} short sessions for website ${website.name}`);
-          totalDiscarded += discardedForWebsite;
-        }
       } catch (error) {
-        logger.error("Error discarding short sessions for website %s: %o", website.id, error);
+        logger.error("Error processing websites for user %s: %o", userId, error);
       }
     }
 

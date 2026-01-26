@@ -86,6 +86,7 @@ export async function showOverview(req, res) {
     const prevMetrics = {
       pageViews: prevMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
       visitors: prevMetricsArray.reduce((sum, m) => sum + m.visitors, 0),
+      newVisitors: prevMetricsArray.reduce((sum, m) => sum + m.newVisitors, 0),
       engagementRate: 0,
       avgSessionDuration: { raw: 0 },
     };
@@ -173,6 +174,7 @@ export async function showOverview(req, res) {
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
+        newVisitors: calculatePercentageChange(currentMetrics.newVisitors, prevMetrics.newVisitors),
         engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
         avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
       },
@@ -236,6 +238,7 @@ export async function showDashboard(req, res) {
       change: {
         pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
         visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
+        newVisitors: calculatePercentageChange(currentMetrics.newVisitors, prevMetrics.newVisitors),
         engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
         avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
       },

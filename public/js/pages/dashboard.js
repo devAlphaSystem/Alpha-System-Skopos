@@ -698,6 +698,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (typeof initialMetrics !== "undefined") {
     initializeMetricCharts(initialMetrics);
+
+    const visitorValueEl = document.getElementById("visitors-value");
+    const visitorChangeEl = document.getElementById("visitors-change");
+    if (visitorValueEl && visitorChangeEl && settings.showUniqueVisitors) {
+      visitorValueEl.textContent = initialMetrics.newVisitors;
+      const newVisitorChange = Number.parseInt(visitorChangeEl.dataset.newVisitorsChange) || 0;
+      visitorChangeEl.className = "metric-change";
+      if (newVisitorChange >= 0) {
+        visitorChangeEl.classList.add("positive");
+        visitorChangeEl.innerHTML = `<i class="fa-solid fa-arrow-up"></i> ${newVisitorChange}%`;
+      } else {
+        visitorChangeEl.classList.add("negative");
+        visitorChangeEl.innerHTML = `<i class="fa-solid fa-arrow-down"></i> ${Math.abs(newVisitorChange)}%`;
+      }
+    } else if (visitorChangeEl) {
+      const visitorsChange = Number.parseInt(visitorChangeEl.dataset.visitorsChange) || 0;
+      visitorChangeEl.className = "metric-change";
+      if (visitorsChange >= 0) {
+        visitorChangeEl.classList.add("positive");
+        visitorChangeEl.innerHTML = `<i class="fa-solid fa-arrow-up"></i> ${visitorsChange}%`;
+      } else {
+        visitorChangeEl.classList.add("negative");
+        visitorChangeEl.innerHTML = `<i class="fa-solid fa-arrow-down"></i> ${Math.abs(visitorsChange)}%`;
+      }
+    }
   }
 
   if (typeof initialReportData !== "undefined" && initialReportData.countryBreakdown) {
@@ -759,7 +784,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     if (data.metrics) {
       updateMetricCard("pageviews", data.metrics.pageViews, data.metrics.change.pageViews);
-      updateMetricCard("visitors", data.metrics.visitors, data.metrics.change.visitors);
+
+      const visitorCount = settings.showUniqueVisitors ? data.metrics.newVisitors : data.metrics.visitors;
+      const visitorChange = settings.showUniqueVisitors ? data.metrics.change.newVisitors : data.metrics.change.visitors;
+      updateMetricCard("visitors", visitorCount, visitorChange);
+
       updateMetricCard("engagementrate", `${data.metrics.engagementRate}%`, data.metrics.change.engagementRate);
       updateMetricCard("avgsession", data.metrics.avgSessionDuration.formatted, data.metrics.change.avgSessionDuration);
 

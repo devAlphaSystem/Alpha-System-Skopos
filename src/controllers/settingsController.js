@@ -3,6 +3,7 @@ import { storeApiKey, listApiKeys, deleteApiKey, getApiKey } from "../services/a
 import { listNotificationRules, createNotificationRule, updateNotificationRule, deleteNotificationRule, triggerNotification } from "../services/notificationService.js";
 import { resolveRuleWebsites, createDailySummaryEventData } from "../services/notificationRuleUtils.js";
 import { calculateMetricsFromRecords } from "../services/analyticsService.js";
+import { getSetting, setSetting, getSettings } from "../services/appSettingsService.js";
 import logger from "../utils/logger.js";
 import { Resend } from "resend";
 import { startOfYesterday } from "date-fns";
@@ -37,10 +38,7 @@ export async function showSettings(req, res) {
     const apiKeys = await listApiKeys(res.locals.user.id);
     const notificationRules = await listNotificationRules(res.locals.user.id);
 
-    const appSettings = {
-      storeRawIp: websites.length > 0 ? websites[0].storeRawIp || false : false,
-      discardShortSessions: websites.length > 0 ? websites[0].discardShortSessions || false : false,
-    };
+    const appSettings = await getSettings(res.locals.user.id, ["storeRawIp", "discardShortSessions"]);
 
     res.render("settings", {
       websites,
@@ -58,7 +56,6 @@ export async function showSettings(req, res) {
 export async function updateAppSettings(req, res) {
   logger.info("Updating app settings for user: %s", res.locals.user.id);
   try {
-    await ensureAdminAuth();
     const { storeRawIp, discardShortSessions } = req.body;
 
     if (storeRawIp !== undefined && typeof storeRawIp !== "boolean") {
@@ -69,23 +66,15 @@ export async function updateAppSettings(req, res) {
       return res.status(400).json({ error: "Invalid input for discardShortSessions" });
     }
 
-    const allWebsites = await pbAdmin.collection("websites").getFullList({
-      filter: `user.id = "${res.locals.user.id}"`,
-    });
-
-    const updateData = {};
     if (storeRawIp !== undefined) {
-      updateData.storeRawIp = storeRawIp;
-      logger.debug("Updating storeRawIp to %s for %d websites", storeRawIp, allWebsites.length);
+      await setSetting(res.locals.user.id, "storeRawIp", storeRawIp, "Store raw IP addresses for visitors");
+      logger.debug("Updated storeRawIp to %s for user %s", storeRawIp, res.locals.user.id);
     }
+
     if (discardShortSessions !== undefined) {
-      updateData.discardShortSessions = discardShortSessions;
-      logger.debug("Updating discardShortSessions to %s for %d websites", discardShortSessions, allWebsites.length);
+      await setSetting(res.locals.user.id, "discardShortSessions", discardShortSessions, "Automatically discard sessions shorter than 1 second");
+      logger.debug("Updated discardShortSessions to %s for user %s", discardShortSessions, res.locals.user.id);
     }
-
-    const updatePromises = allWebsites.map((website) => pbAdmin.collection("websites").update(website.id, updateData));
-
-    await Promise.all(updatePromises);
 
     logger.info("Successfully updated app settings for user %s", res.locals.user.id);
     res.status(200).json({ success: true });

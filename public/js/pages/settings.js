@@ -31,6 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
     dataPeriod: 7,
     resultsLimit: 10,
     toastsEnabled: true,
+    showUniqueVisitors: false,
   };
 
   const settings = window.__SKOPOS_SETTINGS__ || { ...DEFAULT_SETTINGS };
@@ -75,6 +76,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (toastsToggle) {
       toastsToggle.checked = settings.toastsEnabled !== false;
     }
+
+    const uniqueVisitorsToggle = document.getElementById("unique-visitors-toggle");
+    if (uniqueVisitorsToggle) {
+      uniqueVisitorsToggle.checked = settings.showUniqueVisitors === true;
+    }
   }
 
   const themeToggle = document.getElementById("theme-toggle");
@@ -96,6 +102,16 @@ document.addEventListener("DOMContentLoaded", () => {
       if (settings.toastsEnabled) {
         showToast("Toast Notifications", "Toast notifications enabled", "success");
       }
+    });
+  }
+
+  const uniqueVisitorsToggle = document.getElementById("unique-visitors-toggle");
+  if (uniqueVisitorsToggle) {
+    uniqueVisitorsToggle.addEventListener("change", (e) => {
+      settings.showUniqueVisitors = e.target.checked;
+      saveSettings();
+      window.dispatchEvent(new CustomEvent("settingsChanged"));
+      showToast("Visitors Display Updated", `Showing ${settings.showUniqueVisitors ? "unique" : "all"} visitors`, "success");
     });
   }
 
