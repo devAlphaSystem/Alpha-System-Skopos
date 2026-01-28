@@ -266,6 +266,9 @@ export async function showSessionDetails(req, res) {
       screenHeight: session.screenHeight,
       language: session.language,
       isNewVisitor: session.isNewVisitor,
+      devicePixelRatio: session.devicePixelRatio,
+      connectionType: session.connectionType,
+      scriptVersion: session.scriptVersion,
     };
 
     const metrics = {

@@ -94,7 +94,7 @@
               <div class="hero-meta-tags">
                 <div class="meta-tag">
                   <i class="fa-solid fa-calendar-check"></i>
-                  <span><%= seoData.lastAnalyzed ? new Date(seoData.lastAnalyzed).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not analyzed' %></span>
+                  <span data-format-date="<%= seoData.lastAnalyzed || '' %>" data-date-format="short"><%= seoData.lastAnalyzed ? '' : 'Not analyzed' %></span>
                 </div>
                 <% if (strategyLabel) { %>
                   <div class="meta-tag">
@@ -220,7 +220,7 @@
               <% if (performance.fetchTime) { %>
                 <div class="lighthouse-timestamp">
                   <i class="fa-solid fa-clock"></i>
-                  <span><%= new Date(performance.fetchTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) %></span>
+                  <span data-format-date="<%= performance.fetchTime %>" data-date-format="short"></span>
                 </div>
               <% } %>
             </div>

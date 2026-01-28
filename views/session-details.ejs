@@ -32,14 +32,14 @@
           <div class="session-info-icon"><i class="fa-solid fa-clock"></i></div>
           <div class="session-info-content">
             <h3>Session Start</h3>
-            <p><%= new Date(sessionInfo.startTime).toLocaleString() %></p>
+            <p data-format-date="<%= sessionInfo.startTime %>"></p>
           </div>
         </div>
         <div class="card session-info-card">
           <div class="session-info-icon"><i class="fa-solid fa-hourglass-end"></i></div>
           <div class="session-info-content">
             <h3>Session End</h3>
-            <p><%= new Date(sessionInfo.endTime).toLocaleString() %></p>
+            <p data-format-date="<%= sessionInfo.endTime %>"></p>
           </div>
         </div>
         <div class="card session-info-card">
@@ -123,7 +123,7 @@
                       <% } else if (typeof value === 'boolean') { %>
                         <span class="<%= value ? 'badge-success' : 'badge-default' %>"><%= value ? 'Yes' : 'No' %></span>
                       <% } else if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(value)) { %>
-                        <%= new Date(value).toLocaleString() %>
+                        <span data-format-date="<%= value %>"></span>
                       <% } else { %>
                         <%= value %>
                       <% } %>
@@ -181,6 +181,24 @@
                   <span class="detail-value"><%= sessionInfo.screenWidth %> x <%= sessionInfo.screenHeight %></span>
                 </div>
               <% } %>
+              <% if (sessionInfo.devicePixelRatio) { %>
+                <div class="session-detail-item">
+                  <span class="detail-label">Device Pixel Ratio:</span>
+                  <span class="detail-value"><%= sessionInfo.devicePixelRatio %>x</span>
+                </div>
+              <% } %>
+              <% if (sessionInfo.connectionType) { %>
+                <div class="session-detail-item">
+                  <span class="detail-label">Connection Type:</span>
+                  <span class="detail-value"><%= sessionInfo.connectionType %></span>
+                </div>
+              <% } %>
+              <% if (sessionInfo.scriptVersion) { %>
+                <div class="session-detail-item">
+                  <span class="detail-label">Script Version:</span>
+                  <span class="detail-value"><code><%= sessionInfo.scriptVersion %></code></span>
+                </div>
+              <% } %>
               <div class="session-detail-item">
                 <span class="detail-label">Visitor Type:</span>
                 <span class="detail-value"><%= sessionInfo.isNewVisitor ? 'New Visitor' : 'Returning Visitor' %></span>
@@ -231,7 +249,7 @@
                     <div class="timeline-content">
                       <div class="timeline-header">
                         <span class="timeline-type"><%= event.type === 'pageView' ? 'Page View' : 'Custom Event' %></span>
-                        <span class="timeline-time"><%= new Date(event.created).toLocaleTimeString() %></span>
+                        <span class="timeline-time" data-format-date="<%= event.created %>" data-date-format="time"></span>
                       </div>
                       <div class="timeline-details">
                         <% if (event.type === 'pageView') { %>

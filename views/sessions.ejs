@@ -84,11 +84,11 @@
                         <div class="session-time">
                           <div class="session-meta">
                             <i class="fa-solid fa-clock"></i>
-                            <span><strong>Started:</strong> <%= new Date(session.startTime).toLocaleString() %></span>
+                            <span><strong>Started:</strong> <span data-format-date="<%= session.startTime %>"></span></span>
                           </div>
                           <div class="session-meta">
                             <i class="fa-solid fa-hourglass-end"></i>
-                            <span><strong>Ended:</strong> <%= new Date(session.endTime).toLocaleString() %></span>
+                            <span><strong>Ended:</strong> <span data-format-date="<%= session.endTime %>"></span></span>
                           </div>
                         </div>
                         <div class="session-stats">

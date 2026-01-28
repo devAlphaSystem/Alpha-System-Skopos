@@ -1,3 +1,79 @@
+window.formatDate = (date, options = {}) => {
+  const settings = window.__SKOPOS_SETTINGS__ || {};
+  const timezone = settings.timezone || "UTC";
+  const dateObj = date instanceof Date ? date : new Date(date);
+
+  const defaultOptions = {
+    timeZone: timezone,
+    ...options,
+  };
+
+  return dateObj.toLocaleDateString("en-US", defaultOptions);
+};
+
+window.formatTime = (date, options = {}) => {
+  const settings = window.__SKOPOS_SETTINGS__ || {};
+  const timezone = settings.timezone || "UTC";
+  const dateObj = date instanceof Date ? date : new Date(date);
+
+  const defaultOptions = {
+    timeZone: timezone,
+    ...options,
+  };
+
+  return dateObj.toLocaleTimeString("en-US", defaultOptions);
+};
+
+window.formatDateTime = (date, options = {}) => {
+  const settings = window.__SKOPOS_SETTINGS__ || {};
+  const timezone = settings.timezone || "UTC";
+  const dateObj = date instanceof Date ? date : new Date(date);
+
+  const defaultOptions = {
+    timeZone: timezone,
+    ...options,
+  };
+
+  return dateObj.toLocaleString("en-US", defaultOptions);
+};
+
+window.formatDateShort = (date) => {
+  return window.formatDateTime(date, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+window.formatDatesOnPage = () => {
+  for (const el of document.querySelectorAll("[data-format-date]")) {
+    const dateValue = el.dataset.formatDate;
+    const format = el.dataset.dateFormat || "datetime";
+
+    if (!dateValue || dateValue.trim() === "") continue;
+
+    try {
+      switch (format) {
+        case "date":
+          el.textContent = window.formatDate(dateValue);
+          break;
+        case "time":
+          el.textContent = window.formatTime(dateValue);
+          break;
+        case "short":
+          el.textContent = window.formatDateShort(dateValue);
+          break;
+        default:
+          el.textContent = window.formatDateTime(dateValue);
+          break;
+      }
+    } catch (e) {
+      console.warn("Failed to format date:", dateValue, e);
+    }
+  }
+};
+
 window.showLoadingModal = (title = "Processing...", message = "Please wait") => {
   const overlay = document.getElementById("loading-modal-overlay");
   const titleEl = document.getElementById("loading-modal-title");
@@ -17,6 +93,12 @@ window.hideLoadingModal = () => {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  window.formatDatesOnPage();
+
+  window.addEventListener("timezoneChanged", () => {
+    window.formatDatesOnPage();
+  });
+
   const sidebarToggle = document.getElementById("sidebar-toggle");
   const mobileSidebarToggle = document.getElementById("mobile-sidebar-toggle");
   const sidebar = document.getElementById("sidebar");

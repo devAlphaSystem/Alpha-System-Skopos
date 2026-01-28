@@ -90,7 +90,7 @@
                   </div>
                   <div class="website-card-body">
                     <p><strong>Domain:</strong> <%= website.domain %></p>
-                    <p><strong>Archived on:</strong> <%= new Date(website.updated).toLocaleDateString() %></p>
+                    <p><strong>Archived on:</strong> <span data-format-date="<%= website.updated %>" data-date-format="date"></span></p>
                   </div>
                 </div>
               <% } %>

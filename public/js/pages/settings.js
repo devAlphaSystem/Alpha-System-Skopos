@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
     resultsLimit: 10,
     toastsEnabled: true,
     showUniqueVisitors: false,
+    timezone: "UTC",
   };
 
   const settings = window.__SKOPOS_SETTINGS__ || { ...DEFAULT_SETTINGS };
@@ -81,6 +82,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (uniqueVisitorsToggle) {
       uniqueVisitorsToggle.checked = settings.showUniqueVisitors === true;
     }
+
+    const timezoneSelect = document.getElementById("timezone-select");
+    if (timezoneSelect) {
+      const serverTimezone = timezoneSelect.dataset.serverTimezone;
+      if (serverTimezone && serverTimezone !== "UTC" && serverTimezone !== settings.timezone) {
+        settings.timezone = serverTimezone;
+        saveSettings();
+        window.__SKOPOS_SETTINGS__ = settings;
+        window.dispatchEvent(new CustomEvent("timezoneChanged", { detail: { timezone: serverTimezone } }));
+      }
+      timezoneSelect.value = settings.timezone || "UTC";
+    }
   }
 
   const themeToggle = document.getElementById("theme-toggle");
@@ -112,6 +125,37 @@ document.addEventListener("DOMContentLoaded", () => {
       saveSettings();
       window.dispatchEvent(new CustomEvent("settingsChanged"));
       showToast("Visitors Display Updated", `Showing ${settings.showUniqueVisitors ? "unique" : "all"} visitors`, "success");
+    });
+  }
+
+  const timezoneSelect = document.getElementById("timezone-select");
+  if (timezoneSelect) {
+    timezoneSelect.addEventListener("change", async (e) => {
+      const newTimezone = e.target.value;
+      settings.timezone = newTimezone;
+      saveSettings();
+
+      window.__SKOPOS_SETTINGS__ = { ...window.__SKOPOS_SETTINGS__, timezone: newTimezone };
+
+      try {
+        const response = await fetch("/settings/app", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ timezone: newTimezone }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to update timezone");
+        }
+
+        window.dispatchEvent(new CustomEvent("timezoneChanged", { detail: { timezone: newTimezone } }));
+        showToast("Timezone Updated", `Timezone set to ${newTimezone}`, "success");
+      } catch (error) {
+        console.error("Error updating timezone:", error);
+        window.customAlert("Error", "Failed to update timezone setting. Please try again.");
+      }
     });
   }
 

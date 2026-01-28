@@ -1,7 +1,7 @@
 {
   "name": "alpha-system-skopos",
-  "version": "0.47.0",
-  "updated": "2026.01.26.1826",
+  "version": "0.48.0",
+  "updated": "2026.01.27.2150",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -30,10 +30,10 @@
     "express": "^5.2.1",
     "geoip-lite": "^1.4.10",
     "node-cron": "^4.2.1",
-    "pocketbase": "^0.26.6",
-    "resend": "^6.8.0",
+    "pocketbase": "^0.26.7",
+    "resend": "^6.9.1",
     "ua-parser-js": "^2.0.8",
-    "undici": "^7.19.1",
+    "undici": "^7.19.2",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0"
   },

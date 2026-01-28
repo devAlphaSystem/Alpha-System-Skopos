@@ -1888,6 +1888,48 @@
         "type": "text"
       },
       {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text9382746512",
+        "max": 0,
+        "min": 0,
+        "name": "devicePixelRatio",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text9382746513",
+        "max": 0,
+        "min": 0,
+        "name": "connectionType",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "hidden": false,
+        "id": "text9382746514",
+        "max": 0,
+        "min": 0,
+        "name": "scriptVersion",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
         "hidden": false,
         "id": "bool29935624",
         "name": "isNewVisitor",

@@ -38,7 +38,7 @@ export async function showSettings(req, res) {
     const apiKeys = await listApiKeys(res.locals.user.id);
     const notificationRules = await listNotificationRules(res.locals.user.id);
 
-    const appSettings = await getSettings(res.locals.user.id, ["storeRawIp", "discardShortSessions"]);
+    const appSettings = await getSettings(res.locals.user.id, ["storeRawIp", "discardShortSessions", "timezone"]);
 
     res.render("settings", {
       websites,
@@ -56,7 +56,7 @@ export async function showSettings(req, res) {
 export async function updateAppSettings(req, res) {
   logger.info("Updating app settings for user: %s", res.locals.user.id);
   try {
-    const { storeRawIp, discardShortSessions } = req.body;
+    const { storeRawIp, discardShortSessions, timezone } = req.body;
 
     if (storeRawIp !== undefined && typeof storeRawIp !== "boolean") {
       return res.status(400).json({ error: "Invalid input for storeRawIp" });
@@ -64,6 +64,10 @@ export async function updateAppSettings(req, res) {
 
     if (discardShortSessions !== undefined && typeof discardShortSessions !== "boolean") {
       return res.status(400).json({ error: "Invalid input for discardShortSessions" });
+    }
+
+    if (timezone !== undefined && typeof timezone !== "string") {
+      return res.status(400).json({ error: "Invalid input for timezone" });
     }
 
     if (storeRawIp !== undefined) {
@@ -74,6 +78,11 @@ export async function updateAppSettings(req, res) {
     if (discardShortSessions !== undefined) {
       await setSetting(res.locals.user.id, "discardShortSessions", discardShortSessions, "Automatically discard sessions shorter than 1 second");
       logger.debug("Updated discardShortSessions to %s for user %s", discardShortSessions, res.locals.user.id);
+    }
+
+    if (timezone !== undefined) {
+      await setSetting(res.locals.user.id, "timezone", timezone, "User preferred timezone for date/time display");
+      logger.debug("Updated timezone to %s for user %s", timezone, res.locals.user.id);
     }
 
     logger.info("Successfully updated app settings for user %s", res.locals.user.id);

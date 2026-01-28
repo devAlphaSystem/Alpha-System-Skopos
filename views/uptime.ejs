@@ -147,7 +147,7 @@
                   <div class="incident-details">
                     <div class="incident-header">
                       <span class="incident-title"><%= incident.isResolved ? 'Resolved' : 'Active' %> Incident</span>
-                      <span class="incident-time"><%= new Date(incident.startTime).toLocaleString() %></span>
+                      <span class="incident-time" data-format-date="<%= incident.startTime %>"></span>
                     </div>
                     <div class="incident-info">
                       <% if (incident.error) { %>
@@ -160,7 +160,7 @@
                     <div class="incident-duration">
                       <% if (incident.isResolved) { %>
                         <span>Duration: <%= Math.floor(incident.duration / 60000) %> minutes</span>
-                        <span>Resolved: <%= new Date(incident.endTime).toLocaleString() %></span>
+                        <span>Resolved: <span data-format-date="<%= incident.endTime %>"></span></span>
                       <% } else { %>
                         <span class="text-danger">Ongoing for <%= Math.floor((new Date() - new Date(incident.startTime)) / 60000) %> minutes</span>
                         <button class="btn-small btn-secondary resolve-incident-btn" data-incident-id="<%= incident.id %>">

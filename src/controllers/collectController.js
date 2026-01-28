@@ -239,6 +239,9 @@ async function getOrCreateSession(visitorHash, visitorRecordId, websiteId, sessi
       state: sessionData.state || "Unknown",
       ipAddress: sessionData.storeRawIp ? sessionData.ip : "",
       isNewVisitor: sessionData.isNewVisitor,
+      devicePixelRatio: sessionData.devicePixelRatio || "",
+      connectionType: sessionData.connectionType || "",
+      scriptVersion: sessionData.scriptVersion || "",
     });
 
     sessionCache.set(visitorHash, {
@@ -331,6 +334,9 @@ export async function handleCollect(req, res) {
       ip: ip,
       storeRawIp: storeRawIp,
       isNewVisitor: isNewVisitor,
+      devicePixelRatio: payload.dpr ? String(payload.dpr) : "",
+      connectionType: sanitize(payload.cn || "", 32),
+      scriptVersion: sanitize(payload.sv || "", 16),
     };
 
     let sessionRecordId;

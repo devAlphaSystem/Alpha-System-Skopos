@@ -1049,7 +1049,7 @@ document.addEventListener("DOMContentLoaded", () => {
               if (Array.isArray(breadcrumbs) && breadcrumbs.length > 0) {
                 breadcrumbsHtml = `<div class="detail-item-content"><h4 style="margin: 0 0 1rem 0; font-size: 0.875rem; color: var(--text-secondary);">Breadcrumbs (Last ${breadcrumbs.length} steps before error)</h4><div class="breadcrumb-timeline">`;
                 for (const crumb of breadcrumbs) {
-                  const time = new Date(crumb.timestamp).toLocaleTimeString();
+                  const time = window.formatTime ? window.formatTime(crumb.timestamp) : new Date(crumb.timestamp).toLocaleTimeString();
                   const typeIcon = getBreadcrumbIcon(crumb.type);
                   const typeClass = getBreadcrumbClass(crumb.type);
                   let dataHtml = "";
