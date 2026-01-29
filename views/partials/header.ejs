@@ -27,7 +27,10 @@
           sidebarCollapsed: false,
           toastsEnabled: true,
           showUniqueVisitors: false,
-          timezone: 'UTC'
+          timezone: 'UTC',
+          overviewDataPeriod: 7,
+          overviewResultsLimit: 10,
+          overviewShowUniqueVisitors: false
         };
         let settings = { ...DEFAULT_SETTINGS };
         try {
@@ -52,7 +55,14 @@
             if (link && !link.dataset.noIntercept) {
               const href = link.getAttribute('href');
               if (href && !href.includes('?')) {
-                if (href === '/overview' || (href.startsWith('/dashboard/') && !href.includes('/dashboard/seo') && !href.includes('/dashboard/report'))) {
+                if (href === '/' || href === '/overview') {
+                  e.preventDefault();
+                  const url = new URL(href, window.location.origin);
+                  url.searchParams.set('period', settings.overviewDataPeriod || 7);
+                  url.searchParams.set('limit', settings.overviewResultsLimit || 10);
+                  window.location.href = url.toString();
+                }
+                else if (href.startsWith('/dashboard/') && !href.includes('/dashboard/seo') && !href.includes('/dashboard/report')) {
                   e.preventDefault();
                   const url = new URL(href, window.location.origin);
                   url.searchParams.set('period', settings.dataPeriod);

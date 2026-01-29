@@ -33,6 +33,9 @@ document.addEventListener("DOMContentLoaded", () => {
     toastsEnabled: true,
     showUniqueVisitors: false,
     timezone: "UTC",
+    overviewDataPeriod: 7,
+    overviewResultsLimit: 10,
+    overviewShowUniqueVisitors: false,
   };
 
   const settings = window.__SKOPOS_SETTINGS__ || { ...DEFAULT_SETTINGS };
@@ -93,6 +96,21 @@ document.addEventListener("DOMContentLoaded", () => {
         window.dispatchEvent(new CustomEvent("timezoneChanged", { detail: { timezone: serverTimezone } }));
       }
       timezoneSelect.value = settings.timezone || "UTC";
+    }
+
+    const overviewDataPeriodSelect = document.getElementById("overview-data-period-select");
+    if (overviewDataPeriodSelect) {
+      overviewDataPeriodSelect.value = settings.overviewDataPeriod || 7;
+    }
+
+    const overviewResultsLimitSelect = document.getElementById("overview-results-limit-select");
+    if (overviewResultsLimitSelect) {
+      overviewResultsLimitSelect.value = settings.overviewResultsLimit || 10;
+    }
+
+    const overviewUniqueVisitorsToggle = document.getElementById("overview-unique-visitors-toggle");
+    if (overviewUniqueVisitorsToggle) {
+      overviewUniqueVisitorsToggle.checked = settings.overviewShowUniqueVisitors === true;
     }
   }
 
@@ -209,6 +227,52 @@ document.addEventListener("DOMContentLoaded", () => {
       saveSettings();
       window.dispatchEvent(new CustomEvent("settingsChanged"));
       showToast("Results Limit Updated", `Results per card set to ${settings.resultsLimit}`, "success");
+    });
+  }
+
+  const overviewDataPeriodSelect = document.getElementById("overview-data-period-select");
+  if (overviewDataPeriodSelect) {
+    overviewDataPeriodSelect.addEventListener("change", (e) => {
+      settings.overviewDataPeriod = Number.parseInt(e.target.value);
+      saveSettings();
+      window.__SKOPOS_SETTINGS__ = settings;
+
+      const periodText = settings.overviewDataPeriod === 1 ? "today" : `${settings.overviewDataPeriod} days`;
+      const currentPath = window.location.pathname;
+      if (currentPath === "/" || currentPath === "/overview") {
+        showToast("Overview Data Period Updated", `Data period set to ${periodText}. Reloading...`, "info");
+        const url = new URL(window.location.href);
+        url.searchParams.set("period", settings.overviewDataPeriod);
+        url.searchParams.set("limit", settings.overviewResultsLimit || 10);
+        setTimeout(() => {
+          window.location.href = url.toString();
+        }, 1000);
+      } else {
+        window.dispatchEvent(new CustomEvent("settingsChanged"));
+        showToast("Overview Data Period Updated", `Data period set to ${periodText}`, "success");
+      }
+    });
+  }
+
+  const overviewResultsLimitSelect = document.getElementById("overview-results-limit-select");
+  if (overviewResultsLimitSelect) {
+    overviewResultsLimitSelect.addEventListener("change", (e) => {
+      settings.overviewResultsLimit = Number.parseInt(e.target.value);
+      saveSettings();
+      window.__SKOPOS_SETTINGS__ = settings;
+      window.dispatchEvent(new CustomEvent("settingsChanged"));
+      showToast("Overview Results Limit Updated", `Results per card set to ${settings.overviewResultsLimit}`, "success");
+    });
+  }
+
+  const overviewUniqueVisitorsToggle = document.getElementById("overview-unique-visitors-toggle");
+  if (overviewUniqueVisitorsToggle) {
+    overviewUniqueVisitorsToggle.addEventListener("change", (e) => {
+      settings.overviewShowUniqueVisitors = e.target.checked;
+      saveSettings();
+      window.__SKOPOS_SETTINGS__ = settings;
+      window.dispatchEvent(new CustomEvent("settingsChanged"));
+      showToast("Overview Visitors Display Updated", `Showing ${settings.overviewShowUniqueVisitors ? "unique" : "all"} visitors in overview`, "success");
     });
   }
 

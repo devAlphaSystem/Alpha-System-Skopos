@@ -238,6 +238,54 @@ Notifications require a configured **Resend** API key.
 
 ---
 
+## Settings
+
+The settings page allows you to customize your dashboard experience, privacy levels, and external integrations across several categories:
+
+### Appearance Settings
+
+Manage the visual and temporal aspects of the application:
+
+- **Dark Mode** — Switch between light and dark themes.
+- **Toast Notifications** — Toggle small on-screen notifications when settings are updated.
+- **Timezone** — Set your preferred timezone for displaying dates and times globally.
+
+### Overview Settings
+
+Configure how the global overview page displays aggregated data:
+
+- **Data Period** — Number of trailing days for overview reports (Today, 7, 15, or 30 days)
+- **Results Per Card** — Maximum entries shown in each overview report card (5, 10, or 25)
+- **Show Unique Visitors** — When enabled, the Visitors card in overview shows only unique visitors.
+
+### Dashboard Settings
+
+Configure how individual website dashboards display data independently from the overview:
+
+- **Auto Refresh** — Automatically pull the latest dashboard metrics at regular intervals.
+- **Refresh Interval** — Choose how often data is refreshed (Instant to 30 minutes)
+- **Data Period** — Number of trailing days for dashboard reports
+- **Results Per Card** — How many entries to surface inside each dashboard report card
+- **Show Unique Visitors** — Toggle between total visitors and unique visitors for the dashboard.
+
+### Privacy Settings
+
+Control how visitor data is collected and processed:
+
+- **Store Raw IP Addresses** — Enable to store full IP addresses; when disabled, only hashed IDs are stored for privacy.
+- **Discard Short Sessions** — When enabled, sessions shorter than 1 second are automatically discarded.
+
+### API Keys & Notifications
+
+Dedicated tabs allow you to manage:
+
+- **External Services** — Configure API keys for Resend (email), Google PageSpeed (SEO), and Chapybara (IP intelligence).
+- **Notification Rules** — Create and manage declarative rules for email alerts.
+
+Overview and Dashboard settings are independent — changes to one do not affect the other.
+
+---
+
 ## Uptime Monitoring
 
 Per-website uptime monitoring with:

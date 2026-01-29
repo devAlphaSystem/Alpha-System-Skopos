@@ -108,10 +108,19 @@ async function initializeApp() {
   app.use("/", seoRoutes);
   app.use("/", uptimeRoutes);
 
+  const isDev = process.env.NODE_ENV === "development";
+
   app.use(
     express.static(path.join(__dirname, "public"), {
-      maxAge: "1y",
-      immutable: true,
+      maxAge: isDev ? 0 : "1y",
+      immutable: !isDev,
+      setHeaders: (res, path) => {
+        if (isDev && (path.endsWith(".css") || path.endsWith(".js"))) {
+          res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+          res.setHeader("Pragma", "no-cache");
+          res.setHeader("Expires", "0");
+        }
+      },
     }),
   );
 

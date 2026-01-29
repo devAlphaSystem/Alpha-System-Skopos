@@ -63,16 +63,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let settings = window.__SKOPOS_SETTINGS__;
 
+  const IS_OVERVIEW_PAGE = !WEBSITE_ID;
+
+  const getDataPeriod = () => (IS_OVERVIEW_PAGE ? settings.overviewDataPeriod || 7 : settings.dataPeriod);
+  const getResultsLimit = () => (IS_OVERVIEW_PAGE ? settings.overviewResultsLimit || 10 : settings.resultsLimit);
+  const getShowUniqueVisitors = () => (IS_OVERVIEW_PAGE ? settings.overviewShowUniqueVisitors || false : settings.showUniqueVisitors);
+
   const urlParams = new URLSearchParams(window.location.search);
   const urlPeriod = urlParams.get("period");
   if (urlPeriod) {
     const periodValue = Number.parseInt(urlPeriod);
     if (!Number.isNaN(periodValue) && periodValue > 0) {
-      settings.dataPeriod = periodValue;
+      if (IS_OVERVIEW_PAGE) {
+        settings.overviewDataPeriod = periodValue;
+      } else {
+        settings.dataPeriod = periodValue;
+      }
       try {
         const stored = localStorage.getItem("skopos-settings");
         const storedSettings = stored ? JSON.parse(stored) : {};
-        storedSettings.dataPeriod = periodValue;
+        if (IS_OVERVIEW_PAGE) {
+          storedSettings.overviewDataPeriod = periodValue;
+        } else {
+          storedSettings.dataPeriod = periodValue;
+        }
         localStorage.setItem("skopos-settings", JSON.stringify(storedSettings));
       } catch (e) {
         console.error("Failed to save period to localStorage:", e);
@@ -391,7 +405,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (dataPeriodLabel) {
-      const periodText = settings.dataPeriod === 1 ? "today" : `the last ${settings.dataPeriod} days`;
+      const currentPeriod = getDataPeriod();
+      const periodText = currentPeriod === 1 ? "today" : `the last ${currentPeriod} days`;
       dataPeriodLabel.textContent = `Displaying data for ${periodText}`;
     }
 
@@ -701,7 +716,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const visitorValueEl = document.getElementById("visitors-value");
     const visitorChangeEl = document.getElementById("visitors-change");
-    if (visitorValueEl && visitorChangeEl && settings.showUniqueVisitors) {
+    if (visitorValueEl && visitorChangeEl && getShowUniqueVisitors()) {
       visitorValueEl.textContent = initialMetrics.newVisitors;
       const newVisitorChange = Number.parseInt(visitorChangeEl.dataset.newVisitorsChange) || 0;
       visitorChangeEl.className = "metric-change";
@@ -785,8 +800,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (data.metrics) {
       updateMetricCard("pageviews", data.metrics.pageViews, data.metrics.change.pageViews);
 
-      const visitorCount = settings.showUniqueVisitors ? data.metrics.newVisitors : data.metrics.visitors;
-      const visitorChange = settings.showUniqueVisitors ? data.metrics.change.newVisitors : data.metrics.change.visitors;
+      const visitorCount = getShowUniqueVisitors() ? data.metrics.newVisitors : data.metrics.visitors;
+      const visitorChange = getShowUniqueVisitors() ? data.metrics.change.newVisitors : data.metrics.change.visitors;
       updateMetricCard("visitors", visitorCount, visitorChange);
 
       updateMetricCard("engagementrate", `${data.metrics.engagementRate}%`, data.metrics.change.engagementRate);
@@ -820,7 +835,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (IS_ARCHIVED) return;
     try {
       const endpoint = WEBSITE_ID ? `/dashboard/data/${WEBSITE_ID}` : "/overview/data";
-      const url = `${endpoint}?period=${settings.dataPeriod}&limit=${settings.resultsLimit}`;
+      const url = `${endpoint}?period=${getDataPeriod()}&limit=${getResultsLimit()}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
@@ -835,7 +850,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const tableContainer = document.getElementById("detail-table-container");
     tableContainer.innerHTML = '<div class="spinner-container" style="opacity: 1; visibility: visible;"><div class="spinner"></div></div>';
     try {
-      const url = `/dashboard/report/${WEBSITE_ID}/${reportType}?period=${settings.dataPeriod}`;
+      const url = `/dashboard/report/${WEBSITE_ID}/${reportType}?period=${getDataPeriod()}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const result = await response.json();
@@ -881,7 +896,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openItemDetailDrawer(`Details for: ${eventName}`, loadingHTML);
 
     try {
-      const url = `/dashboard/report/${WEBSITE_ID}/custom-event-details?name=${encodeURIComponent(eventName)}&period=${settings.dataPeriod}`;
+      const url = `/dashboard/report/${WEBSITE_ID}/custom-event-details?name=${encodeURIComponent(eventName)}&period=${getDataPeriod()}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const result = await response.json();
@@ -908,7 +923,7 @@ document.addEventListener("DOMContentLoaded", () => {
     openItemDetailDrawer(`States in ${countryName}`, loadingHTML);
 
     try {
-      const url = `/dashboard/report/${WEBSITE_ID}/state-breakdown?country=${encodeURIComponent(countryCode)}&period=${settings.dataPeriod}`;
+      const url = `/dashboard/report/${WEBSITE_ID}/state-breakdown?country=${encodeURIComponent(countryCode)}&period=${getDataPeriod()}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const result = await response.json();

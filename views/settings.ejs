@@ -21,6 +21,10 @@
             <i class="fa-solid fa-palette"></i>
             <span>Appearance</span>
           </button>
+          <button class="tab-button" data-tab="overview">
+            <i class="fa-solid fa-globe"></i>
+            <span>Overview</span>
+          </button>
           <button class="tab-button" data-tab="dashboard">
             <i class="fa-solid fa-chart-line"></i>
             <span>Dashboard</span>
@@ -135,6 +139,46 @@
                   <option value="Africa/Nairobi">Africa/Nairobi (East Africa)</option>
                   <option value="Atlantic/Reykjavik">Atlantic/Reykjavik (Iceland)</option>
                 </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="tab-panel" id="overview-panel">
+            <div class="settings-group">
+              <div class="settings-option">
+                <div class="settings-option-info">
+                  <div class="settings-option-label">Data Period</div>
+                  <div class="settings-option-description">Number of trailing days included in the overview reports.</div>
+                </div>
+                <select id="overview-data-period-select" class="settings-select">
+                  <option value="1">Today</option>
+                  <option value="7">7 days</option>
+                  <option value="15">15 days</option>
+                  <option value="30">30 days</option>
+                </select>
+              </div>
+
+              <div class="settings-option">
+                <div class="settings-option-info">
+                  <div class="settings-option-label">Results Per Card</div>
+                  <div class="settings-option-description">How many entries to surface inside each overview report card.</div>
+                </div>
+                <select id="overview-results-limit-select" class="settings-select">
+                  <option value="5">5 results</option>
+                  <option value="10">10 results</option>
+                  <option value="25">25 results</option>
+                </select>
+              </div>
+
+              <div class="settings-option">
+                <div class="settings-option-info">
+                  <div class="settings-option-label">Show Unique Visitors</div>
+                  <div class="settings-option-description">When enabled, the Visitors card in overview shows only unique visitors (excludes returning visitors).</div>
+                </div>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="overview-unique-visitors-toggle">
+                  <span class="toggle-slider"></span>
+                </label>
               </div>
             </div>
           </section>
