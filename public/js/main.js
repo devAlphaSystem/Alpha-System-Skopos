@@ -1,6 +1,91 @@
+window.getLocaleForTimezone = (timezone) => {
+  if (!timezone) return navigator.language || "en-US";
+
+  const map = {
+    "America/Sao_Paulo": "pt-BR",
+
+    "America/New_York": "en-US",
+    "America/Chicago": "en-US",
+    "America/Denver": "en-US",
+    "America/Los_Angeles": "en-US",
+    "America/Anchorage": "en-US",
+    "America/Phoenix": "en-US",
+    "America/Toronto": "en-US",
+    "America/Vancouver": "en-US",
+    "America/Mexico_City": "es-MX",
+
+    "America/Buenos_Aires": "es-AR",
+    "America/Santiago": "es-CL",
+    "America/Bogota": "es-CO",
+    "America/Lima": "es-PE",
+
+    "Europe/London": "en-GB",
+    "Europe/Dublin": "en-GB",
+    "Europe/Paris": "fr-FR",
+    "Europe/Berlin": "de-DE",
+    "Europe/Madrid": "es-ES",
+    "Europe/Rome": "it-IT",
+    "Europe/Amsterdam": "nl-NL",
+    "Europe/Brussels": "fr-BE",
+    "Europe/Vienna": "de-AT",
+    "Europe/Zurich": "de-CH",
+    "Europe/Stockholm": "sv-SE",
+    "Europe/Oslo": "nb-NO",
+    "Europe/Copenhagen": "da-DK",
+    "Europe/Helsinki": "fi-FI",
+    "Europe/Athens": "el-GR",
+    "Europe/Bucharest": "ro-RO",
+    "Europe/Warsaw": "pl-PL",
+    "Europe/Prague": "cs-CZ",
+    "Europe/Moscow": "ru-RU",
+    "Europe/Istanbul": "tr-TR",
+
+    "Asia/Dubai": "en-AE",
+    "Asia/Riyadh": "ar-SA",
+    "Asia/Tehran": "fa-IR",
+    "Asia/Karachi": "ur-PK",
+    "Asia/Kolkata": "en-IN",
+    "Asia/Dhaka": "bn-BD",
+    "Asia/Bangkok": "th-TH",
+    "Asia/Jakarta": "id-ID",
+    "Asia/Singapore": "en-SG",
+    "Asia/Hong_Kong": "en-HK",
+    "Asia/Shanghai": "zh-CN",
+    "Asia/Taipei": "zh-TW",
+    "Asia/Seoul": "ko-KR",
+    "Asia/Tokyo": "ja-JP",
+    "Asia/Manila": "en-PH",
+
+    "Australia/Perth": "en-AU",
+    "Australia/Adelaide": "en-AU",
+    "Australia/Brisbane": "en-AU",
+    "Australia/Sydney": "en-AU",
+    "Australia/Melbourne": "en-AU",
+    "Pacific/Auckland": "en-NZ",
+    "Pacific/Fiji": "en-FJ",
+    "Pacific/Honolulu": "en-US",
+
+    "Africa/Cairo": "ar-EG",
+    "Africa/Johannesburg": "en-ZA",
+    "Africa/Lagos": "en-NG",
+    "Africa/Nairobi": "en-KE",
+
+    "Atlantic/Reykjavik": "is-IS",
+  };
+
+  if (map[timezone]) return map[timezone];
+
+  if (timezone.startsWith("Europe/")) return "en-GB";
+  if (timezone.startsWith("Australia/")) return "en-AU";
+  if (timezone.startsWith("Asia/")) return "en-GB";
+
+  return navigator.language || "en-US";
+};
+
 window.formatDate = (date, options = {}) => {
   const settings = window.__SKOPOS_SETTINGS__ || {};
   const timezone = settings.timezone || "UTC";
+  const locale = window.getLocaleForTimezone(timezone);
   const dateObj = date instanceof Date ? date : new Date(date);
 
   const defaultOptions = {
@@ -8,12 +93,13 @@ window.formatDate = (date, options = {}) => {
     ...options,
   };
 
-  return dateObj.toLocaleDateString("en-US", defaultOptions);
+  return dateObj.toLocaleDateString(locale, defaultOptions);
 };
 
 window.formatTime = (date, options = {}) => {
   const settings = window.__SKOPOS_SETTINGS__ || {};
   const timezone = settings.timezone || "UTC";
+  const locale = window.getLocaleForTimezone(timezone);
   const dateObj = date instanceof Date ? date : new Date(date);
 
   const defaultOptions = {
@@ -21,12 +107,13 @@ window.formatTime = (date, options = {}) => {
     ...options,
   };
 
-  return dateObj.toLocaleTimeString("en-US", defaultOptions);
+  return dateObj.toLocaleTimeString(locale, defaultOptions);
 };
 
 window.formatDateTime = (date, options = {}) => {
   const settings = window.__SKOPOS_SETTINGS__ || {};
   const timezone = settings.timezone || "UTC";
+  const locale = window.getLocaleForTimezone(timezone);
   const dateObj = date instanceof Date ? date : new Date(date);
 
   const defaultOptions = {
@@ -34,7 +121,7 @@ window.formatDateTime = (date, options = {}) => {
     ...options,
   };
 
-  return dateObj.toLocaleString("en-US", defaultOptions);
+  return dateObj.toLocaleString(locale, defaultOptions);
 };
 
 window.formatDateShort = (date) => {
