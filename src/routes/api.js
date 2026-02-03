@@ -1,5 +1,5 @@
 import express from "express";
-import { handleSseConnection, getOverviewData, getDashboardData, getDetailedReport, getCustomEventDetails, getUserIp, getStateBreakdown } from "../controllers/apiController.js";
+import { handleSseConnection, getOverviewData, getDashboardData, getDetailedReport, getCustomEventDetails, getUserIp, getStateBreakdown, proxyImage } from "../controllers/apiController.js";
 
 const router = express.Router();
 
@@ -19,5 +19,7 @@ router.get("/dashboard/report/:websiteId/state-breakdown", requireAuth, getState
 router.get("/dashboard/report/:websiteId/:reportType", requireAuth, getDetailedReport);
 
 router.get("/api/user-ip", requireAuth, getUserIp);
+
+router.get("/api/proxy-image", proxyImage);
 
 export default router;

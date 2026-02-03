@@ -1,0 +1,1205 @@
+<%- include('partials/header', {title: 'Advertisements'}) %>
+
+<% const isArchived = currentWebsite.isArchived %>
+
+<%- include('partials/mobile-header') %>
+
+<style>
+  .ads-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    text-align: center;
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+  }
+
+  .ads-empty-state .empty-state-icon {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+    border-radius: 24px;
+    margin-bottom: 1rem;
+  }
+
+  .ads-empty-state .empty-state-icon i {
+    font-size: 2.5rem;
+    color: #fff;
+  }
+
+  .ads-empty-state h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+  }
+
+  .ads-empty-state p {
+    color: var(--text-secondary);
+    max-width: 480px;
+    line-height: 1.6;
+  }
+
+  .ads-empty-state .empty-state-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .btn-large {
+    padding: 0.875rem 1.75rem;
+    font-size: 1rem;
+  }
+
+  .ads-metrics-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .metric-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+  }
+
+  .metric-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--background-color);
+    border-radius: 12px;
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+  }
+
+  .metric-icon.positive {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+  }
+
+  .metric-icon.info {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+  }
+
+  .metric-icon.warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+  }
+
+  .metric-content {
+    flex: 1;
+  }
+
+  .metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  .metric-label {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  .ads-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 1rem;
+  }
+
+  .ad-card {
+    background: var(--surface-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+
+  .ad-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+
+  .ad-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 1.25rem 1.25rem 0.75rem;
+  }
+
+  .ad-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ad-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ad-size-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: var(--background-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+  }
+
+  .ad-status {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  .ad-status.active {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+  }
+
+  .ad-status.inactive {
+    background: rgba(107, 114, 128, 0.1);
+    color: var(--text-secondary);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .ad-preview-container {
+    padding: 1rem 1.25rem;
+    background: var(--background-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 180px;
+    overflow: hidden;
+  }
+
+  .ad-preview {
+    max-width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .ad-preview svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .ad-metrics-row {
+    display: flex;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .ad-metric {
+    flex: 1;
+    text-align: center;
+  }
+
+  .ad-metric:not(:last-child) {
+    border-right: 1px solid var(--border-color);
+  }
+
+  .ad-metric-value {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  .ad-metric-label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+  }
+
+  .ad-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+  }
+
+  .ad-meta {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .ad-last-activity {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+
+  .ad-last-activity.muted {
+    color: var(--text-secondary);
+    opacity: 0.6;
+  }
+
+  .ad-actions {
+    display: flex;
+    gap: 0.375rem;
+  }
+
+  .btn-icon.btn-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 0.875rem;
+  }
+
+  .btn-icon:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .ad-modal {
+    max-width: 640px;
+    width: 100%;
+  }
+
+  .ad-modal .modal-content {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .form-group label .required {
+    color: var(--danger-color);
+  }
+
+  .form-group select,
+  .form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .form-group select:focus,
+  .form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+
+  .color-scheme-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  .color-scheme-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--background-color);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .color-scheme-option:hover {
+    border-color: var(--primary-color);
+  }
+
+  .color-scheme-option input {
+    display: none;
+  }
+
+  .color-scheme-option input:checked + .color-scheme-preview {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+
+  .color-scheme-option:has(input:checked) {
+    border-color: var(--primary-color);
+    background: rgba(239, 68, 68, 0.05);
+  }
+
+  .color-scheme-preview {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--surface-color);
+    border-radius: 6px;
+  }
+
+  .color-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+  }
+
+  .color-scheme-name {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .banner-preview-wrapper {
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+  }
+
+  .banner-preview-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+  }
+
+  .banner-preview-placeholder i {
+    font-size: 2rem;
+  }
+
+  #banner-preview {
+    max-width: 100%;
+  }
+
+  #banner-preview svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .embed-modal {
+    max-width: 700px;
+    width: 100%;
+  }
+
+  .embed-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+  }
+
+  .embed-tab {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .embed-tab:hover {
+    background: var(--background-color);
+    color: var(--text-primary);
+  }
+
+  .embed-tab.active {
+    background: var(--primary-color);
+    color: #fff;
+  }
+
+  .embed-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+  }
+
+  .code-block {
+    position: relative;
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .code-block pre {
+    padding: 1rem;
+    margin: 0;
+    font-family: "Monaco", "Menlo", "Consolas", monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+    max-height: 180px;
+  }
+
+  .code-block .copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    background: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .code-block .copy-btn:hover {
+    background: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+  }
+
+  .code-block .copy-btn.copied {
+    background: #22c55e;
+    color: #fff;
+    border-color: #22c55e;
+  }
+
+  .embed-info {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .embed-info h4 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+  }
+
+  .embed-info-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .embed-info-label {
+    color: var(--text-secondary);
+    min-width: 100px;
+  }
+
+  .embed-info-row code {
+    background: var(--background-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    word-break: break-all;
+  }
+
+  .metrics-modal {
+    max-width: 700px;
+    width: 100%;
+  }
+
+  .metrics-period-selector {
+    margin-bottom: 1.25rem;
+  }
+
+  .metrics-period-selector select {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    background: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-primary);
+  }
+
+  .metrics-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .metrics-summary-card {
+    background: var(--background-color);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .metrics-summary-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  .metrics-summary-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 0.25rem;
+  }
+
+  .metrics-breakdown {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .metrics-breakdown-section {
+    background: var(--background-color);
+    border-radius: 10px;
+    padding: 1rem;
+  }
+
+  .metrics-breakdown-section h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+  }
+
+  .metrics-breakdown-section h4 i {
+    color: var(--text-secondary);
+  }
+
+  .metrics-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .metrics-list-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .metrics-list-label {
+    font-size: 0.8rem;
+    color: var(--text-primary);
+  }
+
+  .metrics-list-bar {
+    height: 6px;
+    background: var(--border-color);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .metrics-list-fill {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+
+  .metrics-list-value {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+  }
+
+  .metrics-empty {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 1rem;
+    opacity: 0.6;
+  }
+
+  .metrics-timestamps {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  .metrics-timestamp {
+    font-size: 0.85rem;
+  }
+
+  .metrics-timestamp-label {
+    color: var(--text-secondary);
+    margin-right: 0.5rem;
+  }
+
+  .generate-modal {
+    max-width: 500px;
+    width: 100%;
+  }
+
+  .modal-description {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+
+  .generate-info {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    align-items: flex-start;
+  }
+
+  .generate-info i {
+    color: #3b82f6;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  @media (max-width: 768px) {
+    .ads-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .ads-metrics-overview {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .form-row {
+      grid-template-columns: 1fr;
+    }
+    
+    .color-scheme-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .metrics-summary {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .metrics-breakdown {
+      grid-template-columns: 1fr;
+    }
+    
+    .metrics-timestamps {
+      flex-direction: column;
+      gap: 1rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .ads-metrics-overview {
+      grid-template-columns: 1fr;
+    }
+    
+    .ad-card-footer {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: stretch;
+    }
+    
+    .ad-actions {
+      justify-content: center;
+    }
+  }
+</style>
+
+<div class="page-wrapper <%= isArchived ? 'archived-state' : '' %>" data-website-id="<%= currentWebsite.id %>" data-is-archived="<%= isArchived %>">
+  <%- include('partials/sidebar', { websites, archivedWebsites, currentWebsite, currentPage }) %>
+  <div class="main-container">
+    <header class="main-header">
+      <div class="header-content">
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle Sidebar"><i class="fa-solid fa-bars"></i></button>
+        <div class="header-title">
+          <h1><%= currentWebsite.name %> - Advertisements</h1>
+          <p>Create and manage ad banners using your SEO data</p>
+        </div>
+        <div class="header-actions">
+          <button id="generate-from-seo-btn" class="btn btn-secondary" style="margin-right: 0.75rem;">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Generate
+          </button>
+          <button id="create-ad-btn" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i> Create Ad
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content" style="padding-top: 1rem;">
+      <% if (isArchived) { %>
+        <div class="archived-banner">
+          <i class="fa-solid fa-box-archive"></i> This website is archived. Advertisement management is disabled.
+        </div>
+      <% } %>
+
+      <% if (advertisements.length === 0) { %>
+        <div class="card no-data-card">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <h2>No Advertisements Yet</h2>
+          <p>Create your first ad banner to start tracking impressions and clicks. Use your SEO data to automatically generate optimized banners.</p>
+        </div>
+      <% } else { %>
+        <div class="ads-metrics-overview">
+          <div class="metric-card">
+            <div class="metric-icon">
+              <i class="fa-solid fa-rectangle-ad"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-value"><%= advertisements.length %></div>
+              <div class="metric-label">Total Ads</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon positive">
+              <i class="fa-solid fa-eye"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-value"><%= advertisements.reduce((sum, ad) => sum + (ad.impressionCount || 0), 0).toLocaleString() %></div>
+              <div class="metric-label">Total Impressions</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon info">
+              <i class="fa-solid fa-mouse-pointer"></i>
+            </div>
+            <div class="metric-content">
+              <div class="metric-value"><%= advertisements.reduce((sum, ad) => sum + (ad.clickCount || 0), 0).toLocaleString() %></div>
+              <div class="metric-label">Total Clicks</div>
+            </div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon warning">
+              <i class="fa-solid fa-percent"></i>
+            </div>
+            <div class="metric-content">
+              <% 
+                const totalImpressions = advertisements.reduce((sum, ad) => sum + (ad.impressionCount || 0), 0);
+                const totalClicks = advertisements.reduce((sum, ad) => sum + (ad.clickCount || 0), 0);
+                const avgCtr = totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) : '0.00';
+              %>
+              <div class="metric-value"><%= avgCtr %>%</div>
+              <div class="metric-label">Avg. CTR</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ads-grid">
+          <% advertisements.forEach(function(ad) { %>
+            <div class="ad-card" data-ad-id="<%= ad.id %>">
+              <div class="ad-card-header">
+                <div class="ad-info">
+                  <h3 class="ad-name"><%= ad.description %></h3>
+                  <span class="ad-size-badge"><%= bannerSizes[ad.bannerSize]?.label || ad.bannerSize %></span>
+                </div>
+                <div class="ad-status <%= ad.isActive ? 'active' : 'inactive' %>">
+                  <span class="status-dot"></span>
+                  <span><%= ad.isActive ? 'Active' : 'Paused' %></span>
+                </div>
+              </div>
+
+              <div class="ad-preview-container">
+                <div class="ad-preview" style="max-width: <%= Math.min(bannerSizes[ad.bannerSize]?.width || 300, 400) %>px;">
+                  <%- ad.bannerConfig?.svgContent %>
+                </div>
+              </div>
+
+              <div class="ad-metrics-row">
+                <div class="ad-metric">
+                  <span class="ad-metric-value"><%= (ad.impressionCount || 0).toLocaleString() %></span>
+                  <span class="ad-metric-label">Impressions</span>
+                </div>
+                <div class="ad-metric">
+                  <span class="ad-metric-value"><%= (ad.clickCount || 0).toLocaleString() %></span>
+                  <span class="ad-metric-label">Clicks</span>
+                </div>
+                <div class="ad-metric">
+                  <span class="ad-metric-value"><%= ad.metrics?.ctr || '0.00' %>%</span>
+                  <span class="ad-metric-label">CTR</span>
+                </div>
+              </div>
+
+              <div class="ad-card-footer">
+                <div class="ad-meta">
+                  <% if (ad.updated) { %>
+                    <span class="ad-last-activity" title="Last update">
+                      <i class="fa-solid fa-clock"></i>
+                      <span data-format-date="<%= ad.updated %>" data-date-format="short"></span>
+                    </span>
+                  <% } else { %>
+                    <span class="ad-last-activity muted">No activity yet</span>
+                  <% } %>
+                </div>
+                <div class="ad-actions">
+                  <button class="btn btn-icon btn-sm" title="Get Embed Code" data-action="embed" data-ad-id="<%= ad.id %>" <%= isArchived ? 'disabled' : '' %>>
+                    <i class="fa-solid fa-code"></i>
+                  </button>
+                  <button class="btn btn-icon btn-sm" title="View Metrics" data-action="metrics" data-ad-id="<%= ad.id %>">
+                    <i class="fa-solid fa-chart-line"></i>
+                  </button>
+                  <button class="btn btn-icon btn-sm" title="Edit" data-action="edit" data-ad-id="<%= ad.id %>" <%= isArchived ? 'disabled' : '' %>>
+                    <i class="fa-solid fa-pen"></i>
+                  </button>
+                  <button class="btn btn-icon btn-sm <%= ad.isActive ? '' : 'btn-success' %>" title="<%= ad.isActive ? 'Pause' : 'Activate' %>" data-action="toggle" data-ad-id="<%= ad.id %>" <%= isArchived ? 'disabled' : '' %>>
+                    <i class="fa-solid <%= ad.isActive ? 'fa-pause' : 'fa-play' %>"></i>
+                  </button>
+                  <button class="btn btn-icon btn-sm btn-danger" title="Delete" data-action="delete" data-ad-id="<%= ad.id %>" <%= isArchived ? 'disabled' : '' %>>
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </main>
+  </div>
+</div>
+
+<div id="ad-modal-overlay" class="modal-overlay">
+  <div id="ad-modal" class="modal-dialog ad-modal">
+    <div class="modal-header">
+      <h3 id="ad-modal-title">Create Advertisement</h3>
+      <button class="modal-close" id="close-ad-modal">
+        <i class="fa-solid fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-content">
+      <form id="ad-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="ad-name">Ad Name <span class="required">*</span></label>
+            <input type="text" id="ad-name" name="name" placeholder="My Banner Ad" required maxlength="100">
+          </div>
+          <div class="form-group">
+            <label for="ad-size">Banner Size</label>
+            <select id="ad-size" name="size">
+              <% Object.entries(bannerSizes).forEach(function([key, value]) { %>
+                <option value="<%= key %>" <%= key === '300x250' ? 'selected' : '' %>><%= value.label %></option>
+              <% }); %>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="ad-title">Banner Title <span class="required">*</span></label>
+          <input type="text" id="ad-title" name="title" placeholder="Your catchy headline" required maxlength="100">
+        </div>
+        
+        <div class="form-group">
+          <label for="ad-subtitle">Banner Subtitle</label>
+          <input type="text" id="ad-subtitle" name="subtitle" placeholder="Additional description (optional)" maxlength="150">
+        </div>
+        
+        <div class="form-group">
+          <label for="ad-image-url">Banner Image URL</label>
+          <input type="url" id="ad-image-url" name="imageUrl" placeholder="https://example.com/image.png (optional)">
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="ad-cta">CTA Text</label>
+            <input type="text" id="ad-cta" name="ctaText" placeholder="Learn More" maxlength="30" value="Learn More">
+          </div>
+          <div class="form-group">
+            <label for="ad-badge-text">Badge Text</label>
+            <input type="text" id="ad-badge-text" name="badgeText" placeholder="NEW, SALE, etc." maxlength="10">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="ad-logo">Logo Text</label>
+            <input type="text" id="ad-logo" name="logoText" placeholder="A" maxlength="20">
+          </div>
+          <div class="form-group">
+            <label for="ad-logo-url">Logo Image URL</label>
+            <input type="url" id="ad-logo-url" name="logoUrl" placeholder="https://example.com/favicon.png (optional)">
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="ad-target-url">Target URL</label>
+          <input type="url" id="ad-target-url" name="targetUrl" placeholder="https://example.com">
+        </div>
+
+        <div class="form-group">
+          <label>Color Scheme</label>
+          <div class="color-scheme-grid">
+            <% Object.entries(colorSchemes).forEach(function([key, colors]) { %>
+              <label class="color-scheme-option">
+                <input type="radio" name="colorScheme" value="<%= key %>" <%= key === 'brand' ? 'checked' : '' %>>
+                <div class="color-scheme-preview">
+                  <span class="color-swatch" style="background: <%= colors.primary %>"></span>
+                  <span class="color-swatch" style="background: <%= colors.secondary %>"></span>
+                  <span class="color-swatch" style="background: <%= colors.background %>"></span>
+                </div>
+                <span class="color-scheme-name"><%= key.charAt(0).toUpperCase() + key.slice(1) %></span>
+              </label>
+            <% }); %>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Banner Preview</label>
+          <div class="banner-preview-wrapper" id="banner-preview-wrapper">
+            <div id="banner-preview" class="banner-preview-placeholder">
+              <i class="fa-solid fa-image"></i>
+              <span>Preview will appear here</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+          <button type="button" class="btn btn-secondary" id="cancel-ad-btn" style="flex: 1;">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-ad-btn" style="flex: 1;">
+            <i class="fa-solid fa-check"></i> Save Advertisement
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="embed-modal-overlay" class="modal-overlay">
+  <div id="embed-modal" class="modal-dialog embed-modal">
+    <div class="modal-header">
+      <h3>Embed Code</h3>
+      <button class="modal-close" id="close-embed-modal">
+        <i class="fa-solid fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-content">
+      <div class="embed-tabs">
+        <button class="embed-tab active" data-tab="simple">Simple HTML</button>
+        <button class="embed-tab" data-tab="responsive">Responsive</button>
+        <button class="embed-tab" data-tab="javascript">JavaScript</button>
+      </div>
+      
+      <div class="embed-content" id="embed-simple" style="display: block;">
+        <p class="embed-description">Copy and paste this code into your website's HTML:</p>
+        <div class="code-block">
+          <pre id="embed-code-simple"></pre>
+          <button class="copy-btn" data-target="embed-code-simple" title="Copy to clipboard">
+            <i class="fa-solid fa-copy"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="embed-content" id="embed-responsive" style="display: none;">
+        <p class="embed-description">Responsive HTML embed with wrapper div:</p>
+        <div class="code-block">
+          <pre id="embed-code-responsive"></pre>
+          <button class="copy-btn" data-target="embed-code-responsive" title="Copy to clipboard">
+            <i class="fa-solid fa-copy"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="embed-content" id="embed-javascript" style="display: none;">
+        <p class="embed-description">JavaScript embed for dynamic loading:</p>
+        <div class="code-block">
+          <pre id="embed-code-javascript"></pre>
+          <button class="copy-btn" data-target="embed-code-javascript" title="Copy to clipboard">
+            <i class="fa-solid fa-copy"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="embed-info">
+        <h4>Banner Details</h4>
+        <div class="embed-info-row">
+          <span class="embed-info-label">Banner URL:</span>
+          <code id="embed-banner-url"></code>
+        </div>
+        <div class="embed-info-row">
+          <span class="embed-info-label">Click URL:</span>
+          <code id="embed-click-url"></code>
+        </div>
+        <div class="embed-info-row">
+          <span class="embed-info-label">Dimensions:</span>
+          <code id="embed-dimensions"></code>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button type="button" class="btn btn-secondary" id="close-embed-btn" style="flex: 1;">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="metrics-modal-overlay" class="modal-overlay">
+  <div id="metrics-modal" class="modal-dialog metrics-modal">
+    <div class="modal-header">
+      <h3 id="metrics-modal-title">Advertisement Metrics</h3>
+      <button class="modal-close" id="close-metrics-modal">
+        <i class="fa-solid fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-content">
+      <div class="metrics-period-selector">
+        <select id="metrics-period">
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+      </div>
+      
+      <div class="metrics-summary">
+        <div class="metrics-summary-card">
+          <div class="metrics-summary-value" id="metrics-impressions">0</div>
+          <div class="metrics-summary-label">Total Impressions</div>
+        </div>
+        <div class="metrics-summary-card">
+          <div class="metrics-summary-value" id="metrics-clicks">0</div>
+          <div class="metrics-summary-label">Total Clicks</div>
+        </div>
+        <div class="metrics-summary-card">
+          <div class="metrics-summary-value" id="metrics-ctr">0%</div>
+          <div class="metrics-summary-label">Click-Through Rate</div>
+        </div>
+        <div class="metrics-summary-card">
+          <div class="metrics-summary-value" id="metrics-period-clicks">0</div>
+          <div class="metrics-summary-label">Period Clicks</div>
+        </div>
+      </div>
+      
+      <div class="metrics-breakdown">
+        <div class="metrics-breakdown-section">
+          <h4>Clicks by Country</h4>
+          <div id="metrics-by-country" class="metrics-list"></div>
+        </div>
+        <div class="metrics-breakdown-section">
+          <h4>Clicks by Device</h4>
+          <div id="metrics-by-device" class="metrics-list"></div>
+        </div>
+        <div class="metrics-breakdown-section">
+          <h4>Clicks by Browser</h4>
+          <div id="metrics-by-browser" class="metrics-list"></div>
+        </div>
+      </div>
+      
+      <div class="metrics-timestamps">
+        <div class="metrics-timestamp">
+          <span class="metrics-timestamp-label">Last Impression:</span>
+          <span id="metrics-last-impression">Never</span>
+        </div>
+        <div class="metrics-timestamp">
+          <span class="metrics-timestamp-label">Last Click:</span>
+          <span id="metrics-last-click">Never</span>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button type="button" class="btn btn-secondary" id="close-metrics-btn" style="flex: 1;">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="generate-modal-overlay" class="modal-overlay">
+  <div id="generate-modal" class="modal-dialog generate-modal">
+    <div class="modal-header">
+      <h3>Auto-Generate from SEO Data</h3>
+      <button class="modal-close" id="close-generate-modal">
+        <i class="fa-solid fa-times"></i>
+      </button>
+    </div>
+    <div class="modal-content">
+      <p class="modal-description">Generate an advertisement automatically using your website's SEO data (meta title, description, etc.).</p>
+      
+      <div class="form-group">
+        <label for="generate-size">Banner Size</label>
+        <select id="generate-size">
+          <% Object.entries(bannerSizes).forEach(function([key, value]) { %>
+            <option value="<%= key %>" <%= key === '300x250' ? 'selected' : '' %>><%= value.label %></option>
+          <% }); %>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>Color Scheme</label>
+        <div class="color-scheme-grid">
+          <% Object.entries(colorSchemes).forEach(function([key, colors]) { %>
+            <label class="color-scheme-option">
+              <input type="radio" name="generateColorScheme" value="<%= key %>" <%= key === 'brand' ? 'checked' : '' %>>
+              <div class="color-scheme-preview">
+                <span class="color-swatch" style="background: <%= colors.primary %>"></span>
+                <span class="color-swatch" style="background: <%= colors.secondary %>"></span>
+                <span class="color-swatch" style="background: <%= colors.background %>"></span>
+              </div>
+              <span class="color-scheme-name"><%= key.charAt(0).toUpperCase() + key.slice(1) %></span>
+            </label>
+          <% }); %>
+        </div>
+      </div>
+      
+      <div class="generate-info">
+        <i class="fa-solid fa-info-circle"></i>
+        <span>Banners will be enriched with images (OpenGraph) and text extracted from your meta tags and headings.</span>
+      </div>
+      
+      <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <button type="button" class="btn btn-secondary" id="cancel-generate-btn" style="flex: 1;">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirm-generate-btn" style="flex: 1;">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Generate
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer', { scripts: ['advertisements'] }) %>

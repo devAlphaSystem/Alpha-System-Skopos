@@ -15,6 +15,7 @@ import sessionsRoutes from "./src/routes/sessions.js";
 import settingsRoutes from "./src/routes/settings.js";
 import seoRoutes from "./src/routes/seo.js";
 import uptimeRoutes from "./src/routes/uptime.js";
+import adsRoutes from "./src/routes/ads.js";
 import apiRoutes from "./src/routes/api.js";
 import collectRoutes from "./src/routes/collect.js";
 import { pb } from "./src/services/pocketbase.js";
@@ -62,7 +63,12 @@ async function initializeApp() {
 
   app.use((req, res, next) => {
     const allowedPaths = ["/register", "/login"];
+    const publicPaths = ["/api/proxy-image", "/ads/banner/", "/ads/click/"];
     const isStaticAsset = req.path.startsWith("/css") || req.path.startsWith("/js") || req.path.startsWith("/img");
+
+    if (publicPaths.some((p) => req.path.startsWith(p))) {
+      return next();
+    }
 
     if (!doesUserExist() && !allowedPaths.includes(req.path) && !isStaticAsset) {
       return res.redirect("/register");
@@ -107,6 +113,7 @@ async function initializeApp() {
   app.use("/", settingsRoutes);
   app.use("/", seoRoutes);
   app.use("/", uptimeRoutes);
+  app.use("/", adsRoutes);
 
   const isDev = process.env.NODE_ENV === "development";
 

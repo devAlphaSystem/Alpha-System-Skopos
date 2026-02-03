@@ -61,6 +61,12 @@
               <span>Analytics</span>
             </a>
           </li>
+          <li class="<%= (currentPage === 'advertisements') ? 'active' : '' %>">
+            <a href="/dashboard/ads/<%= currentWebsite.id %>">
+              <i class="fa-solid fa-rectangle-ad icon"></i>
+              <span>Advertisements</span>
+            </a>
+          </li>
           <% } %>
           <li class="<%= (currentPage === 'sessions') ? 'active' : '' %>">
             <a href="/sessions/<%= currentWebsite.id %>">

@@ -44,5 +44,8 @@
   <% if (scripts && scripts.includes('uptime')) { %>
     <script src="/js/pages/uptime.js?v=<%= appUpdated %>"></script>
   <% } %>
+  <% if (scripts && scripts.includes('advertisements')) { %>
+    <script src="/js/pages/advertisements.js?v=<%= appUpdated %>"></script>
+  <% } %>
   </body>
 </html>

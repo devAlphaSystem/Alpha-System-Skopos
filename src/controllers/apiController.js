@@ -534,3 +534,57 @@ export async function getStateBreakdown(req, res) {
     res.status(500).json({ error: "Failed to fetch state breakdown." });
   }
 }
+
+export async function proxyImage(req, res) {
+  const { url } = req.query;
+  if (!url) {
+    return res.status(400).send("URL parameter is required");
+  }
+
+  try {
+    const decodedUrl = decodeURIComponent(url);
+    if (!decodedUrl.startsWith("http")) {
+      return res.status(400).send("Invalid URL");
+    }
+
+    logger.debug("Proxying image: %s", decodedUrl);
+
+    const response = await fetch(decodedUrl, {
+      headers: {
+        "User-Agent": "Skopos-Ad-Proxy/1.0",
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      logger.error("Proxy fetch failed for %s: %s %s", decodedUrl, response.status, response.statusText);
+      return res.status(response.status).send(response.statusText);
+    }
+
+    const contentType = response.headers.get("content-type");
+    if (contentType) res.setHeader("Content-Type", contentType);
+
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+
+    if (response.body) {
+      const reader = response.body.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    }
+    res.end();
+  } catch (error) {
+    logger.error("Error proxying image %s: %o", url, error);
+    if (!res.headersSent) {
+      res.status(500).send("Internal Server Error");
+    }
+  }
+}

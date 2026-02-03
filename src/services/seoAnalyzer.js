@@ -98,6 +98,38 @@ function extractMetaTags(html) {
   return metaTags;
 }
 
+function extractFavicon(html, baseUrl) {
+  let favicon = null;
+
+  const faviconMatch = html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']*)["']/i) || html.match(/<link[^>]*href=["']([^"']*)["'][^>]*rel=["'](?:shortcut )?icon["']/i);
+
+  if (faviconMatch) {
+    favicon = faviconMatch[1].trim();
+  } else {
+    const appleIconMatch = html.match(/<link[^>]*rel=["']apple-touch-icon["'][^>]*href=["']([^"']*)["']/i);
+    if (appleIconMatch) {
+      favicon = appleIconMatch[1].trim();
+    }
+  }
+
+  if (favicon && !favicon.startsWith("http")) {
+    try {
+      favicon = new URL(favicon, baseUrl).toString();
+    } catch (e) {
+      favicon = null;
+    }
+  }
+
+  if (!favicon) {
+    try {
+      const url = new URL(baseUrl);
+      favicon = `${url.origin}/favicon.ico`;
+    } catch (e) {}
+  }
+
+  return favicon;
+}
+
 function extractSocialMetaTags(html) {
   const socialTags = {
     openGraph: {},
@@ -772,6 +804,7 @@ export async function analyzeSeo(domain, strategy = null, userId = null) {
     const { html, headers } = await fetchHtml(url);
 
     const metaTags = extractMetaTags(html);
+    const favicon = extractFavicon(html, url);
     const socialMetaTags = extractSocialMetaTags(html);
     const headings = extractHeadings(html);
     const images = analyzeImages(html);
@@ -802,6 +835,7 @@ export async function analyzeSeo(domain, strategy = null, userId = null) {
 
     const seoData = {
       metaTags,
+      favicon,
       socialMetaTags,
       headings,
       images,
