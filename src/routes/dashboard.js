@@ -1,5 +1,5 @@
 import express from "express";
-import { showOverview, showDashboard } from "../controllers/dashboardController.js";
+import { showOverview, showDashboard, showCompare } from "../controllers/dashboardController.js";
 
 const router = express.Router();
 
@@ -11,6 +11,7 @@ function requireAuth(req, res, next) {
 }
 
 router.get("/", requireAuth, showOverview);
+router.get("/compare", requireAuth, showCompare);
 router.get("/dashboard/:websiteId", requireAuth, showDashboard);
 
 export default router;

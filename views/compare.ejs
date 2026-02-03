@@ -1,0 +1,183 @@
+<%- include('partials/header', {title: 'Compare Websites'}) %>
+
+<%- include('partials/mobile-header') %>
+
+<div class="page-wrapper" data-current-page="compare">
+  <%- include('partials/sidebar', { websites, archivedWebsites, currentWebsite: null, currentPage: 'compare' }) %>
+  <div class="main-container">
+    <header class="main-header">
+      <div class="header-content">
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle Sidebar"><i class="fa-solid fa-bars"></i></button>
+        <div class="header-title">
+          <h1>Compare Websites</h1>
+          <p id="data-period-label">Displaying data for the last <%= dataPeriod %> days</p>
+        </div>
+        <div class="header-actions">
+            <button id="manual-refresh-btn" class="btn-icon" title="Refresh Graphs"><i class="fa-solid fa-rotate"></i></button>
+        </div>
+      </div>
+      <div class="update-progress-container"><div id="update-progress-bar" class="progress-bar-update"></div></div>
+    </header>
+    
+    <main class="main-content" style="padding-top: 1rem;">
+      <div class="compare-grid">
+        <% for(let i = 1; i <= 4; i++) { %>
+          <div class="card compare-card" data-slot="<%= i %>">
+            <div class="card-header compare-header">
+              <div class="compare-controls">
+                <select class="website-select" aria-label="Select Website">
+                  <option value="" selected disabled>Select Website...</option>
+                  <% for (const website of websites) { %>
+                    <option value="<%= website.id %>"><%= website.name %></option>
+                  <% } %>
+                </select>
+                <select class="graph-type-select" aria-label="Select Graph Type">
+                  <option value="pageViews">Page Views</option>
+                  <option value="visitors">Visitors</option>
+                  <option value="newVisitors">New Visitors</option>
+                  <option value="engagementRate">Engagement Rate</option>
+                  <option value="bounceRate">Bounce Rate</option>
+                  <option value="avgSessionDuration">Avg Session Duration</option>
+                  <option value="jsErrors">JS Errors</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-body">
+                <div class="compare-metric-info">
+                    <span class="compare-metric-value">--</span>
+                    <span class="compare-metric-change"></span>
+                </div>
+                <div class="compare-chart-wrapper">
+                    <div class="compare-chart" id="chart-slot-<%= i %>">
+                        <div class="empty-chart-message">Select a website to view data</div>
+                    </div>
+                </div>
+            </div>
+            <div class="spinner-container">
+                <div class="spinner"></div>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    </main>
+  </div>
+</div>
+
+<style>
+.page-wrapper {
+  min-height: 100vh;
+}
+
+.page-wrapper .main-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.page-wrapper .main-content {
+  flex: 1;
+  display: flex;
+}
+
+.compare-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 1fr;
+    gap: 1rem;
+  width: 100%;
+}
+
+.compare-card {
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem;
+    position: relative;
+  min-height: 0;
+}
+
+.compare-header {
+    margin-bottom: 1rem;
+}
+
+.compare-controls {
+    display: flex;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.compare-controls select {
+    flex: 1;
+    padding: 0.4rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--surface-color);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  min-height: 0;
+}
+
+.compare-metric-info {
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.compare-metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.compare-metric-change {
+    font-size: 0.85rem;
+}
+
+.compare-chart-wrapper {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+    width: 100%;
+}
+
+.compare-chart {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.empty-chart-message {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-style: italic;
+}
+
+@media (max-width: 1024px) {
+    .compare-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    grid-auto-rows: auto;
+    height: auto;
+    }
+    .compare-card {
+    min-height: 350px;
+    }
+  .page-wrapper .main-content {
+    display: block;
+  }
+}
+</style>
+
+<script>
+  window.__INITIAL_PERIOD__ = <%= dataPeriod %>;
+</script>
+
+<%- include('partials/footer', { scripts: ['compare'] }) %>

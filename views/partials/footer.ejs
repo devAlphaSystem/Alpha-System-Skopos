@@ -18,8 +18,11 @@
   <%- include('toast') %>
   
   <script src="/js/main.js?v=<%= appUpdated %>"></script>
-  <% if (scripts && (scripts.includes('dashboard') || scripts.includes('uptime'))) { %>
+  <% if (scripts && (scripts.includes('dashboard') || scripts.includes('uptime') || scripts.includes('compare'))) { %>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@5.3.5/dist/apexcharts.min.js"></script>
+  <% } %>
+  <% if (scripts && scripts.includes('compare')) { %>
+    <script src="/js/pages/compare.js?v=<%= appUpdated %>"></script>
   <% } %>
   <% if (scripts && scripts.includes('dashboard')) { %>
     <script src="https://cdn.jsdelivr.net/npm/jsvectormap@1.7.0/dist/jsvectormap.min.js"></script>

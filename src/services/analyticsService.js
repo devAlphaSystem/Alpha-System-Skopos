@@ -65,7 +65,7 @@ async function fetchRecordsForPeriod(websiteId, startDate, endDate) {
       }),
       pbAdmin.collection("js_errors").getFullList({
         filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
-        fields: "id,errorMessage,count",
+        fields: "id,errorMessage,count,created",
         $autoCancel: false,
       }),
     ]);
@@ -200,20 +200,24 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
     stateBreakdown: processAndSort(stateBreakdown, totalVisitors),
     topCustomEvents: processAndSort(topCustomEvents, totalVisitors),
     topJsErrors: processAndSort(topJsErrors, totalJsErrors),
-    _raw: { sessions, events },
+    _raw: { sessions, events, jsErrors },
   };
 }
 
-export function getMetricTrends(sessions, events, trendDays = 7) {
+export function getMetricTrends(sessions, events, jsErrors = [], trendDays = 7) {
   const trends = {
     pageViews: [],
     visitors: [],
+    newVisitors: [],
     engagementRate: [],
     avgSessionDuration: [],
+    bounceRate: [],
+    jsErrors: [],
   };
 
   const endDate = new Date();
   const startDate = subDays(endDate, trendDays - 1);
+  startDate.setHours(0, 0, 0, 0);
   const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
 
   const dailyData = new Map(
@@ -222,13 +226,14 @@ export function getMetricTrends(sessions, events, trendDays = 7) {
       {
         sessions: [],
         events: [],
+        jsErrors: [],
       },
     ]),
   );
 
   const sessionEventsMap = new Map();
   for (const event of events) {
-    const eventDateString = new Date(event.created).toISOString().substring(0, 10);
+    const eventDateString = format(new Date(event.created), "yyyy-MM-dd");
     if (dailyData.has(eventDateString)) {
       dailyData.get(eventDateString).events.push(event);
     }
@@ -239,9 +244,19 @@ export function getMetricTrends(sessions, events, trendDays = 7) {
   }
 
   for (const session of sessions) {
-    const sessionDateString = new Date(session.created).toISOString().substring(0, 10);
+    const sessionDateString = format(new Date(session.created), "yyyy-MM-dd");
     if (dailyData.has(sessionDateString)) {
       dailyData.get(sessionDateString).sessions.push(session);
+    }
+  }
+
+  for (const error of jsErrors) {
+    const errorDate = new Date(error.created || error.lastSeen);
+    if (!isNaN(errorDate)) {
+      const errorDateString = format(errorDate, "yyyy-MM-dd");
+      if (dailyData.has(errorDateString)) {
+        dailyData.get(errorDateString).jsErrors.push(error);
+      }
     }
   }
 
@@ -251,9 +266,12 @@ export function getMetricTrends(sessions, events, trendDays = 7) {
 
     const daySessions = data.sessions;
     const dayEvents = data.events;
+    const dayJsErrors = data.jsErrors;
 
     const pageViews = dayEvents.filter((e) => e.type === "pageView").length;
     const visitors = daySessions.length;
+    const newVisitors = daySessions.filter((s) => s.isNewVisitor).length;
+    const jsErrorsCount = dayJsErrors.reduce((sum, err) => sum + (err.count || 1), 0);
 
     let engagedSessions = 0;
     for (const session of daySessions) {
@@ -281,11 +299,15 @@ export function getMetricTrends(sessions, events, trendDays = 7) {
 
     const dayMetrics = calculateMetrics(daySessions, dayEvents, sessionEventsMap);
     const avgDurationSeconds = dayMetrics.avgSessionDuration.raw;
+    const bounceRate = dayMetrics.bounceRate;
 
     trends.pageViews.push(pageViews);
     trends.visitors.push(visitors);
+    trends.newVisitors.push(newVisitors);
     trends.engagementRate.push(engagementRate);
     trends.avgSessionDuration.push(avgDurationSeconds);
+    trends.bounceRate.push(bounceRate);
+    trends.jsErrors.push(jsErrorsCount);
   }
 
   return trends;

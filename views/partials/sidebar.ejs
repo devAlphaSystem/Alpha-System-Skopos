@@ -17,6 +17,12 @@
           <span>Overview</span>
         </a>
       </li>
+      <li class="<%= (currentPage === 'compare') ? 'active' : '' %>">
+        <a href="/compare">
+          <i class="fa-solid fa-table-columns icon"></i>
+          <span>Compare</span>
+        </a>
+      </li>
       <% if (typeof isMobile === 'undefined' || !isMobile) { %>
       <li class="<%= (currentPage === 'websites') ? 'active' : '' %>">
         <a href="/websites">

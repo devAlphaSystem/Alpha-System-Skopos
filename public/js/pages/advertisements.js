@@ -3,8 +3,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const WEBSITE_ID = pageWrapper ? pageWrapper.dataset.websiteId : null;
   const isArchived = pageWrapper ? pageWrapper.dataset.isArchived === "true" : false;
 
-  const createAdBtn = document.getElementById("create-ad-btn");
-  const emptyCreateBtn = document.getElementById("empty-create-btn");
   const generateFromSeoBtn = document.getElementById("generate-from-seo-btn");
   const emptyGenerateBtn = document.getElementById("empty-generate-btn");
 
@@ -412,8 +410,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  if (createAdBtn) createAdBtn.addEventListener("click", () => openAdModal());
-  if (emptyCreateBtn) emptyCreateBtn.addEventListener("click", () => openAdModal());
   if (closeAdModal) closeAdModal.addEventListener("click", closeAdModalFn);
   if (cancelAdBtn) cancelAdBtn.addEventListener("click", closeAdModalFn);
   if (saveAdBtn) saveAdBtn.addEventListener("click", saveAdvertisement);

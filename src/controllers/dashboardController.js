@@ -38,15 +38,12 @@ export async function showOverview(req, res) {
     const trendDays = Math.min(dataPeriod, 7);
     const today = new Date();
 
-    const currentStartDate = subDays(today, dataPeriod - (dataPeriod === 1 ? 0 : 1));
-    if (dataPeriod === 1) {
-      currentStartDate.setHours(0, 0, 0, 0);
-    }
+    const currentStartDate = subDays(today, dataPeriod - 1);
+    currentStartDate.setHours(0, 0, 0, 0);
+
     const prevStartDate = subDays(currentStartDate, dataPeriod);
-    const prevEndDate = subDays(currentStartDate, 1);
-    if (dataPeriod === 1) {
-      prevEndDate.setHours(23, 59, 59, 999);
-    }
+    const prevEndDate = new Date(currentStartDate);
+    prevEndDate.setMilliseconds(-1);
 
     logger.debug("Calculating overview data for %d active websites.", websites.length);
     const websiteIds = websites.map((w) => w.id);
@@ -57,6 +54,7 @@ export async function showOverview(req, res) {
 
     const allSessions = currentMetricsArray.map((m) => m._raw.sessions);
     const allEvents = currentMetricsArray.map((m) => m._raw.events);
+    const allJsErrors = currentMetricsArray.map((m) => m._raw.jsErrors || []);
 
     const currentMetrics = {
       pageViews: currentMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
@@ -102,7 +100,8 @@ export async function showOverview(req, res) {
 
     const flatSessions = allSessions.flat();
     const flatEvents = allEvents.flat();
-    const trends = getMetricTrends(flatSessions, flatEvents, trendDays);
+    const flatJsErrors = allJsErrors.flat();
+    const trends = getMetricTrends(flatSessions, flatEvents, flatJsErrors, trendDays);
 
     const mergedMetrics = {
       topPages: new Map(),
@@ -200,6 +199,25 @@ export async function showOverview(req, res) {
   }
 }
 
+export async function showCompare(req, res) {
+  logger.info("Rendering compare view for user: %s", res.locals.user.id);
+  try {
+    const { websites, archivedWebsites } = await getCommonData(res.locals.user.id);
+    const dataPeriod = Number.parseInt(req.query.period) || 7;
+
+    res.render("compare", {
+      websites,
+      archivedWebsites,
+      currentWebsite: null,
+      currentPage: "compare",
+      dataPeriod,
+    });
+  } catch (error) {
+    logger.error("Error loading compare view for user %s: %o", res.locals.user.id, error);
+    res.status(500).render("500");
+  }
+}
+
 export async function showDashboard(req, res) {
   const { websiteId } = req.params;
   logger.info("Rendering dashboard for website: %s, user: %s", websiteId, res.locals.user.id);
@@ -217,20 +235,17 @@ export async function showDashboard(req, res) {
     const trendDays = Math.min(dataPeriod, 7);
     const today = new Date();
 
-    const currentStartDate = subDays(today, dataPeriod - (dataPeriod === 1 ? 0 : 1));
-    if (dataPeriod === 1) {
-      currentStartDate.setHours(0, 0, 0, 0);
-    }
+    const currentStartDate = subDays(today, dataPeriod - 1);
+    currentStartDate.setHours(0, 0, 0, 0);
+
     const prevStartDate = subDays(currentStartDate, dataPeriod);
-    const prevEndDate = subDays(currentStartDate, 1);
-    if (dataPeriod === 1) {
-      prevEndDate.setHours(23, 59, 59, 999);
-    }
+    const prevEndDate = new Date(currentStartDate);
+    prevEndDate.setMilliseconds(-1);
 
     const [currentMetrics, prevMetrics, activeUsers] = await Promise.all([calculateMetricsFromRecords(websiteId, currentStartDate, today), calculateMetricsFromRecords(websiteId, prevStartDate, prevEndDate), currentWebsite.isArchived ? Promise.resolve(0) : calculateActiveUsers(websiteId)]);
 
-    const { sessions, events } = currentMetrics._raw;
-    const trends = getMetricTrends(sessions, events, trendDays);
+    const { sessions, events, jsErrors } = currentMetrics._raw;
+    const trends = getMetricTrends(sessions, events, jsErrors, trendDays);
 
     const metrics = {
       ...currentMetrics,
