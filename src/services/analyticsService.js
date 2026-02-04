@@ -40,8 +40,8 @@ function parseDuration(value) {
 }
 
 async function fetchRecordsForPeriod(websiteId, startDate, endDate) {
-  const startISO = startDate.toISOString();
-  const endISO = endDate.toISOString();
+  const startISO = startDate.toISOString().replace("T", " ");
+  const endISO = endDate.toISOString().replace("T", " ");
 
   const startKey = startISO.substring(0, 16);
   const endKey = endISO.substring(0, 16);
@@ -204,7 +204,7 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
   };
 }
 
-export function getMetricTrends(sessions, events, jsErrors = [], trendDays = 7) {
+export function getMetricTrends(sessions, events, jsErrors = [], trendDays = 7, providedStartDate = null, providedEndDate = null) {
   const trends = {
     pageViews: [],
     visitors: [],
@@ -215,8 +215,9 @@ export function getMetricTrends(sessions, events, jsErrors = [], trendDays = 7) 
     jsErrors: [],
   };
 
-  const endDate = new Date();
-  const startDate = subDays(endDate, trendDays - 1);
+  const endDate = providedEndDate ? new Date(providedEndDate) : new Date();
+  endDate.setHours(23, 59, 59, 999);
+  const startDate = providedStartDate ? new Date(providedStartDate) : subDays(endDate, trendDays - 1);
   startDate.setHours(0, 0, 0, 0);
   const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
 
@@ -428,16 +429,16 @@ export function calculateMetrics(sessions, events, sessionEventsMap = null) {
 }
 
 export async function fetchSessions(websiteId, startDate, endDate) {
-  const startKey = startDate.toISOString().substring(0, 16);
-  const endKey = endDate.toISOString().substring(0, 16);
+  const startKey = startDate.toISOString().substring(0, 16).replace("T", " ");
+  const endKey = endDate.toISOString().substring(0, 16).replace("T", " ");
   const cacheKey = cacheService.key("sessions", websiteId, startKey, endKey);
 
   return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
     logger.debug("Fetching sessions for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
     await ensureAdminAuth();
 
-    const startISO = startDate.toISOString();
-    const endISO = endDate.toISOString();
+    const startISO = startDate.toISOString().replace("T", " ");
+    const endISO = endDate.toISOString().replace("T", " ");
 
     const sessions = await pbAdmin.collection("sessions").getFullList({
       filter: `website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,
@@ -452,16 +453,16 @@ export async function fetchSessions(websiteId, startDate, endDate) {
 }
 
 export async function fetchEvents(websiteId, startDate, endDate) {
-  const startKey = startDate.toISOString().substring(0, 16);
-  const endKey = endDate.toISOString().substring(0, 16);
+  const startKey = startDate.toISOString().substring(0, 16).replace("T", " ");
+  const endKey = endDate.toISOString().substring(0, 16).replace("T", " ");
   const cacheKey = cacheService.key("events", websiteId, startKey, endKey);
 
   return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
     logger.debug("Fetching events for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
     await ensureAdminAuth();
 
-    const startISO = startDate.toISOString();
-    const endISO = endDate.toISOString();
+    const startISO = startDate.toISOString().replace("T", " ");
+    const endISO = endDate.toISOString().replace("T", " ");
 
     const events = await pbAdmin.collection("events").getFullList({
       filter: `session.website.id = "${websiteId}" && created >= "${startISO}" && created <= "${endISO}"`,

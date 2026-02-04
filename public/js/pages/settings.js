@@ -493,7 +493,8 @@ function renderNotificationRules(rules) {
         return eventLabel;
       })();
 
-      const websiteName = rule.expand?.website?.name || "All Websites";
+      const expandedWebsite = rule.expand?.website;
+      const websiteName = Array.isArray(expandedWebsite) ? (expandedWebsite.length > 0 ? expandedWebsite.map((w) => w.name).join(", ") : "All Websites") : expandedWebsite?.name || "All Websites";
 
       const manualTriggerSupported = MANUAL_TRIGGER_EVENT_TYPES.has(rule.eventType);
       const manualTriggerButton = manualTriggerSupported

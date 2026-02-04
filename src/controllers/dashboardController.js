@@ -101,7 +101,8 @@ export async function showOverview(req, res) {
     const flatSessions = allSessions.flat();
     const flatEvents = allEvents.flat();
     const flatJsErrors = allJsErrors.flat();
-    const trends = getMetricTrends(flatSessions, flatEvents, flatJsErrors, trendDays);
+    const trendStartDate = trendDays < dataPeriod ? subDays(today, trendDays - 1) : currentStartDate;
+    const trends = getMetricTrends(flatSessions, flatEvents, flatJsErrors, trendDays, trendStartDate, today);
 
     const mergedMetrics = {
       topPages: new Map(),
@@ -245,7 +246,8 @@ export async function showDashboard(req, res) {
     const [currentMetrics, prevMetrics, activeUsers] = await Promise.all([calculateMetricsFromRecords(websiteId, currentStartDate, today), calculateMetricsFromRecords(websiteId, prevStartDate, prevEndDate), currentWebsite.isArchived ? Promise.resolve(0) : calculateActiveUsers(websiteId)]);
 
     const { sessions, events, jsErrors } = currentMetrics._raw;
-    const trends = getMetricTrends(sessions, events, jsErrors, trendDays);
+    const trendStartDate = trendDays < dataPeriod ? subDays(today, trendDays - 1) : currentStartDate;
+    const trends = getMetricTrends(sessions, events, jsErrors, trendDays, trendStartDate, today);
 
     const metrics = {
       ...currentMetrics,

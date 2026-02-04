@@ -138,7 +138,9 @@ export async function getOverviewData(req, res) {
     const flatSessions = allSessions.flat();
     const flatEvents = allEvents.flat();
     const flatJsErrors = allJsErrors.flat();
-    const trends = getMetricTrends(flatSessions, flatEvents, flatJsErrors, dataPeriod);
+    const trendDays = Math.min(dataPeriod, 7);
+    const trendStartDate = trendDays < dataPeriod ? subDays(today, trendDays - 1) : currentStartDate;
+    const trends = getMetricTrends(flatSessions, flatEvents, flatJsErrors, trendDays, trendStartDate, today);
 
     const metrics = {
       ...currentMetrics,
@@ -261,7 +263,9 @@ export async function getDashboardData(req, res) {
 
     const activeUsers = website.isArchived ? 0 : await calculateActiveUsers(websiteId);
 
-    const trends = getMetricTrends(sessions, events, jsErrors, dataPeriod);
+    const trendDays = Math.min(dataPeriod, 7);
+    const trendStartDate = trendDays < dataPeriod ? subDays(today, trendDays - 1) : currentStartDate;
+    const trends = getMetricTrends(sessions, events, jsErrors, trendDays, trendStartDate, today);
 
     const metrics = {
       ...currentMetrics,
@@ -312,7 +316,7 @@ export async function getDetailedReport(req, res) {
       const today = new Date();
       const startDate = subDays(today, dataPeriod - 1);
       startDate.setHours(0, 0, 0, 0);
-      const startDateISO = startDate.toISOString();
+      const startDateISO = startDate.toISOString().replace("T", " ");
 
       const allErrors = await pbAdmin.collection("js_errors").getFullList({
         filter: `website.id = "${websiteId}" && lastSeen >= "${startDateISO}"`,

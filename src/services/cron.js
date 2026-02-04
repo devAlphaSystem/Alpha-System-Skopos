@@ -19,7 +19,7 @@ async function enforceDataRetention() {
     for (const website of websites) {
       const retentionDays = website.dataRetentionDays;
       const cutoffDate = subDays(new Date(), retentionDays);
-      const cutoffISO = cutoffDate.toISOString();
+      const cutoffISO = cutoffDate.toISOString().replace("T", " ");
       const filter = `session.website.id = "${website.id}" && created < "${cutoffISO}"`;
       logger.debug("Enforcing %d-day retention for website %s (ID: %s). Cutoff: %s", retentionDays, website.name, website.id, cutoffISO);
 
@@ -59,7 +59,7 @@ async function pruneOldRawData() {
     await ensureAdminAuth();
     const retentionDays = Number.parseInt(process.env.DATA_RETENTION_DAYS || "180", 10);
     const cutoffDate = subDays(new Date(), retentionDays);
-    const cutoffISO = cutoffDate.toISOString();
+    const cutoffISO = cutoffDate.toISOString().replace("T", " ");
     logger.debug("Pruning raw data older than %s (Retention: %d days)", cutoffISO, retentionDays);
 
     const sessionsToDelete = await pbAdmin.collection("sessions").getFullList({
@@ -238,7 +238,9 @@ async function checkErrorThresholds() {
 
         const threshold = rule.metadata?.threshold || 10;
         const timeWindow = rule.metadata?.timeWindowHours || 24;
-        const cutoffDate = subDays(new Date(), timeWindow / 24).toISOString();
+        const cutoffDate = subDays(new Date(), timeWindow / 24)
+          .toISOString()
+          .replace("T", " ");
 
         for (const website of targetWebsites) {
           const jsErrors = await pbAdmin.collection("js_errors").getFullList({
@@ -308,7 +310,7 @@ async function discardShortSessions() {
 
         for (const website of websites) {
           try {
-            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString().replace("T", " ");
 
             const oldSessions = await pbAdmin.collection("sessions").getFullList({
               filter: `website.id = "${website.id}" && updated < "${fiveMinutesAgo}"`,

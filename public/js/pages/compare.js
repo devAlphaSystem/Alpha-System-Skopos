@@ -121,12 +121,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (charts[slotId]) {
       charts[slotId].updateOptions(
         {
+          dataLabels: {
+            formatter: yaxisFormatter,
+          },
           yaxis: {
             labels: {
               show: true,
               style: { colors: getThemeColors().textSecondary, fontSize: "10px" },
               formatter: yaxisFormatter,
             },
+          },
+          tooltip: {
+            y: { formatter: yaxisFormatter },
           },
         },
         false,
@@ -141,14 +147,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const containerId = `chart-slot-${slotId}`;
     const colors = getThemeColors();
 
-    if (charts[slotId]) {
-      charts[slotId].updateSeries([{ data: data }]);
-      return;
-    }
-
-    const container = document.getElementById(containerId);
-    container.innerHTML = "";
-
     const categories = [];
     const now = new Date();
     for (let i = data.length - 1; i >= 0; i--) {
@@ -156,6 +154,17 @@ document.addEventListener("DOMContentLoaded", () => {
       d.setDate(now.getDate() - i);
       categories.push(d.toLocaleDateString(undefined, { month: "short", day: "numeric" }));
     }
+
+    if (charts[slotId]) {
+      charts[slotId].updateOptions({
+        xaxis: { categories: categories },
+      });
+      charts[slotId].updateSeries([{ data: data }]);
+      return;
+    }
+
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
 
     const options = {
       series: [{ name: "Value", data: data }],
@@ -177,6 +186,19 @@ document.addEventListener("DOMContentLoaded", () => {
           opacityFrom: 0.45,
           opacityTo: 0.05,
           stops: [20, 100, 100, 100],
+        },
+      },
+      dataLabels: {
+        enabled: true,
+        formatter: yaxisFormatter,
+        style: {
+          fontSize: "10px",
+          fontFamily: INTER_FONT_STACK,
+        },
+        background: {
+          enabled: true,
+          borderRadius: 2,
+          padding: 4,
         },
       },
       xaxis: {
@@ -211,6 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tooltip: {
         enabled: true,
         x: { show: true },
+        y: { formatter: yaxisFormatter },
         theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
       },
     };
