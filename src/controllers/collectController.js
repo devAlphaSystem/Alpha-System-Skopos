@@ -432,6 +432,13 @@ async function processEvent(event, sessionRecordId, currentPath, websiteId) {
 
     await pbAdmin.collection("events").create(eventData);
 
+    await pbAdmin
+      .collection("sessions")
+      .update(sessionRecordId, {
+        updated: new Date().toISOString(),
+      })
+      .catch((err) => logger.debug("Non-critical: Failed to update session activity: %s", err.message));
+
     if (eventData.type === "custom" && eventData.eventName) {
       broadcast({
         type: "update",

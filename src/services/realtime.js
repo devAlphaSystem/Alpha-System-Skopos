@@ -1,6 +1,7 @@
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { broadcast } from "./sseManager.js";
 import { triggerNotification } from "./notificationService.js";
+import { getSetting } from "./appSettingsService.js";
 import cacheService from "./cacheService.js";
 import logger from "../utils/logger.js";
 
@@ -75,25 +76,66 @@ export async function startRealtimeService() {
             action: "session_created",
           });
 
-          await triggerNotification(userId, websiteId, "new_session", {
-            websiteName: website.name,
-            device: e.record.device,
-            browser: e.record.browser,
-            os: e.record.os,
-            country: e.record.country,
-            state: e.record.state,
-          });
-
-          if (e.record.isNewVisitor) {
-            await triggerNotification(userId, websiteId, "new_visitor", {
+          const sendVisitorNotifications = async () => {
+            await triggerNotification(userId, websiteId, "new_session", {
               websiteName: website.name,
-              country: e.record.country,
-              state: e.record.state,
               device: e.record.device,
               browser: e.record.browser,
-              entryPath: e.record.entryPath,
-              referrer: e.record.referrer,
+              os: e.record.os,
+              country: e.record.country,
+              state: e.record.state,
             });
+
+            if (e.record.isNewVisitor) {
+              await triggerNotification(userId, websiteId, "new_visitor", {
+                websiteName: website.name,
+                country: e.record.country,
+                state: e.record.state,
+                device: e.record.device,
+                browser: e.record.browser,
+                entryPath: e.record.entryPath,
+                referrer: e.record.referrer,
+              });
+            }
+          };
+
+          const shouldDiscardShort = await getSetting(userId, "discardShortSessions", false);
+
+          if (shouldDiscardShort) {
+            logger.debug("Delaying visitor notification for session %s (validation period)", e.record.id);
+            setTimeout(async () => {
+              try {
+                await ensureAdminAuth();
+                const session = await pbAdmin
+                  .collection("sessions")
+                  .getOne(e.record.id)
+                  .catch(() => null);
+
+                if (!session) {
+                  logger.debug("Session %s was already discarded or deleted, skipping notification", e.record.id);
+                  return;
+                }
+
+                const duration = (new Date(session.updated) - new Date(session.created)) / 1000;
+
+                if (duration < 1) {
+                  const events = await pbAdmin.collection("events").getList(1, 2, {
+                    filter: `session = "${session.id}"`,
+                  });
+
+                  if (events.totalItems <= 1) {
+                    logger.info("Session %s identified as short/bot-like after 30s. Skipping notification.", session.id);
+                    return;
+                  }
+                }
+
+                await sendVisitorNotifications();
+              } catch (err) {
+                logger.error("Error in delayed notification validation: %o", err);
+              }
+            }, 30000);
+          } else {
+            await sendVisitorNotifications();
           }
         } catch (error) {
           logger.error("Error processing session notification: %o", error);
