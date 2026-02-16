@@ -3,6 +3,25 @@ import logger from "../utils/logger.js";
 
 const settingsCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000;
+const SETTINGS_CACHE_MAX = 500;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of settingsCache.entries()) {
+    if (now - entry.cachedAt > CACHE_TTL) {
+      settingsCache.delete(key);
+    }
+  }
+  if (settingsCache.size > SETTINGS_CACHE_MAX) {
+    const excess = settingsCache.size - SETTINGS_CACHE_MAX;
+    let removed = 0;
+    for (const key of settingsCache.keys()) {
+      if (removed >= excess) break;
+      settingsCache.delete(key);
+      removed++;
+    }
+  }
+}, CACHE_TTL);
 
 export async function getSetting(userId, key, defaultValue = null) {
   const cacheKey = `${userId}:${key}`;

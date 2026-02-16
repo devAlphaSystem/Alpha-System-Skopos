@@ -7,6 +7,26 @@ import { resolveRuleWebsites, createDailySummaryEventData } from "./notification
 import { getSetting } from "./appSettingsService.js";
 import logger from "../utils/logger.js";
 
+const DELETE_BATCH_SIZE = 200;
+
+async function batchDelete(collection, filter) {
+  let totalDeleted = 0;
+  while (true) {
+    const batch = await pbAdmin.collection(collection).getList(1, DELETE_BATCH_SIZE, {
+      filter,
+      fields: "id",
+      $autoCancel: false,
+    });
+    if (batch.items.length === 0) break;
+    for (const record of batch.items) {
+      await pbAdmin.collection(collection).delete(record.id);
+    }
+    totalDeleted += batch.items.length;
+    if (batch.items.length < DELETE_BATCH_SIZE) break;
+  }
+  return totalDeleted;
+}
+
 async function enforceDataRetention() {
   logger.info("Running cron job: Enforcing data retention policies...");
   try {
@@ -23,29 +43,11 @@ async function enforceDataRetention() {
       const filter = `session.website.id = "${website.id}" && created < "${cutoffISO}"`;
       logger.debug("Enforcing %d-day retention for website %s (ID: %s). Cutoff: %s", retentionDays, website.name, website.id, cutoffISO);
 
-      const eventsToDelete = await pbAdmin.collection("events").getFullList({
-        filter: filter,
-        fields: "id",
-      });
-      if (eventsToDelete.length > 0) {
-        logger.debug("Found %d events to delete for website %s.", eventsToDelete.length, website.name);
-        for (const event of eventsToDelete) {
-          await pbAdmin.collection("events").delete(event.id);
-        }
+      const deletedEvents = await batchDelete("events", filter);
+      const deletedSessions = await batchDelete("sessions", `website.id = "${website.id}" && created < "${cutoffISO}"`);
+      if (deletedEvents > 0 || deletedSessions > 0) {
+        logger.info(`Data retention for ${website.name}: Removed ${deletedEvents} events and ${deletedSessions} sessions.`);
       }
-
-      const sessionsToDelete = await pbAdmin.collection("sessions").getFullList({
-        filter: `website.id = "${website.id}" && created < "${cutoffISO}"`,
-        fields: "id",
-      });
-      if (sessionsToDelete.length > 0) {
-        logger.debug("Found %d sessions to delete for website %s.", sessionsToDelete.length, website.name);
-        for (const session of sessionsToDelete) {
-          await pbAdmin.collection("sessions").delete(session.id);
-        }
-      }
-
-      logger.info(`Data retention for ${website.name}: Removed ${eventsToDelete.length} events and ${sessionsToDelete.length} sessions.`);
     }
     logger.info("Finished enforcing data retention.");
   } catch (error) {
@@ -62,31 +64,10 @@ async function pruneOldRawData() {
     const cutoffISO = cutoffDate.toISOString().replace("T", " ");
     logger.debug("Pruning raw data older than %s (Retention: %d days)", cutoffISO, retentionDays);
 
-    const sessionsToDelete = await pbAdmin.collection("sessions").getFullList({
-      filter: `created < "${cutoffISO}"`,
-      fields: "id",
-    });
+    const deletedSessions = await batchDelete("sessions", `created < "${cutoffISO}"`);
+    const deletedEvents = await batchDelete("events", `created < "${cutoffISO}"`);
 
-    if (sessionsToDelete.length > 0) {
-      logger.debug("Found %d old session records to prune.", sessionsToDelete.length);
-      for (const record of sessionsToDelete) {
-        await pbAdmin.collection("sessions").delete(record.id);
-      }
-    }
-
-    const eventsToDelete = await pbAdmin.collection("events").getFullList({
-      filter: `created < "${cutoffISO}"`,
-      fields: "id",
-    });
-
-    if (eventsToDelete.length > 0) {
-      logger.debug("Found %d old event records to prune.", eventsToDelete.length);
-      for (const record of eventsToDelete) {
-        await pbAdmin.collection("events").delete(record.id);
-      }
-    }
-
-    logger.info(`Pruned ${sessionsToDelete.length} old sessions and ${eventsToDelete.length} old events.`);
+    logger.info(`Pruned ${deletedSessions} old sessions and ${deletedEvents} old events.`);
   } catch (error) {
     logger.error("Error during raw data pruning cron job: %o", error);
   }
@@ -102,26 +83,34 @@ async function cleanupOrphanedData() {
     logger.debug("Checking %d websites for orphaned records.", websites.length);
 
     let totalOrphanedVisitors = 0;
+    const VISITOR_BATCH_SIZE = 100;
 
     for (const website of websites) {
       try {
-        const allVisitors = await pbAdmin.collection("visitors").getFullList({
-          filter: `website.id = "${website.id}"`,
-          fields: "id,visitorId",
-          $autoCancel: false,
-        });
-
-        for (const visitor of allVisitors) {
-          const sessions = await pbAdmin.collection("sessions").getList(1, 1, {
-            filter: `visitor.id = "${visitor.id}"`,
+        let page = 1;
+        let hasMore = true;
+        while (hasMore) {
+          const batch = await pbAdmin.collection("visitors").getList(page, VISITOR_BATCH_SIZE, {
+            filter: `website.id = "${website.id}"`,
+            fields: "id,visitorId",
             $autoCancel: false,
           });
 
-          if (sessions.totalItems === 0) {
-            await pbAdmin.collection("visitors").delete(visitor.id);
-            totalOrphanedVisitors++;
-            logger.debug("Deleted orphaned visitor: %s", visitor.id);
+          for (const visitor of batch.items) {
+            const sessions = await pbAdmin.collection("sessions").getList(1, 1, {
+              filter: `visitor.id = "${visitor.id}"`,
+              $autoCancel: false,
+            });
+
+            if (sessions.totalItems === 0) {
+              await pbAdmin.collection("visitors").delete(visitor.id);
+              totalOrphanedVisitors++;
+              logger.debug("Deleted orphaned visitor: %s", visitor.id);
+            }
           }
+
+          hasMore = batch.items.length === VISITOR_BATCH_SIZE && page * VISITOR_BATCH_SIZE < batch.totalItems;
+          page++;
         }
       } catch (error) {
         logger.error("Error cleaning up website %s: %o", website.id, error);
@@ -311,9 +300,10 @@ async function discardShortSessions() {
         for (const website of websites) {
           try {
             const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString().replace("T", " ");
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString().replace("T", " ");
 
             const oldSessions = await pbAdmin.collection("sessions").getFullList({
-              filter: `website.id = "${website.id}" && updated < "${fiveMinutesAgo}"`,
+              filter: `website.id = "${website.id}" && updated < "${fiveMinutesAgo}" && created >= "${oneHourAgo}"`,
               fields: "id,created,updated",
               $autoCancel: false,
             });
@@ -326,26 +316,8 @@ async function discardShortSessions() {
               const durationSeconds = (sessionEnd - sessionStart) / 1000;
 
               if (durationSeconds < 1) {
-                const events = await pbAdmin.collection("events").getFullList({
-                  filter: `session.id = "${session.id}"`,
-                  fields: "id",
-                  $autoCancel: false,
-                });
-
-                for (const event of events) {
-                  await pbAdmin.collection("events").delete(event.id);
-                }
-
-                const jsErrors = await pbAdmin.collection("js_errors").getFullList({
-                  filter: `session.id = "${session.id}"`,
-                  fields: "id",
-                  $autoCancel: false,
-                });
-
-                for (const jsError of jsErrors) {
-                  await pbAdmin.collection("js_errors").delete(jsError.id);
-                }
-
+                await batchDelete("events", `session.id = "${session.id}"`);
+                await batchDelete("js_errors", `session.id = "${session.id}"`);
                 await pbAdmin.collection("sessions").delete(session.id);
                 discardedForWebsite++;
               }

@@ -27,16 +27,31 @@ function deobfuscatePayload(encoded) {
 const rateLimits = new Map();
 const RATE_LIMIT_WINDOW = 60000;
 const RATE_LIMIT_MAX_REQUESTS = 100;
+const MAX_RATE_LIMIT_ENTRIES = 10000;
 
 const sessionCache = new Map();
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 const SESSION_CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000;
+const MAX_SESSION_CACHE_ENTRIES = 10000;
 
 const visitorCache = new Map();
 const VISITOR_CACHE_TTL = 15 * 60 * 1000;
+const MAX_VISITOR_CACHE_ENTRIES = 10000;
 
 const websiteCache = new Map();
 const WEBSITE_CACHE_TTL = 5 * 60 * 1000;
+const MAX_WEBSITE_CACHE_ENTRIES = 1000;
+
+function enforceMapCap(map, maxSize) {
+  if (map.size <= maxSize) return;
+  const excess = map.size - maxSize;
+  let removed = 0;
+  for (const key of map.keys()) {
+    if (removed >= excess) break;
+    map.delete(key);
+    removed++;
+  }
+}
 
 const BOT_PATTERNS = /bot|crawl|spider|scrape|headless|phantom|selenium|puppeteer|playwright|slurp|mediapartners|facebookexternalhit|bingpreview|linkedinbot|twitterbot|whatsapp|telegram|discord/i;
 
@@ -69,6 +84,7 @@ setInterval(() => {
       rateLimits.delete(ip);
     }
   }
+  enforceMapCap(rateLimits, MAX_RATE_LIMIT_ENTRIES);
 }, RATE_LIMIT_WINDOW);
 
 setInterval(() => {
@@ -78,6 +94,7 @@ setInterval(() => {
       sessionCache.delete(hash);
     }
   }
+  enforceMapCap(sessionCache, MAX_SESSION_CACHE_ENTRIES);
 }, SESSION_CACHE_CLEANUP_INTERVAL);
 
 setInterval(() => {
@@ -87,6 +104,7 @@ setInterval(() => {
       visitorCache.delete(hash);
     }
   }
+  enforceMapCap(visitorCache, MAX_VISITOR_CACHE_ENTRIES);
 }, SESSION_CACHE_CLEANUP_INTERVAL);
 
 function isBot(userAgent, headers) {
@@ -144,6 +162,7 @@ async function getWebsiteByTrackingId(trackingId) {
     await ensureAdminAuth();
     const website = await pbAdmin.collection("websites").getFirstListItem(`trackingId="${trackingId.replace(/"/g, "")}"`);
     websiteCache.set(trackingId, { website, cachedAt: Date.now() });
+    enforceMapCap(websiteCache, MAX_WEBSITE_CACHE_ENTRIES);
     return website;
   } catch (e) {
     if (e.status === 404) {

@@ -64,8 +64,12 @@ async function performSingleUptimeCheck(url, timeout = 10000) {
     }
 
     const responseTime = Date.now() - startTime;
-    const body = await response.text();
+    const contentLength = parseInt(response.headers.get("content-length") || "0", 10);
     const isUp = response.status >= 200 && response.status < 400;
+
+    try {
+      if (response.body) await response.body.cancel();
+    } catch (_) {}
 
     return {
       isUp,
@@ -74,7 +78,7 @@ async function performSingleUptimeCheck(url, timeout = 10000) {
       timestamp: new Date().toISOString(),
       error: null,
       ssl: url.startsWith("https:"),
-      contentLength: body.length,
+      contentLength: contentLength || 0,
     };
   } catch (error) {
     const responseTime = Date.now() - startTime;

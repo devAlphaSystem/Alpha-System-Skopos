@@ -1,5 +1,5 @@
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
-import { broadcast } from "./sseManager.js";
+import { broadcast, broadcastDebounced } from "./sseManager.js";
 import { triggerNotification } from "./notificationService.js";
 import { getSetting } from "./appSettingsService.js";
 import cacheService from "./cacheService.js";
@@ -67,10 +67,9 @@ export async function startRealtimeService() {
           const userId = website.user;
           const websiteId = website.id;
 
-          cacheService.invalidateWebsite(websiteId);
-          cacheService.invalidateUser(userId);
+          cacheService.invalidateWebsiteLight(websiteId);
 
-          broadcast({
+          broadcastDebounced({
             type: "update",
             websiteId: websiteId,
             action: "session_created",
@@ -177,12 +176,9 @@ export async function startRealtimeService() {
             return;
           }
 
-          cacheService.invalidateWebsite(website.id);
-          if (user) {
-            cacheService.invalidateUser(user.id);
-          }
+          cacheService.invalidateWebsiteLight(website.id);
 
-          broadcast({
+          broadcastDebounced({
             type: "update",
             websiteId: website.id,
             action: "event_created",

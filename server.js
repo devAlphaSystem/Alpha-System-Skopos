@@ -28,6 +28,8 @@ import { checkForUpdates } from "./src/services/updateChecker.js";
 import { countryNames } from "./src/utils/countries.js";
 import logger from "./src/utils/logger.js";
 import { readFileSync } from "node:fs";
+import cacheService from "./src/services/cacheService.js";
+import { disconnectAll as disconnectAllSse } from "./src/services/sseManager.js";
 
 dotenv.config();
 
@@ -145,7 +147,26 @@ async function initializeApp() {
     startCronJobs();
     startRealtimeService();
     initializeUptimeMonitoring();
+
+    setInterval(
+      () => {
+        const mem = process.memoryUsage();
+        const stats = cacheService.getStats();
+        logger.info("Memory - RSS: %dMB | Heap: %dMB/%dMB | External: %dMB | Cache: %d entries (%s hit rate)", Math.round(mem.rss / 1024 / 1024), Math.round(mem.heapUsed / 1024 / 1024), Math.round(mem.heapTotal / 1024 / 1024), Math.round(mem.external / 1024 / 1024), stats.entries, stats.hitRate);
+      },
+      5 * 60 * 1000,
+    );
   });
+
+  function gracefulShutdown(signal) {
+    logger.info("Received %s, shutting down gracefully...", signal);
+    cacheService.shutdown();
+    disconnectAllSse();
+    process.exit(0);
+  }
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 }
 
 initializeApp();

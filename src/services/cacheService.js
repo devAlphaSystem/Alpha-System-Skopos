@@ -3,14 +3,17 @@ import logger from "../utils/logger.js";
 class CacheService {
   constructor() {
     this.cache = new Map();
+    this.pendingComputations = new Map();
     this.hitCount = 0;
     this.missCount = 0;
+    this.MAX_ENTRIES = 500;
 
     this.TTL = {
       METRICS: 60 * 1000,
       ACTIVE_USERS: 30 * 1000,
-      WEBSITES: 30 * 1000,
+      WEBSITES: 5 * 60 * 1000,
       SESSIONS: 2 * 60 * 1000,
+      PAST_RECORDS: 30 * 60 * 1000,
       TRENDS: 60 * 1000,
     };
 
@@ -44,6 +47,29 @@ class CacheService {
       expiresAt: Date.now() + ttl,
       createdAt: Date.now(),
     });
+    this._evictIfNeeded();
+  }
+
+  _evictIfNeeded() {
+    if (this.cache.size <= this.MAX_ENTRIES) return;
+
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (now > entry.expiresAt) {
+        this.cache.delete(key);
+      }
+    }
+
+    if (this.cache.size > this.MAX_ENTRIES) {
+      const entriesToRemove = this.cache.size - this.MAX_ENTRIES;
+      let removed = 0;
+      for (const key of this.cache.keys()) {
+        if (removed >= entriesToRemove) break;
+        this.cache.delete(key);
+        removed++;
+      }
+      logger.info("Cache eviction: removed %d oldest entries to stay within %d limit", removed, this.MAX_ENTRIES);
+    }
   }
 
   async getOrCompute(key, ttl, compute) {
@@ -53,10 +79,26 @@ class CacheService {
       return cached;
     }
 
+    const pending = this.pendingComputations.get(key);
+    if (pending) {
+      logger.debug("Cache PENDING for key: %s - awaiting existing computation...", key);
+      return pending;
+    }
+
     logger.debug("Cache MISS for key: %s - computing...", key);
-    const value = await compute();
-    this.set(key, value, ttl);
-    return value;
+    const pendingComputation = (async () => {
+      const value = await compute();
+      this.set(key, value, ttl);
+      return value;
+    })();
+
+    this.pendingComputations.set(key, pendingComputation);
+
+    try {
+      return await pendingComputation;
+    } finally {
+      this.pendingComputations.delete(key);
+    }
   }
 
   invalidate(pattern) {
@@ -83,6 +125,11 @@ class CacheService {
     this.invalidate(`events:${websiteId}`);
     this.invalidate(`records:${websiteId}`);
     this.invalidate(`trends:${websiteId}`);
+  }
+
+  invalidateWebsiteLight(websiteId) {
+    logger.debug("Light-invalidating cache for website: %s", websiteId);
+    this.invalidate(`activeUsers:${websiteId}`);
   }
 
   invalidateUser(userId) {
@@ -123,6 +170,7 @@ class CacheService {
 
   shutdown() {
     clearInterval(this.cleanupInterval);
+    this.pendingComputations.clear();
     this.clear();
     logger.info("Cache service shutdown complete.");
   }

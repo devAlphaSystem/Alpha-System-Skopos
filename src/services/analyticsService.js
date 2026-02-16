@@ -39,15 +39,24 @@ function parseDuration(value) {
   return null;
 }
 
-async function fetchRecordsForPeriod(websiteId, startDate, endDate) {
+function snapTo5Min(date) {
+  const d = new Date(date);
+  d.setUTCMinutes(Math.floor(d.getUTCMinutes() / 5) * 5, 0, 0);
+  return d;
+}
+
+export async function fetchRecordsForPeriod(websiteId, startDate, endDate) {
   const startISO = startDate.toISOString().replace("T", " ");
   const endISO = endDate.toISOString().replace("T", " ");
 
   const startKey = startISO.substring(0, 16);
-  const endKey = endISO.substring(0, 16);
+  const endKey = snapTo5Min(endDate).toISOString().replace("T", " ").substring(0, 16);
   const cacheKey = cacheService.key("records", websiteId, startKey, endKey);
 
-  return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
+  const isPastPeriod = Date.now() - endDate.getTime() > 10 * 60 * 1000;
+  const ttl = isPastPeriod ? cacheService.TTL.PAST_RECORDS : cacheService.TTL.SESSIONS;
+
+  return cacheService.getOrCompute(cacheKey, ttl, async () => {
     logger.debug("Fetching records for website %s from %s to %s", websiteId, startISO, endISO);
 
     const [sessions, events, jsErrors] = await Promise.all([
@@ -77,7 +86,10 @@ async function fetchRecordsForPeriod(websiteId, startDate, endDate) {
 
 export async function calculateMetricsFromRecords(websiteId, startDate, endDate) {
   const { sessions, events, jsErrors } = await fetchRecordsForPeriod(websiteId, startDate, endDate);
+  return calculateMetricsFromData(sessions, events, jsErrors);
+}
 
+export function calculateMetricsFromData(sessions, events, jsErrors = []) {
   const sessionEventsMap = new Map();
   for (const event of events) {
     if (!sessionEventsMap.has(event.session)) {
@@ -200,7 +212,6 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
     stateBreakdown: processAndSort(stateBreakdown, totalVisitors),
     topCustomEvents: processAndSort(topCustomEvents, totalVisitors),
     topJsErrors: processAndSort(topJsErrors, totalJsErrors),
-    _raw: { sessions, events, jsErrors },
   };
 }
 
@@ -430,10 +441,13 @@ export function calculateMetrics(sessions, events, sessionEventsMap = null) {
 
 export async function fetchSessions(websiteId, startDate, endDate) {
   const startKey = startDate.toISOString().substring(0, 16).replace("T", " ");
-  const endKey = endDate.toISOString().substring(0, 16).replace("T", " ");
+  const endKey = snapTo5Min(endDate).toISOString().replace("T", " ").substring(0, 16);
   const cacheKey = cacheService.key("sessions", websiteId, startKey, endKey);
 
-  return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
+  const isPastPeriod = Date.now() - endDate.getTime() > 10 * 60 * 1000;
+  const ttl = isPastPeriod ? cacheService.TTL.PAST_RECORDS : cacheService.TTL.SESSIONS;
+
+  return cacheService.getOrCompute(cacheKey, ttl, async () => {
     logger.debug("Fetching sessions for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
     await ensureAdminAuth();
 
@@ -454,10 +468,13 @@ export async function fetchSessions(websiteId, startDate, endDate) {
 
 export async function fetchEvents(websiteId, startDate, endDate) {
   const startKey = startDate.toISOString().substring(0, 16).replace("T", " ");
-  const endKey = endDate.toISOString().substring(0, 16).replace("T", " ");
+  const endKey = snapTo5Min(endDate).toISOString().replace("T", " ").substring(0, 16);
   const cacheKey = cacheService.key("events", websiteId, startKey, endKey);
 
-  return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
+  const isPastPeriod = Date.now() - endDate.getTime() > 10 * 60 * 1000;
+  const ttl = isPastPeriod ? cacheService.TTL.PAST_RECORDS : cacheService.TTL.SESSIONS;
+
+  return cacheService.getOrCompute(cacheKey, ttl, async () => {
     logger.debug("Fetching events for website %s from %s to %s", websiteId, startDate.toISOString(), endDate.toISOString());
     await ensureAdminAuth();
 

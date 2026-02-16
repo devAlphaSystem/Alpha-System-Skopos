@@ -1,6 +1,6 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
 import { subDays } from "date-fns";
-import { calculateMetricsFromRecords, calculatePercentageChange, calculateActiveUsers, getMetricTrends, getReportsFromMetrics } from "../services/analyticsService.js";
+import { calculateMetricsFromData, calculatePercentageChange, calculateActiveUsers, getMetricTrends, getReportsFromMetrics, fetchRecordsForPeriod } from "../services/analyticsService.js";
 import cacheService from "../services/cacheService.js";
 import logger from "../utils/logger.js";
 
@@ -48,13 +48,12 @@ export async function showOverview(req, res) {
     logger.debug("Calculating overview data for %d active websites.", websites.length);
     const websiteIds = websites.map((w) => w.id);
 
-    const [currentMetricsArray, prevMetricsArray, activeUsersCounts] = await Promise.all([Promise.all(websiteIds.map((id) => calculateMetricsFromRecords(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => calculateMetricsFromRecords(id, prevStartDate, prevEndDate))), Promise.all(websiteIds.map((id) => calculateActiveUsers(id)))]);
+    const [currentRawDataArray, prevRawDataArray, activeUsersCounts] = await Promise.all([Promise.all(websiteIds.map((id) => fetchRecordsForPeriod(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => fetchRecordsForPeriod(id, prevStartDate, prevEndDate))), Promise.all(websiteIds.map((id) => calculateActiveUsers(id)))]);
+
+    const currentMetricsArray = currentRawDataArray.map((data) => calculateMetricsFromData(data.sessions, data.events, data.jsErrors));
+    const prevMetricsArray = prevRawDataArray.map((data) => calculateMetricsFromData(data.sessions, data.events, data.jsErrors));
 
     const activeUsers = activeUsersCounts.reduce((sum, count) => sum + count, 0);
-
-    const allSessions = currentMetricsArray.map((m) => m._raw.sessions);
-    const allEvents = currentMetricsArray.map((m) => m._raw.events);
-    const allJsErrors = currentMetricsArray.map((m) => m._raw.jsErrors || []);
 
     const currentMetrics = {
       pageViews: currentMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
@@ -98,9 +97,9 @@ export async function showOverview(req, res) {
     }
     prevMetrics.avgSessionDuration.raw = prevMetrics.visitors > 0 ? Math.round(prevTotalDurationSeconds / prevMetrics.visitors) : 0;
 
-    const flatSessions = allSessions.flat();
-    const flatEvents = allEvents.flat();
-    const flatJsErrors = allJsErrors.flat();
+    const flatSessions = currentRawDataArray.flatMap((d) => d.sessions);
+    const flatEvents = currentRawDataArray.flatMap((d) => d.events);
+    const flatJsErrors = currentRawDataArray.flatMap((d) => d.jsErrors || []);
     const trendStartDate = trendDays < dataPeriod ? subDays(today, trendDays - 1) : currentStartDate;
     const trends = getMetricTrends(flatSessions, flatEvents, flatJsErrors, trendDays, trendStartDate, today);
 
@@ -243,9 +242,12 @@ export async function showDashboard(req, res) {
     const prevEndDate = new Date(currentStartDate);
     prevEndDate.setMilliseconds(-1);
 
-    const [currentMetrics, prevMetrics, activeUsers] = await Promise.all([calculateMetricsFromRecords(websiteId, currentStartDate, today), calculateMetricsFromRecords(websiteId, prevStartDate, prevEndDate), currentWebsite.isArchived ? Promise.resolve(0) : calculateActiveUsers(websiteId)]);
+    const [currentRawData, prevRawData, activeUsers] = await Promise.all([fetchRecordsForPeriod(websiteId, currentStartDate, today), fetchRecordsForPeriod(websiteId, prevStartDate, prevEndDate), currentWebsite.isArchived ? Promise.resolve(0) : calculateActiveUsers(websiteId)]);
 
-    const { sessions, events, jsErrors } = currentMetrics._raw;
+    const currentMetrics = calculateMetricsFromData(currentRawData.sessions, currentRawData.events, currentRawData.jsErrors);
+    const prevMetrics = calculateMetricsFromData(prevRawData.sessions, prevRawData.events, prevRawData.jsErrors);
+
+    const { sessions, events, jsErrors } = currentRawData;
     const trendStartDate = trendDays < dataPeriod ? subDays(today, trendDays - 1) : currentStartDate;
     const trends = getMetricTrends(sessions, events, jsErrors, trendDays, trendStartDate, today);
 
