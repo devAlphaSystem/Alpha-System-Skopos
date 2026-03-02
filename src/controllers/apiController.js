@@ -4,6 +4,7 @@ import { calculateMetricsFromData, calculateMetricsFromRecords, calculatePercent
 import { addClient } from "../services/sseManager.js";
 import cacheService from "../services/cacheService.js";
 import logger from "../utils/logger.js";
+import { get as nlcurlGet } from "nlcurl";
 
 export function handleSseConnection(req, res) {
   logger.info("New SSE client connected from user: %s", res.locals.user?.id || "unknown");
@@ -549,11 +550,12 @@ export async function proxyImage(req, res) {
 
     logger.debug("Proxying image: %s", decodedUrl);
 
-    const response = await fetch(decodedUrl, {
+    const response = await nlcurlGet(decodedUrl, {
       headers: {
         "User-Agent": "Skopos-Ad-Proxy/1.0",
       },
-      signal: AbortSignal.timeout(10000),
+      timeout: 10000,
+      stream: true,
     });
 
     if (!response.ok) {
@@ -561,7 +563,7 @@ export async function proxyImage(req, res) {
       return res.status(response.status).send(response.statusText);
     }
 
-    const contentType = response.headers.get("content-type");
+    const contentType = response.headers["content-type"];
     if (contentType) res.setHeader("Content-Type", contentType);
 
     res.setHeader("Cache-Control", "public, max-age=86400");
@@ -569,18 +571,10 @@ export async function proxyImage(req, res) {
     res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
 
     if (response.body) {
-      const reader = response.body.getReader();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          res.write(value);
-        }
-      } finally {
-        reader.releaseLock();
-      }
+      response.body.pipe(res);
+    } else {
+      res.end();
     }
-    res.end();
   } catch (error) {
     logger.error("Error proxying image %s: %o", url, error);
     if (!res.headersSent) {

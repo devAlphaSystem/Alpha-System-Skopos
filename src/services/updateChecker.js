@@ -1,4 +1,4 @@
-import { fetch } from "undici";
+import { get as nlcurlGet } from "nlcurl";
 import logger from "../utils/logger.js";
 
 let dashboardUpdateCache = {
@@ -30,12 +30,12 @@ function isNewerVersion(current, latest) {
 
 async function fetchLatestCommit(repo, userAgent = "Skopos-Update-Checker") {
   try {
-    const response = await fetch(`https://api.github.com/repos/devAlphaSystem/${repo}/commits/main`, {
+    const response = await nlcurlGet(`https://api.github.com/repos/devAlphaSystem/${repo}/commits/main`, {
       headers: {
         Accept: "application/vnd.github.v3+json",
         "User-Agent": userAgent,
       },
-      signal: AbortSignal.timeout(5000),
+      timeout: 5000,
     });
 
     if (!response.ok) {
@@ -43,14 +43,14 @@ async function fetchLatestCommit(repo, userAgent = "Skopos-Update-Checker") {
       return null;
     }
 
-    const commit = await response.json();
+    const commit = response.json();
 
-    const packageResponse = await fetch(`https://raw.githubusercontent.com/devAlphaSystem/${repo}/${commit.sha}/package.json`, {
-      signal: AbortSignal.timeout(5000),
+    const packageResponse = await nlcurlGet(`https://raw.githubusercontent.com/devAlphaSystem/${repo}/${commit.sha}/package.json`, {
+      timeout: 5000,
     });
 
     if (packageResponse.ok) {
-      const packageData = await packageResponse.json();
+      const packageData = packageResponse.json();
       return {
         sha: commit.sha,
         date: commit.commit.committer.date,

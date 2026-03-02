@@ -1,7 +1,7 @@
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { subDays } from "date-fns";
 import dns from "node:dns/promises";
-import { Agent } from "undici";
+import { get as nlcurlGet } from "nlcurl";
 import logger from "../utils/logger.js";
 import { triggerNotification } from "./notificationService.js";
 import { recordUptimeSummary, getSummaryChecks, pruneUptimeSummary } from "./uptimeSummary.js";
@@ -11,11 +11,6 @@ const MAX_TIMEOUT = 30000;
 const MAX_RETRIES = 2;
 const RECOVERY_RECHECK_DELAY_MS = 15000;
 const DNS_ERROR_CODES = new Set(["ENOTFOUND", "EAI_AGAIN", "EAI_FAIL"]);
-const ipv4Agent = new Agent({
-  connect: {
-    family: 4,
-  },
-});
 
 function isDnsError(error) {
   const code = error?.code || error?.cause?.code;
@@ -23,15 +18,14 @@ function isDnsError(error) {
 }
 
 async function fetchWithIPv4(url, signal, extraHeaders = {}) {
-  return fetch(url, {
-    method: "GET",
+  return nlcurlGet(url, {
     headers: {
       "User-Agent": "Skopos-Uptime-Monitor/1.0",
       ...extraHeaders,
     },
     signal,
-    redirect: "follow",
-    dispatcher: ipv4Agent,
+    followRedirects: true,
+    dnsFamily: 4,
   });
 }
 
@@ -64,12 +58,8 @@ async function performSingleUptimeCheck(url, timeout = 10000) {
     }
 
     const responseTime = Date.now() - startTime;
-    const contentLength = parseInt(response.headers.get("content-length") || "0", 10);
+    const contentLength = parseInt(response.headers["content-length"] || "0", 10);
     const isUp = response.status >= 200 && response.status < 400;
-
-    try {
-      if (response.body) await response.body.cancel();
-    } catch (_) {}
 
     return {
       isUp,
