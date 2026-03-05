@@ -1,4 +1,4 @@
-import { eachDayOfInterval, format, subDays } from "date-fns";
+import { eachDayOfInterval, subDays } from "date-fns";
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import logger from "../utils/logger.js";
 import cacheService from "./cacheService.js";
@@ -45,6 +45,24 @@ function snapTo5Min(date) {
   return d;
 }
 
+function toDateString(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+export function buildSessionEventsMap(events) {
+  const map = new Map();
+  for (const event of events) {
+    if (!map.has(event.session)) {
+      map.set(event.session, []);
+    }
+    map.get(event.session).push(event);
+  }
+  return map;
+}
+
 export async function fetchRecordsForPeriod(websiteId, startDate, endDate) {
   const startISO = startDate.toISOString().replace("T", " ");
   const endISO = endDate.toISOString().replace("T", " ");
@@ -89,26 +107,33 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
   return calculateMetricsFromData(sessions, events, jsErrors);
 }
 
-export function calculateMetricsFromData(sessions, events, jsErrors = []) {
-  const sessionEventsMap = new Map();
-  for (const event of events) {
-    if (!sessionEventsMap.has(event.session)) {
-      sessionEventsMap.set(event.session, []);
-    }
-    sessionEventsMap.get(event.session).push(event);
-  }
+const BREAKDOWN_KEYS = ["topPages", "entryPages", "exitPages", "topReferrers", "deviceBreakdown", "browserBreakdown", "languageBreakdown", "countryBreakdown", "stateBreakdown", "topCustomEvents", "topJsErrors"];
 
-  const topPages = new Map();
-  const entryPages = new Map();
-  const exitPages = new Map();
-  const topReferrers = new Map();
-  const deviceBreakdown = new Map();
-  const browserBreakdown = new Map();
-  const languageBreakdown = new Map();
-  const countryBreakdown = new Map();
-  const stateBreakdown = new Map();
-  const topCustomEvents = new Map();
-  const topJsErrors = new Map();
+export function stripBreakdowns(metrics) {
+  const clean = {};
+  for (const key of Object.keys(metrics)) {
+    if (!BREAKDOWN_KEYS.includes(key)) {
+      clean[key] = metrics[key];
+    }
+  }
+  return clean;
+}
+
+export function calculateMetricsFromData(sessions, events, jsErrors = [], options = {}) {
+  const { skipBreakdowns = false, sessionEventsMap: providedMap = null } = options;
+  const sessionEventsMap = providedMap || buildSessionEventsMap(events);
+
+  const topPages = skipBreakdowns ? null : new Map();
+  const entryPages = skipBreakdowns ? null : new Map();
+  const exitPages = skipBreakdowns ? null : new Map();
+  const topReferrers = skipBreakdowns ? null : new Map();
+  const deviceBreakdown = skipBreakdowns ? null : new Map();
+  const browserBreakdown = skipBreakdowns ? null : new Map();
+  const languageBreakdown = skipBreakdowns ? null : new Map();
+  const countryBreakdown = skipBreakdowns ? null : new Map();
+  const stateBreakdown = skipBreakdowns ? null : new Map();
+  const topCustomEvents = skipBreakdowns ? null : new Map();
+  const topJsErrors = skipBreakdowns ? null : new Map();
 
   let newVisitors = 0;
   let returningVisitors = 0;
@@ -126,26 +151,30 @@ export function calculateMetricsFromData(sessions, events, jsErrors = []) {
     if (sessionEvents.length > 0) {
       sessionEvents.sort((a, b) => new Date(a.created) - new Date(b.created));
 
-      const firstEvent = sessionEvents[0];
-      const lastEvent = sessionEvents[sessionEvents.length - 1];
+      if (!skipBreakdowns) {
+        const firstEvent = sessionEvents[0];
+        const lastEvent = sessionEvents[sessionEvents.length - 1];
 
-      const entryPath = firstEvent.path || session.entryPath;
-      if (entryPath) {
-        entryPages.set(entryPath, (entryPages.get(entryPath) || 0) + 1);
-      }
+        const entryPath = firstEvent.path || session.entryPath;
+        if (entryPath) {
+          entryPages.set(entryPath, (entryPages.get(entryPath) || 0) + 1);
+        }
 
-      const exitPath = lastEvent.path || session.exitPath;
-      if (exitPath) {
-        exitPages.set(exitPath, (exitPages.get(exitPath) || 0) + 1);
+        const exitPath = lastEvent.path || session.exitPath;
+        if (exitPath) {
+          exitPages.set(exitPath, (exitPages.get(exitPath) || 0) + 1);
+        }
       }
 
       let isEngaged = false;
       for (let i = 0; i < sessionEvents.length; i++) {
         const event = sessionEvents[i];
-        if (event.type === "pageView" && event.path) {
-          topPages.set(event.path, (topPages.get(event.path) || 0) + 1);
-        } else if (event.type === "custom" && event.eventName && event.eventName !== "exit") {
-          topCustomEvents.set(event.eventName, (topCustomEvents.get(event.eventName) || 0) + 1);
+        if (!skipBreakdowns) {
+          if (event.type === "pageView" && event.path) {
+            topPages.set(event.path, (topPages.get(event.path) || 0) + 1);
+          } else if (event.type === "custom" && event.eventName && event.eventName !== "exit") {
+            topCustomEvents.set(event.eventName, (topCustomEvents.get(event.eventName) || 0) + 1);
+          }
         }
 
         if (!isEngaged) {
@@ -165,21 +194,23 @@ export function calculateMetricsFromData(sessions, events, jsErrors = []) {
       }
     }
 
-    const referrerKey = normalizeReferrer(session.referrer);
-    topReferrers.set(referrerKey, (topReferrers.get(referrerKey) || 0) + 1);
+    if (!skipBreakdowns) {
+      const referrerKey = normalizeReferrer(session.referrer);
+      topReferrers.set(referrerKey, (topReferrers.get(referrerKey) || 0) + 1);
 
-    deviceBreakdown.set(session.device || "Unknown", (deviceBreakdown.get(session.device || "Unknown") || 0) + 1);
-    browserBreakdown.set(session.browser || "Unknown", (browserBreakdown.get(session.browser || "Unknown") || 0) + 1);
-    languageBreakdown.set(session.language || "Unknown", (languageBreakdown.get(session.language || "Unknown") || 0) + 1);
-    countryBreakdown.set(session.country || "Unknown", (countryBreakdown.get(session.country || "Unknown") || 0) + 1);
-    stateBreakdown.set(`${session.country || "Unknown"}|${session.state || "Unknown"}`, (stateBreakdown.get(`${session.country || "Unknown"}|${session.state || "Unknown"}`) || 0) + 1);
+      deviceBreakdown.set(session.device || "Unknown", (deviceBreakdown.get(session.device || "Unknown") || 0) + 1);
+      browserBreakdown.set(session.browser || "Unknown", (browserBreakdown.get(session.browser || "Unknown") || 0) + 1);
+      languageBreakdown.set(session.language || "Unknown", (languageBreakdown.get(session.language || "Unknown") || 0) + 1);
+      countryBreakdown.set(session.country || "Unknown", (countryBreakdown.get(session.country || "Unknown") || 0) + 1);
+      stateBreakdown.set(`${session.country || "Unknown"}|${session.state || "Unknown"}`, (stateBreakdown.get(`${session.country || "Unknown"}|${session.state || "Unknown"}`) || 0) + 1);
+    }
   }
 
   let totalJsErrors = 0;
   for (const error of jsErrors) {
     const count = error.count || 1;
     totalJsErrors += count;
-    if (error.errorMessage) {
+    if (!skipBreakdowns && error.errorMessage) {
       topJsErrors.set(error.errorMessage, (topJsErrors.get(error.errorMessage) || 0) + count);
     }
   }
@@ -191,7 +222,7 @@ export function calculateMetricsFromData(sessions, events, jsErrors = []) {
 
   const engagementRate = totalVisitors > 0 ? Math.round((engagedSessions / totalVisitors) * 100) : 0;
 
-  return {
+  const result = {
     pageViews: totalPageViews,
     visitors: totalVisitors,
     newVisitors,
@@ -201,21 +232,26 @@ export function calculateMetricsFromData(sessions, events, jsErrors = []) {
     avgSessionDuration: metrics.avgSessionDuration,
     bounceRate: metrics.bounceRate,
     jsErrors: totalJsErrors,
-    topPages: processAndSort(topPages, totalPageViews),
-    entryPages: processAndSort(entryPages, totalVisitors),
-    exitPages: processAndSort(exitPages, totalVisitors),
-    topReferrers: processAndSort(topReferrers, totalVisitors),
-    deviceBreakdown: processAndSort(deviceBreakdown, totalVisitors),
-    browserBreakdown: processAndSort(browserBreakdown, totalVisitors),
-    languageBreakdown: processAndSort(languageBreakdown, totalVisitors),
-    countryBreakdown: processAndSort(countryBreakdown, totalVisitors),
-    stateBreakdown: processAndSort(stateBreakdown, totalVisitors),
-    topCustomEvents: processAndSort(topCustomEvents, totalVisitors),
-    topJsErrors: processAndSort(topJsErrors, totalJsErrors),
   };
+
+  if (!skipBreakdowns) {
+    result.topPages = processAndSort(topPages, totalPageViews);
+    result.entryPages = processAndSort(entryPages, totalVisitors);
+    result.exitPages = processAndSort(exitPages, totalVisitors);
+    result.topReferrers = processAndSort(topReferrers, totalVisitors);
+    result.deviceBreakdown = processAndSort(deviceBreakdown, totalVisitors);
+    result.browserBreakdown = processAndSort(browserBreakdown, totalVisitors);
+    result.languageBreakdown = processAndSort(languageBreakdown, totalVisitors);
+    result.countryBreakdown = processAndSort(countryBreakdown, totalVisitors);
+    result.stateBreakdown = processAndSort(stateBreakdown, totalVisitors);
+    result.topCustomEvents = processAndSort(topCustomEvents, totalVisitors);
+    result.topJsErrors = processAndSort(topJsErrors, totalJsErrors);
+  }
+
+  return result;
 }
 
-export function getMetricTrends(sessions, events, jsErrors = [], trendDays = 7, providedStartDate = null, providedEndDate = null) {
+export function getMetricTrends(sessions, events, jsErrors = [], trendDays = 7, providedStartDate = null, providedEndDate = null, providedSessionEventsMap = null) {
   const trends = {
     pageViews: [],
     visitors: [],
@@ -234,7 +270,7 @@ export function getMetricTrends(sessions, events, jsErrors = [], trendDays = 7, 
 
   const dailyData = new Map(
     dateRange.map((d) => [
-      format(d, "yyyy-MM-dd"),
+      toDateString(d),
       {
         sessions: [],
         events: [],
@@ -243,20 +279,16 @@ export function getMetricTrends(sessions, events, jsErrors = [], trendDays = 7, 
     ]),
   );
 
-  const sessionEventsMap = new Map();
+  const sessionEventsMap = providedSessionEventsMap || buildSessionEventsMap(events);
   for (const event of events) {
-    const eventDateString = format(new Date(event.created), "yyyy-MM-dd");
+    const eventDateString = toDateString(new Date(event.created));
     if (dailyData.has(eventDateString)) {
       dailyData.get(eventDateString).events.push(event);
     }
-    if (!sessionEventsMap.has(event.session)) {
-      sessionEventsMap.set(event.session, []);
-    }
-    sessionEventsMap.get(event.session).push(event);
   }
 
   for (const session of sessions) {
-    const sessionDateString = format(new Date(session.created), "yyyy-MM-dd");
+    const sessionDateString = toDateString(new Date(session.created));
     if (dailyData.has(sessionDateString)) {
       dailyData.get(sessionDateString).sessions.push(session);
     }
@@ -265,7 +297,7 @@ export function getMetricTrends(sessions, events, jsErrors = [], trendDays = 7, 
   for (const error of jsErrors) {
     const errorDate = new Date(error.created || error.lastSeen);
     if (!isNaN(errorDate)) {
-      const errorDateString = format(errorDate, "yyyy-MM-dd");
+      const errorDateString = toDateString(errorDate);
       if (dailyData.has(errorDateString)) {
         dailyData.get(errorDateString).jsErrors.push(error);
       }
@@ -273,7 +305,7 @@ export function getMetricTrends(sessions, events, jsErrors = [], trendDays = 7, 
   }
 
   for (const day of dateRange) {
-    const dateString = format(day, "yyyy-MM-dd");
+    const dateString = toDateString(day);
     const data = dailyData.get(dateString);
 
     const daySessions = data.sessions;

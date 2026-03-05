@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     slotElement.classList.add("loading");
     try {
-      const response = await fetch(`/dashboard/data/${websiteId}?period=${dataPeriod}`);
+      const response = await fetch(`/dashboard/data/${websiteId}?period=${dataPeriod}&sections=summary,trends,change`);
       if (!response.ok) throw new Error("Failed to fetch data");
       const data = await response.json();
       updateSlot(slotId, data, graphType);

@@ -5,6 +5,7 @@ import { calculateMetricsFromRecords } from "./analyticsService.js";
 import { triggerNotification } from "./notificationService.js";
 import { resolveRuleWebsites, createDailySummaryEventData } from "./notificationRuleUtils.js";
 import { getSetting } from "./appSettingsService.js";
+import { rollupYesterday } from "./rollupService.js";
 import logger from "../utils/logger.js";
 
 const DELETE_BATCH_SIZE = 200;
@@ -348,6 +349,7 @@ export function startCronJobs() {
   cron.schedule(
     "0 0 * * *",
     async () => {
+      await rollupYesterday();
       await enforceDataRetention();
       await pruneOldRawData();
       await cleanupOrphanedData();

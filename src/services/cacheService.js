@@ -125,17 +125,26 @@ class CacheService {
     this.invalidate(`events:${websiteId}`);
     this.invalidate(`records:${websiteId}`);
     this.invalidate(`trends:${websiteId}`);
+    this.invalidate(`dashResponse:${websiteId}`);
+    this.invalidate(`dailyStats:${websiteId}`);
+    this.invalidate(`dailyStatsMulti:`);
+    this.invalidate(`overviewResponse:`);
   }
 
   invalidateWebsiteLight(websiteId) {
     logger.debug("Light-invalidating cache for website: %s", websiteId);
     this.invalidate(`activeUsers:${websiteId}`);
+    this.invalidate(`dashResponse:${websiteId}`);
+    this.invalidate(`dailyStats:${websiteId}`);
+    this.invalidate(`dailyStatsMulti:`);
+    this.invalidate(`overviewResponse:`);
   }
 
   invalidateUser(userId) {
     logger.info("Invalidating all cache for user: %s", userId);
     this.invalidate(`websites:${userId}`);
     this.invalidate(`overview:${userId}`);
+    this.invalidate(`overviewResponse:${userId}`);
   }
 
   clear() {

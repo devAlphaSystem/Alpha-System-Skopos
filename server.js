@@ -23,6 +23,7 @@ import { startCronJobs } from "./src/services/cron.js";
 import { initialize as initializeAppState, doesUserExist } from "./src/services/appState.js";
 import { startRealtimeService } from "./src/services/realtime.js";
 import { initializeUptimeMonitoring } from "./src/services/uptimeMonitor.js";
+import { backfillAll } from "./src/services/rollupService.js";
 import { deviceDetectionMiddleware } from "./src/utils/deviceDetection.js";
 import { checkForUpdates } from "./src/services/updateChecker.js";
 import { countryNames } from "./src/utils/countries.js";
@@ -147,6 +148,7 @@ async function initializeApp() {
     startCronJobs();
     startRealtimeService();
     initializeUptimeMonitoring();
+    backfillAll(60);
 
     setInterval(
       () => {

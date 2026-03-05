@@ -1,10 +1,18 @@
 import { pbAdmin, ensureAdminAuth } from "../services/pocketbase.js";
-import { subDays } from "date-fns";
-import { calculateMetricsFromData, calculateMetricsFromRecords, calculatePercentageChange, calculateActiveUsers, getReportsFromMetrics, getAllData, getMetricTrends, fetchRecordsForPeriod } from "../services/analyticsService.js";
+import { eachDayOfInterval, subDays } from "date-fns";
+import { calculateMetricsFromData, calculatePercentageChange, calculateActiveUsers, fetchRecordsForPeriod, buildSessionEventsMap } from "../services/analyticsService.js";
+import { getDailyStats, getDailyStatsMulti, aggregateStats, trendsFromRows, breakdownsToReports, breakdownsToAllData } from "../services/rollupService.js";
 import { addClient } from "../services/sseManager.js";
 import cacheService from "../services/cacheService.js";
 import logger from "../utils/logger.js";
 import { get as nlcurlGet } from "nlcurl";
+
+function toDateString(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 export function handleSseConnection(req, res) {
   logger.info("New SSE client connected from user: %s", res.locals.user?.id || "unknown");
@@ -69,164 +77,100 @@ export async function getOverviewData(req, res) {
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
     const resultsLimit = Number.parseInt(req.query.limit) || 10;
-    const today = new Date();
+    const requestedSections = req.query.sections ? req.query.sections.split(",") : null;
+    const sectionsKey = requestedSections ? requestedSections.sort().join(",") : "all";
+    const responseCacheKey = cacheService.key("overviewResponse", userId, dataPeriod, resultsLimit, sectionsKey);
 
-    const currentStartDate = subDays(today, dataPeriod - 1);
-    currentStartDate.setHours(0, 0, 0, 0);
+    const response = await cacheService.getOrCompute(responseCacheKey, cacheService.TTL.SESSIONS, async () => {
+      const wantReports = !requestedSections || requestedSections.includes("reports");
+      const wantTrends = !requestedSections || requestedSections.includes("trends");
+      const wantChange = !requestedSections || requestedSections.includes("change");
+      const wantActiveUsers = !requestedSections || requestedSections.includes("activeUsers");
+      const today = new Date();
+      const todayStr = toDateString(today);
 
-    const prevStartDate = subDays(currentStartDate, dataPeriod);
-    const prevEndDate = new Date(currentStartDate);
-    prevEndDate.setMilliseconds(-1);
+      const currentStartDate = subDays(today, dataPeriod - 1);
+      currentStartDate.setHours(0, 0, 0, 0);
+      const yesterdayStr = toDateString(subDays(today, 1));
+      const todayStart = new Date(today);
+      todayStart.setHours(0, 0, 0, 0);
 
-    const websiteIds = websites.map((id) => id.id);
+      const websiteIds = websites.map((w) => w.id);
 
-    const [currentRawDataArray, prevRawDataArray, activeUsersCounts] = await Promise.all([Promise.all(websiteIds.map((id) => fetchRecordsForPeriod(id, currentStartDate, today))), Promise.all(websiteIds.map((id) => fetchRecordsForPeriod(id, prevStartDate, prevEndDate))), Promise.all(websiteIds.map((id) => calculateActiveUsers(id)))]);
+      const fetches = [getDailyStatsMulti(websiteIds, currentStartDate, new Date(yesterdayStr + "T23:59:59")), Promise.all(websiteIds.map((id) => fetchRecordsForPeriod(id, todayStart, today)))];
+      if (wantChange) {
+        const prevStartDate = subDays(currentStartDate, dataPeriod);
+        const prevEndDate = new Date(currentStartDate);
+        prevEndDate.setMilliseconds(-1);
+        fetches.push(getDailyStatsMulti(websiteIds, prevStartDate, prevEndDate));
+      }
+      if (wantActiveUsers) fetches.push(Promise.all(websiteIds.map((id) => calculateActiveUsers(id))));
 
-    const currentMetricsArray = currentRawDataArray.map((data) => calculateMetricsFromData(data.sessions, data.events, data.jsErrors));
-    const prevMetricsArray = prevRawDataArray.map((data) => calculateMetricsFromData(data.sessions, data.events, data.jsErrors));
+      const fetchResults = await Promise.all(fetches);
+      const pastRows = fetchResults[0];
+      const todayRawDataArray = fetchResults[1];
+      const prevRows = wantChange ? fetchResults[2] : [];
+      const activeUsersCounts = wantActiveUsers ? fetchResults[wantChange ? 3 : 2] : null;
 
-    const activeUsers = activeUsersCounts.reduce((sum, count) => sum + count, 0);
+      const todayRows = todayRawDataArray.map((data) => {
+        const sessionEventsMap = buildSessionEventsMap(data.events);
+        const m = calculateMetricsFromData(data.sessions, data.events, data.jsErrors, { skipBreakdowns: !wantReports, sessionEventsMap });
+        let todayDurationMs = 0;
+        for (const s of data.sessions) {
+          const dur = new Date(s.updated) - new Date(s.created);
+          if (dur > 0) todayDurationMs += dur;
+        }
+        return {
+          date: todayStr,
+          visitors: m.visitors,
+          newVisitors: m.newVisitors,
+          pageViews: m.pageViews,
+          engagedSessions: m.engagedSessions,
+          bounceCount: m.visitors > 0 ? Math.round((m.bounceRate / 100) * m.visitors) : 0,
+          totalDurationMs: todayDurationMs,
+          jsErrorCount: m.jsErrors,
+          breakdowns: wantReports ? buildTodayBreakdowns(m) : null,
+        };
+      });
 
-    const currentMetrics = {
-      pageViews: currentMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
-      visitors: currentMetricsArray.reduce((sum, m) => sum + m.visitors, 0),
-      newVisitors: currentMetricsArray.reduce((sum, m) => sum + m.newVisitors, 0),
-      returningVisitors: currentMetricsArray.reduce((sum, m) => sum + m.returningVisitors, 0),
-      engagementRate: 0,
-      avgSessionDuration: { formatted: "00:00", raw: 0 },
-      bounceRate: 0,
-      jsErrors: currentMetricsArray.reduce((sum, m) => sum + m.jsErrors, 0),
-    };
+      const allRows = [...pastRows, ...todayRows];
+      const currentMetrics = aggregateStats(allRows);
+      const activeUsers = activeUsersCounts ? activeUsersCounts.reduce((sum, count) => sum + count, 0) : 0;
 
-    const totalEngagedSessions = currentMetricsArray.reduce((sum, m) => sum + (m.engagedSessions || 0), 0);
-    currentMetrics.engagementRate = currentMetrics.visitors > 0 ? Math.round((totalEngagedSessions / currentMetrics.visitors) * 100) : 0;
+      const metrics = { ...currentMetrics };
 
-    let totalDurationSeconds = 0;
-    for (const m of currentMetricsArray) {
-      totalDurationSeconds += m.avgSessionDuration.raw * m.visitors;
-    }
-    const avgDuration = currentMetrics.visitors > 0 ? Math.round(totalDurationSeconds / currentMetrics.visitors) : 0;
-    const minutes = Math.floor(avgDuration / 60)
-      .toString()
-      .padStart(2, "0");
-    const seconds = (avgDuration % 60).toString().padStart(2, "0");
-    currentMetrics.avgSessionDuration = { formatted: `${minutes}:${seconds}`, raw: avgDuration };
+      if (wantTrends) {
+        const trendDays = Math.min(dataPeriod, 7);
+        const trendStartDate = trendDays < dataPeriod ? subDays(today, trendDays - 1) : currentStartDate;
+        const dateRange = eachDayOfInterval({ start: trendStartDate, end: today }).map(toDateString);
+        const trendRows = allRows.filter((r) => dateRange.includes(r.date));
+        metrics.trends = trendsFromRows(trendRows, dateRange);
+      }
 
-    let totalBounceRate = 0;
-    for (const m of currentMetricsArray) {
-      totalBounceRate += m.bounceRate * m.visitors;
-    }
-    currentMetrics.bounceRate = currentMetrics.visitors > 0 ? Math.round(totalBounceRate / currentMetrics.visitors) : 0;
+      if (wantChange) {
+        const prevMetrics = aggregateStats(prevRows);
+        metrics.change = {
+          pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
+          visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
+          newVisitors: calculatePercentageChange(currentMetrics.newVisitors, prevMetrics.newVisitors),
+          engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
+          avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
+          bounceRate: calculatePercentageChange(currentMetrics.bounceRate, prevMetrics.bounceRate),
+        };
+      }
 
-    const prevMetrics = {
-      pageViews: prevMetricsArray.reduce((sum, m) => sum + m.pageViews, 0),
-      visitors: prevMetricsArray.reduce((sum, m) => sum + m.visitors, 0),
-      newVisitors: prevMetricsArray.reduce((sum, m) => sum + m.newVisitors, 0),
-      engagementRate: 0,
-      avgSessionDuration: { raw: 0 },
-    };
+      const response = { metrics };
+      if (wantActiveUsers) response.activeUsers = activeUsers;
 
-    const prevTotalEngagedSessions = prevMetricsArray.reduce((sum, m) => sum + (m.engagedSessions || 0), 0);
-    prevMetrics.engagementRate = prevMetrics.visitors > 0 ? Math.round((prevTotalEngagedSessions / prevMetrics.visitors) * 100) : 0;
+      if (wantReports) {
+        response.reports = breakdownsToReports(allRows, currentMetrics.pageViews, currentMetrics.visitors, currentMetrics.jsErrors, resultsLimit);
+      }
 
-    let prevTotalDurationSeconds = 0;
-    for (const m of prevMetricsArray) {
-      prevTotalDurationSeconds += m.avgSessionDuration.raw * m.visitors;
-    }
-    prevMetrics.avgSessionDuration.raw = prevMetrics.visitors > 0 ? Math.round(prevTotalDurationSeconds / prevMetrics.visitors) : 0;
-
-    const flatSessions = currentRawDataArray.flatMap((d) => d.sessions);
-    const flatEvents = currentRawDataArray.flatMap((d) => d.events);
-    const flatJsErrors = currentRawDataArray.flatMap((d) => d.jsErrors || []);
-    const trendDays = Math.min(dataPeriod, 7);
-    const trendStartDate = trendDays < dataPeriod ? subDays(today, trendDays - 1) : currentStartDate;
-    const trends = getMetricTrends(flatSessions, flatEvents, flatJsErrors, trendDays, trendStartDate, today);
-
-    const metrics = {
-      ...currentMetrics,
-      trends,
-      change: {
-        pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
-        visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
-        newVisitors: calculatePercentageChange(currentMetrics.newVisitors, prevMetrics.newVisitors),
-        engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
-        avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
-        bounceRate: calculatePercentageChange(currentMetrics.bounceRate, prevMetrics.bounceRate),
-      },
-    };
-
-    const mergedMetrics = {
-      topPages: new Map(),
-      entryPages: new Map(),
-      exitPages: new Map(),
-      topReferrers: new Map(),
-      deviceBreakdown: new Map(),
-      browserBreakdown: new Map(),
-      languageBreakdown: new Map(),
-      countryBreakdown: new Map(),
-      stateBreakdown: new Map(),
-      topCustomEvents: new Map(),
-      topJsErrors: new Map(),
-    };
-
-    for (const m of currentMetricsArray) {
-      for (const item of m.topPages) mergedMetrics.topPages.set(item.key, (mergedMetrics.topPages.get(item.key) || 0) + item.count);
-      for (const item of m.entryPages) mergedMetrics.entryPages.set(item.key, (mergedMetrics.entryPages.get(item.key) || 0) + item.count);
-      for (const item of m.exitPages) mergedMetrics.exitPages.set(item.key, (mergedMetrics.exitPages.get(item.key) || 0) + item.count);
-      for (const item of m.topReferrers) mergedMetrics.topReferrers.set(item.key, (mergedMetrics.topReferrers.get(item.key) || 0) + item.count);
-      for (const item of m.deviceBreakdown) mergedMetrics.deviceBreakdown.set(item.key, (mergedMetrics.deviceBreakdown.get(item.key) || 0) + item.count);
-      for (const item of m.browserBreakdown) mergedMetrics.browserBreakdown.set(item.key, (mergedMetrics.browserBreakdown.get(item.key) || 0) + item.count);
-      for (const item of m.languageBreakdown) mergedMetrics.languageBreakdown.set(item.key, (mergedMetrics.languageBreakdown.get(item.key) || 0) + item.count);
-      for (const item of m.countryBreakdown) mergedMetrics.countryBreakdown.set(item.key, (mergedMetrics.countryBreakdown.get(item.key) || 0) + item.count);
-      for (const item of m.stateBreakdown) mergedMetrics.stateBreakdown.set(item.key, (mergedMetrics.stateBreakdown.get(item.key) || 0) + item.count);
-      for (const item of m.topCustomEvents) mergedMetrics.topCustomEvents.set(item.key, (mergedMetrics.topCustomEvents.get(item.key) || 0) + item.count);
-      for (const item of m.topJsErrors) mergedMetrics.topJsErrors.set(item.key, (mergedMetrics.topJsErrors.get(item.key) || 0) + item.count);
-    }
-
-    const totalPageViews = currentMetrics.pageViews;
-    const totalVisitors = currentMetrics.visitors;
-    const totalJsErrors = currentMetrics.jsErrors;
-
-    const sortedMetrics = {
-      topPages: Array.from(mergedMetrics.topPages.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalPageViews > 0 ? Math.round((count / totalPageViews) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-      entryPages: Array.from(mergedMetrics.entryPages.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-      exitPages: Array.from(mergedMetrics.exitPages.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-      topReferrers: Array.from(mergedMetrics.topReferrers.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-      deviceBreakdown: Array.from(mergedMetrics.deviceBreakdown.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-      browserBreakdown: Array.from(mergedMetrics.browserBreakdown.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-      languageBreakdown: Array.from(mergedMetrics.languageBreakdown.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-      countryBreakdown: Array.from(mergedMetrics.countryBreakdown.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-      stateBreakdown: Array.from(mergedMetrics.stateBreakdown.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-      topCustomEvents: Array.from(mergedMetrics.topCustomEvents.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalVisitors > 0 ? Math.round((count / totalVisitors) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-      topJsErrors: Array.from(mergedMetrics.topJsErrors.entries())
-        .map(([key, count]) => ({ key, count, percentage: totalJsErrors > 0 ? Math.round((count / totalJsErrors) * 100) : 0 }))
-        .sort((a, b) => b.count - a.count),
-    };
-
-    const reports = getReportsFromMetrics(sortedMetrics, resultsLimit);
+      return response;
+    });
 
     logger.debug("API getOverviewData successful for user %s.", userId);
-    res.status(200).json({ activeUsers, metrics, reports });
+    res.status(200).json(response);
   } catch (error) {
     logger.error("[API ERROR] Failed to fetch overview data for user %s: %o", res.locals.user?.id, error);
     res.status(500).json({ error: "Failed to fetch overview data." });
@@ -248,52 +192,125 @@ export async function getDashboardData(req, res) {
 
     const dataPeriod = Number.parseInt(req.query.period) || 7;
     const resultsLimit = Number.parseInt(req.query.limit) || 10;
-    const today = new Date();
+    const requestedSections = req.query.sections ? req.query.sections.split(",") : null;
+    const sectionsKey = requestedSections ? requestedSections.sort().join(",") : "all";
+    const responseCacheKey = cacheService.key("dashResponse", websiteId, dataPeriod, resultsLimit, sectionsKey);
 
-    const currentStartDate = subDays(today, dataPeriod - 1);
-    currentStartDate.setHours(0, 0, 0, 0);
+    const response = await cacheService.getOrCompute(responseCacheKey, cacheService.TTL.SESSIONS, async () => {
+      const wantReports = !requestedSections || requestedSections.includes("reports");
+      const wantTrends = !requestedSections || requestedSections.includes("trends");
+      const wantChange = !requestedSections || requestedSections.includes("change");
+      const wantActiveUsers = !requestedSections || requestedSections.includes("activeUsers");
+      const today = new Date();
+      const todayStr = toDateString(today);
 
-    const prevStartDate = subDays(currentStartDate, dataPeriod);
-    const prevEndDate = new Date(currentStartDate);
-    prevEndDate.setMilliseconds(-1);
+      const currentStartDate = subDays(today, dataPeriod - 1);
+      currentStartDate.setHours(0, 0, 0, 0);
 
-    const [currentRawData, prevRawData] = await Promise.all([fetchRecordsForPeriod(websiteId, currentStartDate, today), fetchRecordsForPeriod(websiteId, prevStartDate, prevEndDate)]);
+      const todayStart = new Date(today);
+      todayStart.setHours(0, 0, 0, 0);
+      const yesterdayStr = toDateString(subDays(today, 1));
 
-    const currentMetrics = calculateMetricsFromData(currentRawData.sessions, currentRawData.events, currentRawData.jsErrors);
-    const prevMetrics = calculateMetricsFromData(prevRawData.sessions, prevRawData.events, prevRawData.jsErrors);
+      const pastFetches = [getDailyStats(websiteId, currentStartDate, new Date(yesterdayStr + "T23:59:59")), fetchRecordsForPeriod(websiteId, todayStart, today)];
+      if (wantChange) {
+        const prevStartDate = subDays(currentStartDate, dataPeriod);
+        const prevEndDate = new Date(currentStartDate);
+        prevEndDate.setMilliseconds(-1);
+        pastFetches.push(getDailyStats(websiteId, prevStartDate, prevEndDate));
+      }
 
-    const { sessions, events, jsErrors } = currentRawData;
+      const fetchResults = await Promise.all(pastFetches);
+      const pastRows = fetchResults[0];
+      const todayRawData = fetchResults[1];
 
-    const activeUsers = website.isArchived ? 0 : await calculateActiveUsers(websiteId);
+      const sessionEventsMap = buildSessionEventsMap(todayRawData.events);
+      const todayMetrics = calculateMetricsFromData(todayRawData.sessions, todayRawData.events, todayRawData.jsErrors, { skipBreakdowns: !wantReports, sessionEventsMap });
 
-    const trendDays = Math.min(dataPeriod, 7);
-    const trendStartDate = trendDays < dataPeriod ? subDays(today, trendDays - 1) : currentStartDate;
-    const trends = getMetricTrends(sessions, events, jsErrors, trendDays, trendStartDate, today);
+      let todayDurationMs = 0;
+      for (const s of todayRawData.sessions) {
+        const dur = new Date(s.updated) - new Date(s.created);
+        if (dur > 0) todayDurationMs += dur;
+      }
+      const todayRow = {
+        date: todayStr,
+        visitors: todayMetrics.visitors,
+        newVisitors: todayMetrics.newVisitors,
+        pageViews: todayMetrics.pageViews,
+        engagedSessions: todayMetrics.engagedSessions,
+        bounceCount: todayMetrics.visitors > 0 ? Math.round((todayMetrics.bounceRate / 100) * todayMetrics.visitors) : 0,
+        totalDurationMs: todayDurationMs,
+        jsErrorCount: todayMetrics.jsErrors,
+        breakdowns: wantReports ? buildTodayBreakdowns(todayMetrics) : null,
+      };
 
-    const metrics = {
-      ...currentMetrics,
-      trends,
-      change: {
-        pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
-        visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
-        newVisitors: calculatePercentageChange(currentMetrics.newVisitors, prevMetrics.newVisitors),
-        engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
-        avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
-        bounceRate: calculatePercentageChange(currentMetrics.bounceRate, prevMetrics.bounceRate),
-      },
-    };
+      const allRows = [...pastRows, todayRow];
+      const currentMetrics = aggregateStats(allRows);
 
-    if (website.isArchived) {
-      metrics.change = {};
-    }
+      const response = {};
 
-    const reports = getReportsFromMetrics(currentMetrics, resultsLimit);
+      if (wantActiveUsers) {
+        response.activeUsers = website.isArchived ? 0 : await calculateActiveUsers(websiteId);
+      }
+
+      const metrics = { ...currentMetrics };
+
+      if (wantTrends) {
+        const trendDays = Math.min(dataPeriod, 7);
+        const trendStartDate = trendDays < dataPeriod ? subDays(today, trendDays - 1) : currentStartDate;
+        const dateRange = eachDayOfInterval({ start: trendStartDate, end: today }).map(toDateString);
+        const trendRows = allRows.filter((r) => dateRange.includes(r.date));
+        metrics.trends = trendsFromRows(trendRows, dateRange);
+      }
+
+      if (wantChange) {
+        const prevRows = fetchResults[2];
+        const prevMetrics = aggregateStats(prevRows);
+        metrics.change = {
+          pageViews: calculatePercentageChange(currentMetrics.pageViews, prevMetrics.pageViews),
+          visitors: calculatePercentageChange(currentMetrics.visitors, prevMetrics.visitors),
+          newVisitors: calculatePercentageChange(currentMetrics.newVisitors, prevMetrics.newVisitors),
+          engagementRate: calculatePercentageChange(currentMetrics.engagementRate, prevMetrics.engagementRate),
+          avgSessionDuration: calculatePercentageChange(currentMetrics.avgSessionDuration.raw, prevMetrics.avgSessionDuration.raw),
+          bounceRate: calculatePercentageChange(currentMetrics.bounceRate, prevMetrics.bounceRate),
+        };
+        if (website.isArchived) {
+          metrics.change = {};
+        }
+      }
+
+      response.metrics = metrics;
+
+      if (wantReports) {
+        response.reports = breakdownsToReports(allRows, currentMetrics.pageViews, currentMetrics.visitors, currentMetrics.jsErrors, resultsLimit);
+      }
+
+      return response;
+    });
+
     logger.debug("API getDashboardData successful for website %s.", websiteId);
-    res.status(200).json({ activeUsers, metrics, reports });
+    res.status(200).json(response);
   } catch (error) {
     logger.error("[API ERROR] Failed to fetch dashboard data for website %s: %o", req.params.websiteId, error);
     res.status(500).json({ error: "Failed to fetch dashboard data." });
   }
+}
+
+function buildTodayBreakdowns(metrics) {
+  const bd = {};
+  const keys = ["topPages", "entryPages", "exitPages", "topReferrers", "deviceBreakdown", "browserBreakdown", "languageBreakdown", "countryBreakdown", "stateBreakdown", "topCustomEvents", "topJsErrors"];
+  for (const key of keys) {
+    const arr = metrics[key];
+    if (!arr) {
+      bd[key] = {};
+      continue;
+    }
+    const obj = {};
+    for (const item of arr) {
+      obj[item.key] = item.count;
+    }
+    bd[key] = obj;
+  }
+  return bd;
 }
 
 export async function getDetailedReport(req, res) {
@@ -394,10 +411,35 @@ export async function getDetailedReport(req, res) {
     const today = new Date();
     const currentStartDate = subDays(today, dataPeriod - 1);
     currentStartDate.setHours(0, 0, 0, 0);
-    const currentEndDate = today;
+    const todayStr = toDateString(today);
+    const yesterdayStr = toDateString(subDays(today, 1));
+    const todayStart = new Date(today);
+    todayStart.setHours(0, 0, 0, 0);
 
-    const metrics = await calculateMetricsFromRecords(websiteId, currentStartDate, currentEndDate);
-    const allData = getAllData(metrics, reportType);
+    const [pastRows, todayRawData] = await Promise.all([getDailyStats(websiteId, currentStartDate, new Date(yesterdayStr + "T23:59:59")), fetchRecordsForPeriod(websiteId, todayStart, today)]);
+
+    const sessionEventsMap = buildSessionEventsMap(todayRawData.events);
+    const todayMetrics = calculateMetricsFromData(todayRawData.sessions, todayRawData.events, todayRawData.jsErrors, { sessionEventsMap });
+    let todayDurationMs = 0;
+    for (const s of todayRawData.sessions) {
+      const dur = new Date(s.updated) - new Date(s.created);
+      if (dur > 0) todayDurationMs += dur;
+    }
+    const todayRow = {
+      date: todayStr,
+      visitors: todayMetrics.visitors,
+      newVisitors: todayMetrics.newVisitors,
+      pageViews: todayMetrics.pageViews,
+      engagedSessions: todayMetrics.engagedSessions,
+      bounceCount: todayMetrics.visitors > 0 ? Math.round((todayMetrics.bounceRate / 100) * todayMetrics.visitors) : 0,
+      totalDurationMs: todayDurationMs,
+      jsErrorCount: todayMetrics.jsErrors,
+      breakdowns: buildTodayBreakdowns(todayMetrics),
+    };
+
+    const allRows = [...pastRows, todayRow];
+    const stats = aggregateStats(allRows);
+    const allData = breakdownsToAllData(allRows, stats.pageViews, stats.visitors, stats.jsErrors, reportType);
     logger.debug("Generated report %s with %d items.", reportType, allData.length);
     res.status(200).json({ data: allData });
   } catch (error) {
