@@ -1,4 +1,3 @@
-import { subDays, startOfDay, endOfDay } from "date-fns";
 import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { fetchRecordsForPeriod, calculateMetricsFromData, buildSessionEventsMap } from "./analyticsService.js";
 import cacheService from "./cacheService.js";
@@ -83,13 +82,7 @@ function computeBreakdowns(sessions, events, sessionEventsMap) {
   };
 }
 
-export async function rollupDay(websiteId, dateStr) {
-  await ensureAdminAuth();
-
-  const dayStart = startOfDay(new Date(dateStr + "T00:00:00"));
-  const dayEnd = endOfDay(dayStart);
-
-  const { sessions, events, jsErrors } = await fetchRecordsForPeriod(websiteId, dayStart, dayEnd);
+function buildDailyStatsPayload(websiteId, dateStr, sessions, events, jsErrors) {
   const sessionEventsMap = buildSessionEventsMap(events);
   const metrics = calculateMetricsFromData(sessions, events, jsErrors, { skipBreakdowns: true, sessionEventsMap });
   const breakdowns = computeBreakdowns(sessions, events, sessionEventsMap);
@@ -109,7 +102,7 @@ export async function rollupDay(websiteId, dateStr) {
     if (dur > 0) totalDurationMs += dur;
   }
 
-  const data = {
+  return {
     website: websiteId,
     date: dateStr,
     visitors: metrics.visitors,
@@ -121,7 +114,16 @@ export async function rollupDay(websiteId, dateStr) {
     jsErrorCount: metrics.jsErrors,
     breakdowns,
   };
+}
 
+async function fetchDailyStatsPayload(websiteId, dateStr) {
+  const dayStart = new Date(dateStr + "T00:00:00.000Z");
+  const dayEnd = new Date(dateStr + "T23:59:59.999Z");
+  const { sessions, events, jsErrors } = await fetchRecordsForPeriod(websiteId, dayStart, dayEnd);
+  return buildDailyStatsPayload(websiteId, dateStr, sessions, events, jsErrors);
+}
+
+async function upsertDailyStatsRow(websiteId, dateStr, data) {
   try {
     const existing = await pbAdmin.collection(COLLECTION).getFirstListItem(`website="${websiteId}" && date="${dateStr}"`, {
       fields: "id",
@@ -135,9 +137,91 @@ export async function rollupDay(websiteId, dateStr) {
   }
 }
 
+function getCompletedDateStrings(startDate, endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const lastCompleteDay = new Date(today);
+  lastCompleteDay.setDate(lastCompleteDay.getDate() - 1);
+
+  if (end > lastCompleteDay) {
+    end.setTime(lastCompleteDay.getTime());
+  }
+
+  if (start > end) {
+    return [];
+  }
+
+  const dates = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    dates.push(toDateString(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+async function backfillMissingRows(websiteIds, startDate, endDate, existingRows) {
+  const targetDates = getCompletedDateStrings(startDate, endDate);
+  if (websiteIds.length === 0 || targetDates.length === 0) {
+    return existingRows;
+  }
+
+  const existingKeys = new Set(existingRows.map((row) => `${row.website}:${row.date}`));
+  const missing = [];
+
+  for (const websiteId of websiteIds) {
+    for (const dateStr of targetDates) {
+      const key = `${websiteId}:${dateStr}`;
+      if (!existingKeys.has(key)) {
+        missing.push({ websiteId, dateStr });
+      }
+    }
+  }
+
+  if (missing.length === 0) {
+    return existingRows;
+  }
+
+  logger.warn("Backfilling %d missing daily_stats rows from raw data.", missing.length);
+
+  const rebuiltRows = await Promise.all(
+    missing.map(async ({ websiteId, dateStr }) => {
+      const data = await fetchDailyStatsPayload(websiteId, dateStr);
+      if (data.visitors === 0 && data.pageViews === 0 && data.jsErrorCount === 0) {
+        return null;
+      }
+      await upsertDailyStatsRow(websiteId, dateStr, data);
+      cacheService.invalidateWebsiteLight(websiteId);
+      return data;
+    }),
+  );
+
+  return [...existingRows, ...rebuiltRows.filter(Boolean)].sort((a, b) => {
+    if (a.date === b.date) {
+      return String(a.website).localeCompare(String(b.website));
+    }
+    return a.date.localeCompare(b.date);
+  });
+}
+
+export async function rollupDay(websiteId, dateStr) {
+  await ensureAdminAuth();
+
+  const data = await fetchDailyStatsPayload(websiteId, dateStr);
+  await upsertDailyStatsRow(websiteId, dateStr, data);
+}
+
 export async function rollupYesterday() {
   await ensureAdminAuth();
-  const yesterday = toDateString(subDays(new Date(), 1));
+  const now = new Date();
+  const yesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
   const websites = await pbAdmin.collection("websites").getFullList({
     fields: "id,name",
@@ -146,20 +230,20 @@ export async function rollupYesterday() {
 
   for (const website of websites) {
     try {
-      await rollupDay(website.id, yesterday);
+      await rollupDay(website.id, yesterdayStr);
     } catch (error) {
-      logger.error("Failed to rollup daily_stats for website %s on %s: %o", website.id, yesterday, error);
+      logger.error("Failed to rollup daily_stats for website %s on %s: %o", website.id, yesterdayStr, error);
     }
   }
-  logger.info("Daily rollup complete for %d websites on %s.", websites.length, yesterday);
+  logger.info("Daily rollup complete for %d websites on %s.", websites.length, yesterdayStr);
 }
 
 export async function backfillWebsite(websiteId, days = 365) {
   const today = new Date();
-  const todayStr = toDateString(today);
 
   for (let i = 1; i <= days; i++) {
-    const dateStr = toDateString(subDays(today, i));
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - i));
+    const dateStr = d.toISOString().slice(0, 10);
 
     try {
       await pbAdmin.collection(COLLECTION).getFirstListItem(`website="${websiteId}" && date="${dateStr}"`, {
@@ -199,11 +283,12 @@ export async function getDailyStats(websiteId, startDate, endDate) {
 
   return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
     await ensureAdminAuth();
-    return pbAdmin.collection(COLLECTION).getFullList({
+    const rows = await pbAdmin.collection(COLLECTION).getFullList({
       filter: `website="${websiteId}" && date>="${startStr}" && date<="${endStr}"`,
       sort: "date",
       $autoCancel: false,
     });
+    return backfillMissingRows([websiteId], startDate, endDate, rows);
   });
 }
 
@@ -216,11 +301,12 @@ export async function getDailyStatsMulti(websiteIds, startDate, endDate) {
 
   return cacheService.getOrCompute(cacheKey, cacheService.TTL.SESSIONS, async () => {
     await ensureAdminAuth();
-    return pbAdmin.collection(COLLECTION).getFullList({
+    const rows = await pbAdmin.collection(COLLECTION).getFullList({
       filter: `(${websiteFilter}) && date>="${startStr}" && date<="${endStr}"`,
       sort: "date",
       $autoCancel: false,
     });
+    return backfillMissingRows(websiteIds, startDate, endDate, rows);
   });
 }
 

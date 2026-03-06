@@ -349,11 +349,31 @@ export function startCronJobs() {
   cron.schedule(
     "0 0 * * *",
     async () => {
-      await rollupYesterday();
-      await enforceDataRetention();
-      await pruneOldRawData();
-      await cleanupOrphanedData();
-      await sendDailySummaryReports();
+      try {
+        await rollupYesterday();
+      } catch (e) {
+        logger.error("Daily rollup failed: %o", e);
+      }
+      try {
+        await enforceDataRetention();
+      } catch (e) {
+        logger.error("Data retention check failed: %o", e);
+      }
+      try {
+        await pruneOldRawData();
+      } catch (e) {
+        logger.error("Raw data pruning failed: %o", e);
+      }
+      try {
+        await cleanupOrphanedData();
+      } catch (e) {
+        logger.error("Orphaned data cleanup failed: %o", e);
+      }
+      try {
+        await sendDailySummaryReports();
+      } catch (e) {
+        logger.error("Daily summary reports failed: %o", e);
+      }
     },
     {
       timezone: "UTC",
