@@ -2,6 +2,18 @@ import { pbAdmin, ensureAdminAuth } from "./pocketbase.js";
 import { encrypt, decrypt } from "../utils/encryption.js";
 import logger from "../utils/logger.js";
 
+/**
+ * Encrypts and stores an API key for a given service. Updates the existing record if one
+ * already exists with the same user + service + label combination.
+ *
+ * @param {string} userId - PocketBase user record ID.
+ * @param {string} service - Service identifier: `'resend'`, `'google_pagespeed'`, or `'chapybara'`.
+ * @param {string} apiKey - Plaintext API key to encrypt and store.
+ * @param {string} [label=''] - Optional label to allow multiple keys per service.
+ * @param {object} [metadata={}] - Arbitrary metadata to store alongside the key.
+ * @returns {Promise<string>} The PocketBase record ID of the stored (or updated) key.
+ * @throws {Error} If encryption or the PocketBase write fails.
+ */
 export async function storeApiKey(userId, service, apiKey, label = "", metadata = {}) {
   try {
     await ensureAdminAuth();
@@ -41,6 +53,15 @@ export async function storeApiKey(userId, service, apiKey, label = "", metadata 
   }
 }
 
+/**
+ * Retrieves and decrypts an API key. Increments the usage counter asynchronously.
+ *
+ * @param {string} userId - PocketBase user record ID.
+ * @param {string} service - Service identifier.
+ * @param {string} [label=''] - Optional label filter.
+ * @returns {Promise<string|null>} Decrypted API key, or `null` if not found.
+ * @throws {Error} If decryption fails (key was stored with a different `ENCRYPTION_KEY`).
+ */
 export async function getApiKey(userId, service, label = "") {
   try {
     await ensureAdminAuth();
@@ -119,6 +140,16 @@ export async function deleteApiKey(userId, keyId) {
   }
 }
 
+/**
+ * Retrieves an API key for a service, falling back to an environment variable if no
+ * user-stored key exists. Used by services (e.g. seoAnalyzer) that support both a
+ * per-user key and a server-wide default.
+ *
+ * @param {string} userId - PocketBase user record ID.
+ * @param {string} service - Service identifier.
+ * @param {string} envVarName - Name of the fallback environment variable (e.g. `'PAGESPEED_API_KEY'`).
+ * @returns {Promise<string|null>} Decrypted API key, env key, or `null` if neither is set.
+ */
 export async function getApiKeyWithFallback(userId, service, envVarName) {
   const userKey = await getApiKey(userId, service);
   if (userKey) {

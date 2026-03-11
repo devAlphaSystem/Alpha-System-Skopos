@@ -78,7 +78,21 @@ function setCorsHeaders(res, origin) {
   res.header("Vary", "Origin");
 }
 
-const cacheReady = refreshAllowedDomains();
+let cacheReady = null;
+
+/**
+ * Primes the allowed-domains cache by triggering the initial refresh.
+ * Must be called once during server startup (before the first request arrives)
+ * so that CORS validation on `POST /collect` does not stall on a cold cache.
+ *
+ * @returns {Promise<void>} Resolves when the initial cache population is complete.
+ */
+export function initCollectCache() {
+  if (!cacheReady) {
+    cacheReady = refreshAllowedDomains();
+  }
+  return cacheReady;
+}
 
 const collectCors = async (req, res, next) => {
   const origin = req.headers.origin;
@@ -88,7 +102,7 @@ const collectCors = async (req, res, next) => {
   }
 
   try {
-    await cacheReady;
+    if (cacheReady) await cacheReady;
     await ensureCacheFresh();
   } catch (error) {
     logger.error("Cache refresh error in CORS middleware: %o", error);

@@ -1,0 +1,1507 @@
+{
+  "formatVersion": 1,
+  "source": "pb_schema.json",
+  "generatedAt": "2026-03-11T00:27:28.343Z",
+  "collections": [
+    {
+      "name": "users",
+      "type": "auth",
+      "listRule": "id = @request.auth.id",
+      "viewRule": "id = @request.auth.id",
+      "createRule": null,
+      "updateRule": "id = @request.auth.id",
+      "deleteRule": "id = @request.auth.id",
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_tokenKey__pb_users_auth_` ON `users` (`tokenKey`)",
+        "CREATE UNIQUE INDEX `idx_email__pb_users_auth_` ON `users` (`email`) WHERE `email` != ''"
+      ],
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 255,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ],
+      "authRule": "",
+      "manageRule": null
+    },
+    {
+      "name": "api_keys",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_038Wm4OymW` ON `api_keys` (\n  `user`,\n  `service`,\n  `isActive`\n)",
+        "CREATE INDEX `idx_M3BnGAHZ5o` ON `api_keys` (\n  `user`,\n  `service`,\n  `label`\n)"
+      ],
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "users"
+        },
+        {
+          "name": "service",
+          "type": "select",
+          "required": false,
+          "maxSelect": 1,
+          "values": [
+            "google_pagespeed",
+            "chapybara",
+            "resend"
+          ]
+        },
+        {
+          "name": "label",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "encryptedKey",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "isActive",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "lastUsed",
+          "type": "date",
+          "required": false,
+          "min": "",
+          "max": ""
+        },
+        {
+          "name": "usageCount",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "metadata",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "app_settings",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_app_settings_user_key` ON `app_settings` (`user`, `key`)"
+      ],
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": true,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "users"
+        },
+        {
+          "name": "key",
+          "type": "text",
+          "required": true,
+          "min": 1,
+          "max": 255,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "websites",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_EbvgIwQP1t` ON `websites` (`trackingId`)",
+        "CREATE INDEX `idx_f5hXNFf9SV` ON `websites` (\n  `user`,\n  `isArchived`\n)",
+        "CREATE INDEX `idx_a0hkvOiR9w` ON `websites` (\n  `uptimeMonitoring`,\n  `isArchived`\n)"
+      ],
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "users"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "domain",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "trackingId",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "currentStatus",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "dataRetentionDays",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "uptimeCheckInterval",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "isArchived",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "disableLocalhostTracking",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "uptimeMonitoring",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "ipBlacklist",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "lastUptimeCheck",
+          "type": "date",
+          "required": false,
+          "min": "",
+          "max": ""
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "advertisements",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_ads_website` ON `advertisements` (`website`)",
+        "CREATE INDEX `idx_ads_website_active` ON `advertisements` (`website`, `isActive`)"
+      ],
+      "fields": [
+        {
+          "name": "website",
+          "type": "relation",
+          "required": true,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": true,
+          "relationTo": "websites"
+        },
+        {
+          "name": "title",
+          "type": "text",
+          "required": true,
+          "min": 1,
+          "max": 255,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 1000,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "targetUrl",
+          "type": "url",
+          "required": true
+        },
+        {
+          "name": "bannerType",
+          "type": "select",
+          "required": true,
+          "maxSelect": 1,
+          "values": [
+            "minimal",
+            "gradient",
+            "bold",
+            "elegant",
+            "modern"
+          ]
+        },
+        {
+          "name": "bannerSize",
+          "type": "select",
+          "required": true,
+          "maxSelect": 1,
+          "values": [
+            "728x90",
+            "300x250",
+            "160x600",
+            "320x50",
+            "300x600"
+          ]
+        },
+        {
+          "name": "bannerConfig",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "ctaText",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 100,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "isActive",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "clickCount",
+          "type": "number",
+          "required": false,
+          "min": 0,
+          "max": null,
+          "onlyInt": true
+        },
+        {
+          "name": "impressionCount",
+          "type": "number",
+          "required": false,
+          "min": 0,
+          "max": null,
+          "onlyInt": true
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "daily_stats",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE UNIQUE INDEX idx_daily_stats_ws_date ON daily_stats (website, date)",
+        "CREATE INDEX idx_daily_stats_date ON daily_stats (date)"
+      ],
+      "fields": [
+        {
+          "name": "website",
+          "type": "relation",
+          "required": true,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "websites"
+        },
+        {
+          "name": "date",
+          "type": "text",
+          "required": true,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "visitors",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "newVisitors",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "pageViews",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "engagedSessions",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "bounceCount",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "totalDurationMs",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "jsErrorCount",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "breakdowns",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        }
+      ]
+    },
+    {
+      "name": "notyf_rules",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_CxmvFpwnre` ON `notyf_rules` (\n  `user`,\n  `isActive`,\n  `eventType`\n)",
+        "CREATE INDEX `idx_4ViQp1G5sc` ON `notyf_rules` (\n  `eventType`,\n  `isActive`\n)"
+      ],
+      "fields": [
+        {
+          "name": "user",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "users"
+        },
+        {
+          "name": "website",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 999,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "websites"
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "eventType",
+          "type": "select",
+          "required": false,
+          "maxSelect": 1,
+          "values": [
+            "new_visitor",
+            "custom_event",
+            "new_session",
+            "daily_summary",
+            "error_threshold",
+            "uptime_status"
+          ]
+        },
+        {
+          "name": "recipientEmail",
+          "type": "email",
+          "required": false,
+          "exceptDomains": null,
+          "onlyDomains": null
+        },
+        {
+          "name": "customEventName",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "metadata",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "isActive",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "lastTriggered",
+          "type": "date",
+          "required": false,
+          "min": "",
+          "max": ""
+        },
+        {
+          "name": "triggerCount",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "seo_data",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE UNIQUE INDEX `idx_seo_website` ON `seo_data` (`website`)"
+      ],
+      "fields": [
+        {
+          "name": "website",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "websites"
+        },
+        {
+          "name": "metaTags",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "performanceScores",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "lighthouseData",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "technicalSeo",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "socialMetaTags",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "analysisWarnings",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "recommendations",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "headings",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "images",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "links",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "loadTime",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "pageSize",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "lastAnalyzed",
+          "type": "date",
+          "required": false,
+          "min": "",
+          "max": ""
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "uptime_checks",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_tgEYNrkO7L` ON `uptime_checks` (\n  `website`,\n  `timestamp`\n)"
+      ],
+      "fields": [
+        {
+          "name": "website",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "websites"
+        },
+        {
+          "name": "isUp",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "statusCode",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "responseTime",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "error",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "ssl",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "contentLength",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "timestamp",
+          "type": "date",
+          "required": false,
+          "min": "",
+          "max": ""
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "uptime_incidents",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_p40E75XFaq` ON `uptime_incidents` (\n  `website`,\n  `isResolved`,\n  `startTime`\n)",
+        "CREATE INDEX `idx_l89NrDTVh6` ON `uptime_incidents` (`startTime`)"
+      ],
+      "fields": [
+        {
+          "name": "website",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "websites"
+        },
+        {
+          "name": "startTime",
+          "type": "date",
+          "required": false,
+          "min": "",
+          "max": ""
+        },
+        {
+          "name": "endTime",
+          "type": "date",
+          "required": false,
+          "min": "",
+          "max": ""
+        },
+        {
+          "name": "duration",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "isResolved",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "error",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "statusCode",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "uptime_sum",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_jIeANuKOIN` ON `uptime_sum` (`website`)"
+      ],
+      "fields": [
+        {
+          "name": "website",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "websites"
+        },
+        {
+          "name": "summary",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "visitors",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_hnQBpD5jHQ` ON `visitors` (\n  `visitorId`,\n  `website`\n)",
+        "CREATE INDEX `idx_H60ZpWCkNl` ON `visitors` (`website`)"
+      ],
+      "fields": [
+        {
+          "name": "website",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "websites"
+        },
+        {
+          "name": "visitorId",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "userId",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 255,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 255,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 50,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "metadata",
+          "type": "json",
+          "required": false,
+          "maxSize": 8192
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "ad_clicks",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_ad_clicks_advertisement` ON `ad_clicks` (`advertisement`)",
+        "CREATE INDEX `idx_ad_clicks_created` ON `ad_clicks` (`advertisement`, `created`)"
+      ],
+      "fields": [
+        {
+          "name": "advertisement",
+          "type": "relation",
+          "required": true,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": true,
+          "relationTo": "advertisements"
+        },
+        {
+          "name": "referrer",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 2000,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "source",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 100,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "userAgent",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 500,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "ipHash",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 64,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "country",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 100,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "device",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 50,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "browser",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 50,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "sessions",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_BBjn5D3Idx` ON `sessions` (\n  `website`,\n  `created`\n)",
+        "CREATE INDEX `idx_7RNsRkdQi5` ON `sessions` (`visitor`)",
+        "CREATE INDEX `idx_i9mVA5cWI0` ON `sessions` (\n  `website`,\n  `country`\n)",
+        "CREATE INDEX `idx_tqBOVCl59Z` ON `sessions` (\n  `website`,\n  `updated`\n)"
+      ],
+      "fields": [
+        {
+          "name": "website",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "websites"
+        },
+        {
+          "name": "visitor",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "visitors"
+        },
+        {
+          "name": "browser",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "os",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "device",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "screenWidth",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "screenHeight",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "language",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "entryPath",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "exitPath",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "referrer",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "country",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "state",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "ipAddress",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "devicePixelRatio",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "connectionType",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "scriptVersion",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "isNewVisitor",
+          "type": "bool",
+          "required": false
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "events",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_VqysCmloVt` ON `events` (\n  `session`,\n  `created`\n)",
+        "CREATE INDEX `idx_CNuF9yqoSR` ON `events` (\n  `session`,\n  `type`,\n  `created`\n)",
+        "CREATE INDEX `idx_CcWW4w5tS8` ON `events` (\n  `type`,\n  `eventName`\n)"
+      ],
+      "fields": [
+        {
+          "name": "session",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "sessions"
+        },
+        {
+          "name": "type",
+          "type": "select",
+          "required": false,
+          "maxSelect": 1,
+          "values": [
+            "pageView",
+            "custom",
+            "click",
+            "form_submission",
+            "revenue"
+          ]
+        },
+        {
+          "name": "path",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "eventName",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "eventData",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    },
+    {
+      "name": "js_errors",
+      "type": "base",
+      "listRule": null,
+      "viewRule": null,
+      "createRule": null,
+      "updateRule": null,
+      "deleteRule": null,
+      "indexes": [
+        "CREATE INDEX `idx_SxHXlHML8B` ON `js_errors` (\n  `website`,\n  `lastSeen`\n)",
+        "CREATE INDEX `idx_rJAQlEwQIa` ON `js_errors` (`session`)",
+        "CREATE INDEX `idx_tlEB63GAXm` ON `js_errors` (\n  `errorHash`,\n  `website`\n)",
+        "CREATE INDEX `idx_syrBbYwZPE` ON `js_errors` (\n  `website`,\n  `created`\n)"
+      ],
+      "fields": [
+        {
+          "name": "session",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "sessions"
+        },
+        {
+          "name": "website",
+          "type": "relation",
+          "required": false,
+          "maxSelect": 1,
+          "minSelect": 0,
+          "cascadeDelete": false,
+          "relationTo": "websites"
+        },
+        {
+          "name": "errorHash",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "errorMessage",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "stackTrace",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "url",
+          "type": "text",
+          "required": false,
+          "min": 0,
+          "max": 0,
+          "pattern": "",
+          "autogeneratePattern": ""
+        },
+        {
+          "name": "count",
+          "type": "number",
+          "required": false,
+          "min": null,
+          "max": null,
+          "onlyInt": false
+        },
+        {
+          "name": "lastSeen",
+          "type": "date",
+          "required": false,
+          "min": "",
+          "max": ""
+        },
+        {
+          "name": "breadcrumbs",
+          "type": "json",
+          "required": false,
+          "maxSize": 0
+        },
+        {
+          "name": "created",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": false
+        },
+        {
+          "name": "updated",
+          "type": "autodate",
+          "onCreate": true,
+          "onUpdate": true
+        }
+      ]
+    }
+  ]
+}

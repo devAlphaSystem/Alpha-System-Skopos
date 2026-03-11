@@ -1,4 +1,35 @@
-/logs
-/node_modules
-/.env
-package-*
+# Environment variables
+.env
+
+# Database schema
+pb_schema.json
+
+# Build output
+dist/
+data/
+
+# Dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Scripts
+scripts/
+
+# Test artifacts
+test-out.txt
+test-result.txt
+test-results.txt
+test-summary.txt
+test/integration/server/server-out.txt
+test/integration/server/server-err.txt
+
+# TypeScript
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db

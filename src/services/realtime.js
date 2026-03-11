@@ -46,6 +46,16 @@ async function fetchWebsiteWithUser(websiteId) {
   }
 }
 
+/**
+ * Subscribes to PocketBase realtime events for the `sessions` collection.
+ * On each new session event, pushes an SSE broadcast to connected dashboard clients
+ * and evaluates notification rules for alerts. Also subscribes to `events` for
+ * custom-event triggered notifications.
+ *
+ * Idempotent — calling this more than once has no effect.
+ *
+ * @returns {Promise<void>}
+ */
 export async function startRealtimeService() {
   if (isSubscribed) {
     return;

@@ -190,17 +190,34 @@ async function backfillMissingRows(websiteIds, startDate, endDate, existingRows)
 
   logger.warn("Backfilling %d missing daily_stats rows from raw data.", missing.length);
 
-  const rebuiltRows = await Promise.all(
-    missing.map(async ({ websiteId, dateStr }) => {
-      const data = await fetchDailyStatsPayload(websiteId, dateStr);
-      if (data.visitors === 0 && data.pageViews === 0 && data.jsErrorCount === 0) {
-        return null;
+  const CONCURRENCY = 5;
+  const rebuiltRows = [];
+  let consecutiveEmptyBatches = 0;
+  for (let i = 0; i < missing.length; i += CONCURRENCY) {
+    const batch = missing.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.all(
+      batch.map(async ({ websiteId, dateStr }) => {
+        const data = await fetchDailyStatsPayload(websiteId, dateStr);
+        if (data.visitors === 0 && data.pageViews === 0 && data.jsErrorCount === 0) {
+          return null;
+        }
+        await upsertDailyStatsRow(websiteId, dateStr, data);
+        cacheService.invalidateWebsiteLight(websiteId);
+        return data;
+      }),
+    );
+    rebuiltRows.push(...batchResults);
+
+    if (batchResults.every((r) => r === null)) {
+      consecutiveEmptyBatches++;
+      if (consecutiveEmptyBatches >= 3) {
+        logger.debug("Stopping backfill early: %d consecutive empty batches, skipping remaining %d days.", consecutiveEmptyBatches, missing.length - i - CONCURRENCY);
+        break;
       }
-      await upsertDailyStatsRow(websiteId, dateStr, data);
-      cacheService.invalidateWebsiteLight(websiteId);
-      return data;
-    }),
-  );
+    } else {
+      consecutiveEmptyBatches = 0;
+    }
+  }
 
   return [...existingRows, ...rebuiltRows.filter(Boolean)].sort((a, b) => {
     if (a.date === b.date) {

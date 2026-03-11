@@ -79,7 +79,12 @@ export async function showOverview(req, res) {
     logger.debug("Calculating overview data for %d active websites.", websites.length);
     const websiteIds = websites.map((w) => w.id);
 
-    const [pastRows, todayRawDataArray, prevRows, activeUsersCounts] = await Promise.all([getDailyStatsMulti(websiteIds, currentStartDate, new Date(yesterdayStr + "T23:59:59")), Promise.all(websiteIds.map((id) => fetchRecordsForPeriod(id, todayStart, today))), getDailyStatsMulti(websiteIds, prevStartDate, prevEndDate), Promise.all(websiteIds.map((id) => calculateActiveUsers(id)))]);
+    const oldestCreated = new Date(Math.min(...websites.map((w) => new Date(w.created))));
+    oldestCreated.setHours(0, 0, 0, 0);
+    const clampedCurrentStart = currentStartDate < oldestCreated ? oldestCreated : currentStartDate;
+    const clampedPrevStart = prevStartDate < oldestCreated ? oldestCreated : prevStartDate;
+
+    const [pastRows, todayRawDataArray, prevRows, activeUsersCounts] = await Promise.all([getDailyStatsMulti(websiteIds, clampedCurrentStart, new Date(yesterdayStr + "T23:59:59")), Promise.all(websiteIds.map((id) => fetchRecordsForPeriod(id, todayStart, today))), clampedPrevStart <= prevEndDate ? getDailyStatsMulti(websiteIds, clampedPrevStart, prevEndDate) : Promise.resolve([]), Promise.all(websiteIds.map((id) => calculateActiveUsers(id)))]);
 
     const todayRows = todayRawDataArray.map((data) => {
       const sessionEventsMap = buildSessionEventsMap(data.events);
@@ -192,7 +197,12 @@ export async function showDashboard(req, res) {
     const todayStart = new Date(today);
     todayStart.setHours(0, 0, 0, 0);
 
-    const [pastRows, todayRawData, prevRows, activeUsers] = await Promise.all([getDailyStats(websiteId, currentStartDate, new Date(yesterdayStr + "T23:59:59")), fetchRecordsForPeriod(websiteId, todayStart, today), getDailyStats(websiteId, prevStartDate, prevEndDate), currentWebsite.isArchived ? Promise.resolve(0) : calculateActiveUsers(websiteId)]);
+    const websiteCreated = new Date(currentWebsite.created);
+    websiteCreated.setHours(0, 0, 0, 0);
+    const clampedCurrentStart = currentStartDate < websiteCreated ? websiteCreated : currentStartDate;
+    const clampedPrevStart = prevStartDate < websiteCreated ? websiteCreated : prevStartDate;
+
+    const [pastRows, todayRawData, prevRows, activeUsers] = await Promise.all([getDailyStats(websiteId, clampedCurrentStart, new Date(yesterdayStr + "T23:59:59")), fetchRecordsForPeriod(websiteId, todayStart, today), clampedPrevStart <= prevEndDate ? getDailyStats(websiteId, clampedPrevStart, prevEndDate) : Promise.resolve([]), currentWebsite.isArchived ? Promise.resolve(0) : calculateActiveUsers(websiteId)]);
 
     const sessionEventsMap = buildSessionEventsMap(todayRawData.events);
     const todayMetrics = calculateMetricsFromData(todayRawData.sessions, todayRawData.events, todayRawData.jsErrors, { sessionEventsMap });

@@ -15,7 +15,7 @@ db/*.db
 
 # Pocketbase
 build_pb.js
-pb_schema.json
+*_schema.json
 
 # Vendors
 public/css/vendors/*

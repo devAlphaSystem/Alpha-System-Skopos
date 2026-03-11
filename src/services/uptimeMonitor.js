@@ -347,6 +347,15 @@ async function monitorWebsite(websiteId, domain, checkInterval, triggeredByRecov
   }
 }
 
+/**
+ * Starts a recurring uptime check for a website. Idempotent — if a monitor
+ * is already running for this website, the call is a no-op.
+ *
+ * @param {string} websiteId - PocketBase website record ID.
+ * @param {string} domain - Domain or URL to monitor (protocol optional; defaults to https).
+ * @param {number} [checkInterval=300000] - Interval between checks in milliseconds.
+ * @returns {void}
+ */
 export function startMonitoring(websiteId, domain, checkInterval = 300000) {
   if (activeMonitors.has(websiteId)) {
     logger.debug("Monitor already running for website %s", websiteId);
@@ -369,6 +378,12 @@ export function startMonitoring(websiteId, domain, checkInterval = 300000) {
   }, checkInterval);
 }
 
+/**
+ * Stops the uptime monitor for a website and clears any pending recovery re-check.
+ *
+ * @param {string} websiteId - PocketBase website record ID.
+ * @returns {void}
+ */
 export function stopMonitoring(websiteId) {
   const monitor = activeMonitors.get(websiteId);
   if (monitor) {
@@ -381,6 +396,14 @@ export function stopMonitoring(websiteId) {
   }
 }
 
+/**
+ * Changes the check interval for an active monitor by stopping and restarting it.
+ * No-op if the monitor is not running or the interval has not changed.
+ *
+ * @param {string} websiteId - PocketBase website record ID.
+ * @param {number} newInterval - New interval in milliseconds.
+ * @returns {void}
+ */
 export function updateMonitoringInterval(websiteId, newInterval) {
   const monitor = activeMonitors.get(websiteId);
   if (monitor && monitor.checkInterval !== newInterval) {
@@ -390,6 +413,12 @@ export function updateMonitoringInterval(websiteId, newInterval) {
   }
 }
 
+/**
+ * Queries PocketBase for all non-archived websites with uptime monitoring enabled
+ * and starts a monitor for each. Called once at server startup.
+ *
+ * @returns {Promise<void>}
+ */
 export async function initializeUptimeMonitoring() {
   try {
     await ensureAdminAuth();
@@ -582,6 +611,13 @@ export async function calculateUptimePercentage(websiteId, startDate, endDate) {
   }
 }
 
+/**
+ * Performs an immediate on-demand uptime check without affecting the scheduled monitor.
+ *
+ * @param {string} websiteId - PocketBase website record ID.
+ * @param {string} domain - Domain or URL to check.
+ * @returns {Promise<{isUp: boolean, statusCode: number, responseTime: number, error: string|null}>}
+ */
 export async function manualUptimeCheck(websiteId, domain) {
   try {
     const url = domain.startsWith("http") ? domain : `https://${domain}`;

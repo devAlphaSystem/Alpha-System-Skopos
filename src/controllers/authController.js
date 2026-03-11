@@ -73,9 +73,19 @@ export async function handleRegistration(req, res) {
       verified: true,
     });
 
-    await initializeAppState();
+    await initializeAppState(true);
+
+    const authData = await pb.collection("users").authWithPassword(email, password);
+    const cookieOptions = {
+      httpOnly: true,
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    };
+    res.cookie("pb_auth", JSON.stringify({ token: pb.authStore.token, model: authData.record }), cookieOptions);
+
     logger.info("First user registered successfully: %s", email);
-    res.redirect("/login");
+    res.redirect("/");
   } catch (error) {
     logger.error("Registration failed: %o", error);
     let errorMessage = "Failed to create account. The email might already be in use.";

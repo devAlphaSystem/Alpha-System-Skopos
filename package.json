@@ -1,7 +1,7 @@
 {
   "name": "alpha-system-skopos",
-  "version": "0.53.1",
-  "updated": "2026.03.06.1308",
+  "version": "0.54.0",
+  "updated": "2026.03.10.2357",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -32,7 +32,7 @@
     "pocketbase": "^0.26.8",
     "resend": "^6.9.3",
     "ua-parser-js": "^2.0.9",
-    "nlcurl": "^0.4.0",
+    "nlcurl": "^0.11.0",
     "winston": "^3.19.0",
     "winston-daily-rotate-file": "^5.0.0"
   },

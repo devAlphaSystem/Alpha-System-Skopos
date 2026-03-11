@@ -5,7 +5,7 @@ import { createGunzip, createInflate, createBrotliDecompress } from "node:zlib";
 import logger from "../utils/logger.js";
 import { getApiKeyWithFallback } from "./apiKeyManager.js";
 
-async function fetchHtml(url) {
+async function fetchHtml(url, { rejectUnauthorized = true } = {}) {
   return new Promise((resolve, reject) => {
     const parsedUrl = new URL(url);
     const client = parsedUrl.protocol === "https:" ? https : http;
@@ -20,6 +20,7 @@ async function fetchHtml(url) {
         "Accept-Encoding": "gzip, deflate, br",
       },
       timeout: 10000,
+      rejectUnauthorized,
     };
 
     const req = client.request(options, (res) => {
@@ -49,7 +50,7 @@ async function fetchHtml(url) {
           resolve({ html: data, statusCode: res.statusCode, headers: res.headers });
         } else if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           const redirectUrl = new URL(res.headers.location, url);
-          fetchHtml(redirectUrl.toString()).then(resolve).catch(reject);
+          fetchHtml(redirectUrl.toString(), { rejectUnauthorized }).then(resolve).catch(reject);
         } else {
           reject(new Error(`HTTP ${res.statusCode}`));
         }
@@ -58,7 +59,14 @@ async function fetchHtml(url) {
       stream.on("error", reject);
     });
 
-    req.on("error", reject);
+    req.on("error", (err) => {
+      if (rejectUnauthorized && err.code === "UNABLE_TO_GET_ISSUER_CERT_LOCALLY") {
+        logger.warn("TLS certificate issue for %s, retrying with relaxed verification", url);
+        fetchHtml(url, { rejectUnauthorized: false }).then(resolve).catch(reject);
+        return;
+      }
+      reject(err);
+    });
     req.on("timeout", () => {
       req.destroy();
       reject(new Error("Request timeout"));

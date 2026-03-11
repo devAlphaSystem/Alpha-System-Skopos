@@ -23,6 +23,14 @@ setInterval(() => {
   }
 }, CACHE_TTL);
 
+/**
+ * Reads a single application setting for a user. Results are cached for 5 minutes.
+ *
+ * @param {string} userId - PocketBase user record ID.
+ * @param {string} key - Setting key name.
+ * @param {*} [defaultValue=null] - Value to return if the setting is not found.
+ * @returns {Promise<*>} The parsed setting value, or `defaultValue` if not set.
+ */
 export async function getSetting(userId, key, defaultValue = null) {
   const cacheKey = `${userId}:${key}`;
   const cached = settingsCache.get(cacheKey);
@@ -47,6 +55,13 @@ export async function getSetting(userId, key, defaultValue = null) {
   }
 }
 
+/**
+ * Reads multiple settings in a single call.
+ *
+ * @param {string} userId - PocketBase user record ID.
+ * @param {string[]} keys - Array of setting key names.
+ * @returns {Promise<Record<string, *>>} Object mapping each key to its value (or `false` as default).
+ */
 export async function getSettings(userId, keys) {
   const results = {};
 
@@ -57,6 +72,15 @@ export async function getSettings(userId, keys) {
   return results;
 }
 
+/**
+ * Creates or updates a setting. Clears the cache entry for this key.
+ *
+ * @param {string} userId - PocketBase user record ID.
+ * @param {string} key - Setting key name.
+ * @param {*} value - Value to store. Booleans, numbers, and objects are serialised to strings.
+ * @param {string} [description=''] - Optional human-readable description stored alongside the value.
+ * @returns {Promise<void>}
+ */
 export async function setSetting(userId, key, value, description = "") {
   const cacheKey = `${userId}:${key}`;
   const stringValue = stringifyValue(value);

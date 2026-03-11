@@ -18,7 +18,8 @@ import uptimeRoutes from "./src/routes/uptime.js";
 import adsRoutes from "./src/routes/ads.js";
 import apiRoutes from "./src/routes/api.js";
 import collectRoutes from "./src/routes/collect.js";
-import { pb } from "./src/services/pocketbase.js";
+import { initCollectCache } from "./src/routes/collect.js";
+import { pb, POCKETBASE_MODE } from "./src/services/pocketbase.js";
 import { startCronJobs } from "./src/services/cron.js";
 import { initialize as initializeAppState, doesUserExist } from "./src/services/appState.js";
 import { startRealtimeService } from "./src/services/realtime.js";
@@ -41,8 +42,29 @@ const app = express();
 const packageJson = JSON.parse(readFileSync(path.join(__dirname, "package.json"), "utf-8"));
 const port = process.env.PORT || 3000;
 
+let stopEmbeddedPb = null;
+
 async function initializeApp() {
+  if (POCKETBASE_MODE === "embedded") {
+    try {
+      const { boot, stop } = await import("./src/lib/pb-embedded.js");
+      await boot({
+        adminEmail: process.env.POCKETBASE_ADMIN_EMAIL,
+        adminPassword: process.env.POCKETBASE_ADMIN_PASSWORD,
+        version: process.env.POCKETBASE_VERSION || "",
+        log: (msg) => logger.info(msg),
+        warn: (msg) => logger.warn(msg),
+        error: (msg) => logger.error(msg),
+      });
+      stopEmbeddedPb = stop;
+    } catch (err) {
+      logger.error("Failed to start embedded PocketBase: %s", err.message);
+      process.exit(1);
+    }
+  }
+
   await initializeAppState();
+  initCollectCache();
 
   app.set("view engine", "ejs");
   app.set("views", path.join(__dirname, "views"));
@@ -162,6 +184,7 @@ async function initializeApp() {
 
   function gracefulShutdown(signal) {
     logger.info("Received %s, shutting down gracefully...", signal);
+    if (stopEmbeddedPb) stopEmbeddedPb();
     cacheService.shutdown();
     disconnectAllSse();
     process.exit(0);

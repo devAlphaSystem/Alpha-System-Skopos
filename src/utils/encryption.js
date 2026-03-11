@@ -14,6 +14,18 @@ function getEncryptionKey() {
   return Buffer.from(key, "hex");
 }
 
+/**
+ * Encrypts a plaintext string using AES-256-GCM with per-operation key derivation.
+ *
+ * A fresh 32-byte salt and 16-byte IV are generated for every call, then a
+ * 32-byte key is derived via PBKDF2 (SHA-256, 100 000 iterations) from the master
+ * key (`ENCRYPTION_KEY` env var) + salt. The output is:
+ * `base64(salt[32] || iv[16] || authTag[16] || ciphertext)`
+ *
+ * @param {string} text - Plaintext to encrypt.
+ * @returns {string} Base64-encoded encrypted blob.
+ * @throws {Error} If `ENCRYPTION_KEY` is missing or invalid, or encryption fails.
+ */
 export function encrypt(text) {
   try {
     const masterKey = getEncryptionKey();
@@ -39,6 +51,17 @@ export function encrypt(text) {
   }
 }
 
+/**
+ * Decrypts a base64-encoded blob produced by `encrypt()`.
+ *
+ * Extracts the salt, IV, and auth tag from the blob, re-derives the key via PBKDF2,
+ * and decrypts using AES-256-GCM. The auth tag is verified before returning plaintext;
+ * any tampering causes an AuthenticationError.
+ *
+ * @param {string} encryptedData - Base64-encoded blob from `encrypt()`.
+ * @returns {string} Decrypted plaintext.
+ * @throws {Error} If decryption fails due to tampering, wrong key, or malformed input.
+ */
 export function decrypt(encryptedData) {
   try {
     const masterKey = getEncryptionKey();

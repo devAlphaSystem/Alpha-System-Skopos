@@ -6,6 +6,13 @@ const clients = new Set();
 
 const pendingBroadcasts = new Map();
 
+/**
+ * Registers a new SSE client response stream.
+ * Rejects the connection if the maximum number of clients (100) has been reached.
+ *
+ * @param {import('http').ServerResponse} client - Express response object with `write()` and `end()` methods.
+ * @returns {boolean} True if the client was accepted, false if rejected.
+ */
 export function addClient(client) {
   if (clients.size >= MAX_SSE_CLIENTS) {
     logger.warn("SSE max clients (%d) reached, rejecting new connection", MAX_SSE_CLIENTS);
@@ -21,6 +28,12 @@ export function addClient(client) {
   return true;
 }
 
+/**
+ * Broadcasts a JSON message immediately to all connected SSE clients.
+ *
+ * @param {object} data - Serialisable object. Published as `data: <JSON>\n\n`.
+ * @returns {void}
+ */
 export function broadcast(data) {
   const message = `data: ${JSON.stringify(data)}\n\n`;
   logger.debug("Broadcasting SSE message to %d clients: %o", clients.size, data);
@@ -29,6 +42,14 @@ export function broadcast(data) {
   }
 }
 
+/**
+ * Schedules a broadcast with a 2-second debounce, keyed by `data.websiteId`.
+ * Multiple calls within the debounce window for the same website coalesce into one broadcast.
+ * Used for collection event notifications to avoid high-frequency dashboard flicker.
+ *
+ * @param {{ websiteId?: string, [key: string]: unknown }} data - Payload to broadcast.
+ * @returns {void}
+ */
 export function broadcastDebounced(data) {
   const key = data?.websiteId ?? "__global__";
 

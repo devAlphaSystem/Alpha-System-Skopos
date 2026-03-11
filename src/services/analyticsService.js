@@ -52,6 +52,12 @@ function toDateString(date) {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * Indexes an array of event records by their parent session ID.
+ *
+ * @param {Array<{session: string, [key: string]: unknown}>} events - Flat list of event records from PocketBase.
+ * @returns {Map<string, Array>} Map of sessionId → events[]
+ */
 export function buildSessionEventsMap(events) {
   const map = new Map();
   for (const event of events) {
@@ -63,6 +69,15 @@ export function buildSessionEventsMap(events) {
   return map;
 }
 
+/**
+ * Fetches all sessions, events, and JS errors for a website within a time range.
+ * Results are cached; past periods use a 30-minute TTL, recent periods use a 2-minute TTL.
+ *
+ * @param {string} websiteId - PocketBase website record ID.
+ * @param {Date} startDate - Start of the period (inclusive).
+ * @param {Date} endDate - End of the period (inclusive).
+ * @returns {Promise<{sessions: Array, events: Array, jsErrors: Array}>}
+ */
 export async function fetchRecordsForPeriod(websiteId, startDate, endDate) {
   const startISO = startDate.toISOString().replace("T", " ");
   const endISO = endDate.toISOString().replace("T", " ");
@@ -102,6 +117,14 @@ export async function fetchRecordsForPeriod(websiteId, startDate, endDate) {
   });
 }
 
+/**
+ * Fetches raw records for a period and computes aggregated analytics metrics.
+ *
+ * @param {string} websiteId - PocketBase website record ID.
+ * @param {Date} startDate - Start of the period.
+ * @param {Date} endDate - End of the period.
+ * @returns {Promise<object>} Aggregated metrics including pageViews, visitors, bounceRate, breakdowns, etc.
+ */
 export async function calculateMetricsFromRecords(websiteId, startDate, endDate) {
   const { sessions, events, jsErrors } = await fetchRecordsForPeriod(websiteId, startDate, endDate);
   return calculateMetricsFromData(sessions, events, jsErrors);
@@ -109,6 +132,13 @@ export async function calculateMetricsFromRecords(websiteId, startDate, endDate)
 
 const BREAKDOWN_KEYS = ["topPages", "entryPages", "exitPages", "topReferrers", "deviceBreakdown", "browserBreakdown", "languageBreakdown", "countryBreakdown", "stateBreakdown", "topCustomEvents", "topJsErrors"];
 
+/**
+ * Returns a copy of a metrics object with all breakdown arrays removed.
+ * Useful when only scalar metrics (pageViews, visitors, etc.) are needed.
+ *
+ * @param {object} metrics - Full metrics object from calculateMetricsFromData.
+ * @returns {object} Metrics object without breakdown array keys.
+ */
 export function stripBreakdowns(metrics) {
   const clean = {};
   for (const key of Object.keys(metrics)) {
